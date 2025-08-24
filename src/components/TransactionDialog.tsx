@@ -1,0 +1,186 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Transaction } from "./TransactionTable";
+
+interface TransactionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  transaction?: Transaction | null;
+  onSave: (transaction: Omit<Transaction, 'id'> & { id?: number }) => void;
+}
+
+const incomeCategories = [
+  "Продажи",
+  "Услуги", 
+  "Инвестиции",
+  "Прочие доходы"
+];
+
+const expenseCategories = [
+  "Зарплаты",
+  "Аренда",
+  "Реклама",
+  "Налоги",
+  "Сырье",
+  "Логистика",
+  "Прочие расходы"
+];
+
+export function TransactionDialog({ open, onOpenChange, transaction, onSave }: TransactionDialogProps) {
+  const [formData, setFormData] = useState({
+    type: 'income' as 'income' | 'expense',
+    category: '',
+    amount: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  useEffect(() => {
+    if (transaction) {
+      setFormData({
+        type: transaction.type,
+        category: transaction.category,
+        amount: transaction.amount.toString(),
+        description: transaction.description,
+        date: transaction.date
+      });
+    } else {
+      setFormData({
+        type: 'income',
+        category: '',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0]
+      });
+    }
+  }, [transaction, open]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.category || !formData.amount || !formData.date) {
+      return;
+    }
+
+    onSave({
+      ...(transaction && { id: transaction.id }),
+      type: formData.type,
+      category: formData.category,
+      amount: parseFloat(formData.amount),
+      description: formData.description,
+      date: formData.date
+    });
+
+    onOpenChange(false);
+  };
+
+  const categories = formData.type === 'income' ? incomeCategories : expenseCategories;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {transaction ? 'Редактировать операцию' : 'Добавить операцию'}
+          </DialogTitle>
+          <DialogDescription>
+            Заполните данные для финансовой операции
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">Тип операции</Label>
+              <Select 
+                value={formData.type} 
+                onValueChange={(value: 'income' | 'expense') => {
+                  setFormData({ ...formData, type: value, category: '' });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Доход</SelectItem>
+                  <SelectItem value="expense">Расход</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Категория</Label>
+              <Select 
+                value={formData.category} 
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите категорию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Сумма (₽)</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date">Дата</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Описание</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Дополнительная информация об операции..."
+              rows={3}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Отмена
+            </Button>
+            <Button type="submit">
+              {transaction ? 'Сохранить' : 'Добавить'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
