@@ -64,6 +64,22 @@ export const mockTransactions: Transaction[] = [
     category: "Инвестиции",
     amount: 200000,
     description: "Инвестиции от партнера"
+  },
+  {
+    id: 9,
+    date: "2024-01-25",
+    type: "expense",
+    category: "Вывод средств",
+    amount: 50000,
+    description: "Вывод прибыли учредителю"
+  },
+  {
+    id: 10,
+    date: "2024-01-20",
+    type: "expense",
+    category: "Вывод средств",
+    amount: 30000,
+    description: "Вывод на личные нужды"
   }
 ];
 
@@ -72,17 +88,24 @@ export const calculateKPIs = (transactions: Transaction[]) => {
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
   
+  const withdrawals = transactions
+    .filter(t => t.type === 'expense' && t.category === 'Вывод средств')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
   const expenses = transactions
-    .filter(t => t.type === 'expense')
+    .filter(t => t.type === 'expense' && t.category !== 'Вывод средств')
     .reduce((sum, t) => sum + t.amount, 0);
   
   const profit = income - expenses;
+  const moneyInProject = profit - withdrawals;
   const margin = income > 0 ? (profit / income) * 100 : 0;
-
+  
   return {
     income,
     expenses,
     profit,
-    margin
+    margin,
+    withdrawals,
+    moneyInProject
   };
 };

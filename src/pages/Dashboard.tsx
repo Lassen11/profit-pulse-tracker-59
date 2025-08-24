@@ -6,7 +6,7 @@ import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { mockTransactions, calculateKPIs } from "@/lib/mockData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
@@ -45,7 +45,9 @@ export default function Dashboard() {
     income: 350000,
     expenses: 180000,
     profit: 170000,
-    margin: 48.6
+    margin: 48.6,
+    withdrawals: 75000,
+    moneyInProject: 95000
   };
 
   const handleSaveTransaction = (transactionData: Omit<Transaction, 'id'> & { id?: number }) => {
@@ -134,7 +136,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <KPICard
             title="Выручка"
             value={formatCurrency(kpis.income)}
@@ -165,6 +167,22 @@ export default function Dashboard() {
             delta={calculateDelta(kpis.margin, previousKpis.margin)}
             deltaType={getDeltaType(kpis.margin, previousKpis.margin)}
             icon={<Target className="w-6 h-6" />}
+            className="shadow-kpi"
+          />
+          <KPICard
+            title="Вывод средств"
+            value={formatCurrency(kpis.withdrawals)}
+            delta={calculateDelta(kpis.withdrawals, previousKpis.withdrawals)}
+            deltaType={getDeltaType(previousKpis.withdrawals, kpis.withdrawals)} // Reversed for withdrawals
+            icon={<ArrowUpFromLine className="w-6 h-6" />}
+            className="shadow-kpi"
+          />
+          <KPICard
+            title="Деньги в проекте"
+            value={formatCurrency(kpis.moneyInProject)}
+            delta={calculateDelta(kpis.moneyInProject, previousKpis.moneyInProject)}
+            deltaType={getDeltaType(kpis.moneyInProject, previousKpis.moneyInProject)}
+            icon={<Wallet className="w-6 h-6" />}
             className="shadow-kpi"
           />
         </div>
