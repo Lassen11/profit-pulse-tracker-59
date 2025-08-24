@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { KPICard } from "@/components/KPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
+import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { mockTransactions, calculateKPIs } from "@/lib/mockData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -170,15 +171,9 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Charts Section */}
+          {/* Analytics Section */}
           <div className="lg:col-span-1">
-            <div className="kpi-card h-96 flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Графики и аналитика</p>
-                <p className="text-sm">В разработке</p>
-              </div>
-            </div>
+            <MonthlyAnalytics transactions={transactions} />
           </div>
 
           {/* Transaction Table */}
