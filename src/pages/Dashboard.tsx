@@ -78,12 +78,24 @@ export default function Dashboard() {
   };
 
   const handleDeleteTransaction = (id: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-    toast({
-      title: "Операция удалена",
-      description: "Транзакция была успешно удалена",
-      variant: "destructive"
-    });
+    const transaction = transactions.find(t => t.id === id);
+    if (!transaction) return;
+
+    const confirmed = window.confirm(
+      `Вы уверены, что хотите удалить операцию "${transaction.description}" на сумму ${new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB'
+      }).format(Math.abs(transaction.amount))}?`
+    );
+
+    if (confirmed) {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      toast({
+        title: "Операция удалена",
+        description: "Транзакция была успешно удалена",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddNew = () => {
