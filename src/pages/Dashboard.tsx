@@ -1,20 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KPICard } from "@/components/KPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
-import { mockTransactions, calculateKPIs } from "@/lib/mockData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet } from "lucide-react";
+import { calculateKPIs } from "@/lib/supabaseData";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [periodFilter, setPeriodFilter] = useState("month");
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!user && !loading) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
+
+  // Fetch transactions from Supabase
+  useEffect(() => {
+    if (user) {
+      fetchTransactions();
+    }
+  }, [user]);
+
+  const fetchTransactions = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Ошибка загрузки",
+          description: "Не удалось загрузить транзакции",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setTransactions(data?.map(t => ({
+        ...t,
+        type: t.type as 'income' | 'expense'
+      })) || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
 
   const kpis = calculateKPIs(transactions);
 
@@ -50,27 +105,74 @@ export default function Dashboard() {
     moneyInProject: 95000
   };
 
-  const handleSaveTransaction = (transactionData: Omit<Transaction, 'id'> & { id?: number }) => {
+  const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & { id?: string }) => {
+    if (!user) return;
+
     if (transactionData.id) {
-      // Edit existing transaction
-      setTransactions(prev => 
-        prev.map(t => t.id === transactionData.id ? { ...transactionData, id: transactionData.id } as Transaction : t)
-      );
-      toast({
-        title: "Операция обновлена",
-        description: "Данные успешно сохранены",
-      });
+      // Update existing transaction
+      try {
+        const { error } = await supabase
+          .from('transactions')
+          .update({
+            date: transactionData.date,
+            type: transactionData.type,
+            category: transactionData.category,
+            amount: transactionData.amount,
+            description: transactionData.description
+          })
+          .eq('id', transactionData.id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        setTransactions(prev => 
+          prev.map(t => t.id === transactionData.id ? { ...transactionData, id: transactionData.id } as Transaction : t)
+        );
+        toast({
+          title: "Операция обновлена",
+          description: "Данные успешно сохранены",
+        });
+      } catch (error) {
+        toast({
+          title: "Ошибка обновления",
+          description: "Не удалось обновить транзакцию",
+          variant: "destructive"
+        });
+      }
     } else {
-      // Add new transaction
-      const newTransaction: Transaction = {
-        ...transactionData,
-        id: Math.max(...transactions.map(t => t.id)) + 1
-      };
-      setTransactions(prev => [newTransaction, ...prev]);
-      toast({
-        title: "Операция добавлена",
-        description: "Новая транзакция успешно создана",
-      });
+      // Create new transaction
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: user.id,
+            date: transactionData.date,
+            type: transactionData.type,
+            category: transactionData.category,
+            amount: transactionData.amount,
+            description: transactionData.description
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newTransaction: Transaction = {
+          ...data,
+          type: data.type as 'income' | 'expense'
+        };
+        setTransactions(prev => [newTransaction, ...prev]);
+        toast({
+          title: "Операция добавлена",
+          description: "Новая транзакция успешно создана",
+        });
+      } catch (error) {
+        toast({
+          title: "Ошибка создания",
+          description: "Не удалось создать транзакцию",
+          variant: "destructive"
+        });
+      }
     }
     setEditTransaction(null);
   };
@@ -80,7 +182,9 @@ export default function Dashboard() {
     setDialogOpen(true);
   };
 
-  const handleDeleteTransaction = (id: number) => {
+  const handleDeleteTransaction = async (id: string) => {
+    if (!user) return;
+    
     const transaction = transactions.find(t => t.id === id);
     if (!transaction) return;
 
@@ -92,12 +196,28 @@ export default function Dashboard() {
     );
 
     if (confirmed) {
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      toast({
-        title: "Операция удалена",
-        description: "Транзакция была успешно удалена",
-        variant: "destructive"
-      });
+      try {
+        const { error } = await supabase
+          .from('transactions')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        toast({
+          title: "Операция удалена",
+          description: "Транзакция была успешно удалена",
+          variant: "destructive"
+        });
+      } catch (error) {
+        toast({
+          title: "Ошибка удаления",
+          description: "Не удалось удалить транзакцию",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -131,6 +251,10 @@ export default function Dashboard() {
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
               Добавить операцию
+            </Button>
+            <Button variant="ghost" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Выйти
             </Button>
           </div>
         </div>

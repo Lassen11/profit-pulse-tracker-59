@@ -11,7 +11,7 @@ interface TransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
-  onSave: (transaction: Omit<Transaction, 'id'> & { id?: number }) => void;
+  onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }) => void;
 }
 
 const incomeCategories = [
@@ -28,6 +28,7 @@ const expenseCategories = [
   "Налоги",
   "Сырье",
   "Логистика",
+  "Вывод средств",
   "Прочие расходы"
 ];
 

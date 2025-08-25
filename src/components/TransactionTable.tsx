@@ -7,18 +7,21 @@ import { Search, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Transaction {
-  id: number;
+  id: string;
   date: string;
   type: 'income' | 'expense';
   category: string;
   amount: number;
   description: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface TransactionTableProps {
   transactions: Transaction[];
   onEdit?: (transaction: Transaction) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function TransactionTable({ transactions, onEdit, onDelete }: TransactionTableProps) {
