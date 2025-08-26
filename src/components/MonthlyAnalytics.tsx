@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,50 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
     });
   }, [transactions]);
 
+  // Аналитика по категориям
+  const categoryData = useMemo(() => {
+    const incomeCategories: Record<string, number> = {};
+    const expenseCategories: Record<string, number> = {};
+    
+    transactions.forEach((transaction) => {
+      const key = transaction.subcategory ? 
+        `${transaction.category} / ${transaction.subcategory}` : 
+        transaction.category;
+      
+      if (transaction.type === 'income') {
+        incomeCategories[key] = (incomeCategories[key] || 0) + transaction.amount;
+      } else {
+        expenseCategories[key] = (expenseCategories[key] || 0) + transaction.amount;
+      }
+    });
+
+    const incomeData = Object.entries(incomeCategories)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    
+    const expenseData = Object.entries(expenseCategories)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return { incomeData, expenseData };
+  }, [transactions]);
+
+  // Цвета для круговых диаграмм
+  const COLORS = [
+    'hsl(var(--primary))',
+    'hsl(var(--secondary))',
+    'hsl(var(--accent))',
+    'hsl(var(--muted))',
+    '#8884d8',
+    '#82ca9d',
+    '#ffc658',
+    '#ff7300',
+    '#8dd1e1',
+    '#d084d0',
+    '#ffb347',
+    '#87d068'
+  ];
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -122,6 +166,21 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
     return null;
   };
 
+  const CategoryTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0];
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-medium">{data.payload.name}</p>
+          <p className="text-sm" style={{ color: data.color }}>
+            Сумма: {formatCurrency(data.value)}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (monthlyData.length === 0) {
     return (
       <Card>
@@ -142,8 +201,9 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="chart" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="chart">Графики</TabsTrigger>
+              <TabsTrigger value="categories">Категории</TabsTrigger>
               <TabsTrigger value="table">Таблица</TabsTrigger>
             </TabsList>
             
@@ -207,6 +267,114 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
                     />
                   </LineChart>
                 </ResponsiveContainer>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="categories" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Доходы по категориям */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Доходы по категориям</CardTitle>
+                    <CardDescription>Распределение доходов</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryData.incomeData.length > 0 ? (
+                      <>
+                        <div className="h-64 mb-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={categoryData.incomeData}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                label={false}
+                              >
+                                {categoryData.incomeData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip content={<CategoryTooltip />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {categoryData.incomeData.map((item, index) => (
+                            <div key={item.name} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                <div 
+                                  className="w-3 h-3 rounded"
+                                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                />
+                                <span className="truncate max-w-[150px]">{item.name}</span>
+                              </div>
+                              <span className="font-medium amount-positive">
+                                {formatCurrency(item.value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">Нет данных о доходах</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Расходы по категориям */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Расходы по категориям</CardTitle>
+                    <CardDescription>Распределение расходов</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryData.expenseData.length > 0 ? (
+                      <>
+                        <div className="h-64 mb-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={categoryData.expenseData}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                label={false}
+                              >
+                                {categoryData.expenseData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip content={<CategoryTooltip />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {categoryData.expenseData.map((item, index) => (
+                            <div key={item.name} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                <div 
+                                  className="w-3 h-3 rounded"
+                                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                />
+                                <span className="truncate max-w-[150px]">{item.name}</span>
+                              </div>
+                              <span className="font-medium amount-negative">
+                                {formatCurrency(item.value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">Нет данных о расходах</p>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
             
