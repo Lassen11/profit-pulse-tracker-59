@@ -117,6 +117,7 @@ export default function Dashboard() {
             date: transactionData.date,
             type: transactionData.type,
             category: transactionData.category,
+            subcategory: transactionData.subcategory,
             amount: transactionData.amount,
             description: transactionData.description
           })
@@ -149,6 +150,7 @@ export default function Dashboard() {
             date: transactionData.date,
             type: transactionData.type,
             category: transactionData.category,
+            subcategory: transactionData.subcategory,
             amount: transactionData.amount,
             description: transactionData.description
           })
