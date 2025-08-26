@@ -36,6 +36,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
     category: '',
+    subcategory: '',
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
@@ -46,6 +47,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       setFormData({
         type: transaction.type,
         category: transaction.category,
+        subcategory: transaction.subcategory || '',
         amount: transaction.amount.toString(),
         description: transaction.description,
         date: transaction.date
@@ -54,6 +56,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       setFormData({
         type: 'income',
         category: '',
+        subcategory: '',
         amount: '',
         description: '',
         date: new Date().toISOString().split('T')[0]
@@ -72,6 +75,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       ...(transaction && { id: transaction.id }),
       type: formData.type,
       category: formData.category,
+      subcategory: formData.subcategory,
       amount: parseFloat(formData.amount),
       description: formData.description,
       date: formData.date
@@ -100,9 +104,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
               <Label htmlFor="type">Тип операции</Label>
               <Select 
                 value={formData.type} 
-                onValueChange={(value: 'income' | 'expense') => {
-                  setFormData({ ...formData, type: value, category: '' });
-                }}
+                 onValueChange={(value: 'income' | 'expense') => {
+                   setFormData({ ...formData, type: value, category: '', subcategory: '' });
+                 }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -131,6 +135,16 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="subcategory">Подкатегория</Label>
+              <Input
+                id="subcategory"
+                value={formData.subcategory}
+                onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                placeholder="Введите подкатегорию..."
+              />
             </div>
           </div>
 

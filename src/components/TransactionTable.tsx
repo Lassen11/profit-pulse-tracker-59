@@ -11,6 +11,7 @@ export interface Transaction {
   date: string;
   type: 'income' | 'expense';
   category: string;
+  subcategory?: string;
   amount: number;
   description: string;
   user_id?: string;
@@ -29,7 +30,8 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
 
   const filteredTransactions = transactions.filter(transaction =>
     transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
+    transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (transaction.subcategory && transaction.subcategory.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const formatAmount = (amount: number, type: 'income' | 'expense') => {
@@ -62,6 +64,7 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
               <TableHead>Дата</TableHead>
               <TableHead>Тип</TableHead>
               <TableHead>Категория</TableHead>
+              <TableHead>Подкатегория</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Описание</TableHead>
               <TableHead className="w-20">Действия</TableHead>
@@ -86,6 +89,7 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
                   </Badge>
                 </TableCell>
                 <TableCell>{transaction.category}</TableCell>
+                <TableCell>{transaction.subcategory || '-'}</TableCell>
                 <TableCell className={cn(
                   "text-right font-semibold",
                   transaction.type === 'income' ? 'amount-positive' : 'amount-negative'
