@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [periodFilter, setPeriodFilter] = useState("month");
   const [customDateFrom, setCustomDateFrom] = useState<Date>();
   const [customDateTo, setCustomDateTo] = useState<Date>();
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
@@ -87,6 +88,10 @@ export default function Dashboard() {
       case "month":
         startDate = startOfMonth(now);
         endDate = endOfMonth(now);
+        break;
+      case "specific-month":
+        startDate = startOfMonth(selectedMonth);
+        endDate = endOfMonth(selectedMonth);
         break;
       case "quarter":
         startDate = startOfQuarter(now);
@@ -323,12 +328,37 @@ export default function Dashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="month">Текущий месяц</SelectItem>
+                <SelectItem value="specific-month">Выбрать месяц</SelectItem>
                 <SelectItem value="quarter">Квартал</SelectItem>
                 <SelectItem value="year">Год</SelectItem>
                 <SelectItem value="custom">Произвольный</SelectItem>
               </SelectContent>
             </Select>
             
+            {periodFilter === "specific-month" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-48 justify-start text-left font-normal"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedMonth ? format(selectedMonth, "LLLL yyyy") : "Выберите месяц"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedMonth}
+                    onSelect={(date) => date && setSelectedMonth(date)}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
             {periodFilter === "custom" && (
               <div className="flex items-center space-x-2">
                 <Popover>
