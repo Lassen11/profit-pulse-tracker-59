@@ -553,170 +553,43 @@ export default function Dashboard() {
 
   try {
     return (
-      <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">P&L Tracker</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">P&L Tracker</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Система отслеживания бизнес-метрик
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="month">Текущий месяц</SelectItem>
-                <SelectItem value="specific-month">Выбрать месяц</SelectItem>
-                <SelectItem value="quarter">Квартал</SelectItem>
-                <SelectItem value="year">Год</SelectItem>
-                <SelectItem value="custom">Произвольный</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {periodFilter === "specific-month" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-48 justify-start text-left font-normal"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedMonth ? format(selectedMonth, "LLLL yyyy") : "Выберите месяц"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedMonth}
-                    onSelect={(date) => date && setSelectedMonth(date)}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-            {periodFilter === "custom" && (
-              <div className="flex items-center space-x-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-40 justify-start text-left font-normal",
-                        !customDateFrom && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customDateFrom ? format(customDateFrom, "dd.MM.yyyy") : "От"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={customDateFrom}
-                      onSelect={setCustomDateFrom}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-40 justify-start text-left font-normal",
-                        !customDateTo && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customDateTo ? format(customDateTo, "dd.MM.yyyy") : "До"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={customDateTo}
-                      onSelect={setCustomDateTo}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
-              Добавить операцию
+              <span className="hidden xs:inline">Добавить операцию</span>
+              <span className="xs:hidden">Добавить</span>
             </Button>
-            <div className="flex items-center space-x-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Импорт из Excel
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium">Выберите месяц для импорта</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Данные будут импортированы в выбранный месяц
-                      </p>
-                    </div>
-                    <Calendar
-                      mode="single"
-                      selected={importMonth}
-                      onSelect={(date) => date && setImportMonth(date)}
-                      className="rounded-md border"
-                    />
-                    <div>
-                      <label htmlFor="excel-import" className="text-sm font-medium">
-                        Выберите Excel файл
-                      </label>
-                      <input
-                        id="excel-import"
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={handleImportFromExcel}
-                        className="mt-2 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button variant="outline" onClick={handleExportToExcel}>
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Экспорт в Excel
-              </Button>
-            </div>
             <Button variant="outline" onClick={() => navigate("/clients")}>
               <Users className="w-4 h-4 mr-2" />
-              Клиенты
+              <span className="hidden xs:inline">Клиенты</span>
+              <span className="xs:hidden">Клиенты</span>
             </Button>
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
-              Выйти
+              <span className="hidden xs:inline">Выйти</span>
+              <span className="xs:hidden">Выйти</span>
             </Button>
           </div>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
           <KPICard
             title="Выручка"
             value={formatCurrency(kpis.income)}
             delta={calculateDelta(kpis.income, previousKpis.income)}
             deltaType={getDeltaType(kpis.income, previousKpis.income)}
-            icon={<TrendingUp className="w-6 h-6" />}
+            icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
           <KPICard
@@ -724,7 +597,7 @@ export default function Dashboard() {
             value={formatCurrency(kpis.expenses)}
             delta={calculateDelta(kpis.expenses, previousKpis.expenses)}
             deltaType={getDeltaType(previousKpis.expenses, kpis.expenses)} // Reversed for expenses
-            icon={<TrendingDown className="w-6 h-6" />}
+            icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
           <KPICard
@@ -732,7 +605,7 @@ export default function Dashboard() {
             value={formatCurrency(kpis.profit)}
             delta={calculateDelta(kpis.profit, previousKpis.profit)}
             deltaType={getDeltaType(kpis.profit, previousKpis.profit)}
-            icon={<DollarSign className="w-6 h-6" />}
+            icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
           <KPICard
@@ -740,7 +613,7 @@ export default function Dashboard() {
             value={`${kpis.margin.toFixed(1)}%`}
             delta={calculateDelta(kpis.margin, previousKpis.margin)}
             deltaType={getDeltaType(kpis.margin, previousKpis.margin)}
-            icon={<Target className="w-6 h-6" />}
+            icon={<Target className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
           <KPICard
@@ -748,7 +621,7 @@ export default function Dashboard() {
             value={formatCurrency(kpis.withdrawals)}
             delta={calculateDelta(kpis.withdrawals, previousKpis.withdrawals)}
             deltaType={getDeltaType(previousKpis.withdrawals, kpis.withdrawals)} // Reversed for withdrawals
-            icon={<ArrowUpFromLine className="w-6 h-6" />}
+            icon={<ArrowUpFromLine className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
           <KPICard
@@ -756,23 +629,23 @@ export default function Dashboard() {
             value={formatCurrency(kpis.moneyInProject)}
             delta={calculateDelta(kpis.moneyInProject, previousKpis.moneyInProject)}
             deltaType={getDeltaType(kpis.moneyInProject, previousKpis.moneyInProject)}
-            icon={<Wallet className="w-6 h-6" />}
+            icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
           {/* Analytics Section */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1 order-2 xl:order-1">
             <MonthlyAnalytics transactions={filteredTransactions} />
           </div>
 
           {/* Transaction Table */}
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-2 order-1 xl:order-2">
             <div className="kpi-card">
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-card-foreground">
+                <h2 className="text-lg sm:text-xl font-semibold text-card-foreground">
                   Операции
                 </h2>
                 <p className="text-muted-foreground text-sm">

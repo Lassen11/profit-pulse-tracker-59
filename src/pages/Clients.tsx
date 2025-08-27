@@ -289,18 +289,19 @@ export default function Clients() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" onClick={() => navigate("/")}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <Button variant="ghost" onClick={() => navigate("/")} size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Назад к панели
+              <span className="hidden xs:inline">Назад к панели</span>
+              <span className="xs:hidden">Назад</span>
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Клиенты и рассрочки</h1>
-              <p className="text-muted-foreground mt-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Клиенты и рассрочки</h1>
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                 Управление клиентскими договорами и отслеживание платежей
               </p>
             </div>
@@ -308,14 +309,14 @@ export default function Clients() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Всего договоров</CardTitle>
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalContracts}</div>
+              <div className="text-xl sm:text-2xl font-bold">{totalContracts}</div>
             </CardContent>
           </Card>
 
@@ -325,7 +326,7 @@ export default function Clients() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalContractAmount)}</div>
+              <div className="text-xl sm:text-2xl font-bold">{formatCurrency(totalContractAmount)}</div>
             </CardContent>
           </Card>
 
@@ -335,7 +336,7 @@ export default function Clients() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
             </CardContent>
           </Card>
 
@@ -345,7 +346,7 @@ export default function Clients() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{formatCurrency(totalRemaining)}</div>
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">{formatCurrency(totalRemaining)}</div>
             </CardContent>
           </Card>
 
@@ -355,7 +356,7 @@ export default function Clients() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{totalInProgress}</div>
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{totalInProgress}</div>
             </CardContent>
           </Card>
 
@@ -365,7 +366,7 @@ export default function Clients() {
               <XCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{totalTerminated}</div>
+              <div className="text-xl sm:text-2xl font-bold text-red-600">{totalTerminated}</div>
             </CardContent>
           </Card>
 
@@ -375,7 +376,7 @@ export default function Clients() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{totalCompleted}</div>
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{totalCompleted}</div>
             </CardContent>
           </Card>
         </div>
@@ -398,176 +399,286 @@ export default function Clients() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('clientName')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      ФИО Клиента
-                      {getSortIcon('clientName')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('contractAmount')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Сумма договора
-                      {getSortIcon('contractAmount')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('firstPayment')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Первый платеж
-                      {getSortIcon('firstPayment')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-center">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('installmentPeriod')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Срок (мес.)
-                      {getSortIcon('installmentPeriod')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('totalPaid')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Оплачено
-                      {getSortIcon('totalPaid')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('remainingAmount')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Остаток
-                      {getSortIcon('remainingAmount')}
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('lastPaymentDate')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Последний платеж
-                      {getSortIcon('lastPaymentDate')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-center">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort('status')}
-                      className="h-auto p-0 font-medium hover:bg-transparent"
-                    >
-                      Статус
-                      {getSortIcon('status')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-center">Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedClients.map((client, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{client.clientName}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(client.firstPayment)}</TableCell>
-                    <TableCell className="text-center">{client.installmentPeriod}</TableCell>
-                    <TableCell className="text-right text-green-600 font-semibold">
-                      {formatCurrency(client.totalPaid)}
-                    </TableCell>
-                    <TableCell className="text-right text-orange-600 font-semibold">
-                      {formatCurrency(client.remainingAmount)}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(client.lastPaymentDate).toLocaleDateString('ru-RU')}
-                      {client.terminationDate && (
-                        <div className="text-xs text-red-600">
-                          Расторгнут: {new Date(client.terminationDate).toLocaleDateString('ru-RU')}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(client.status)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {client.contractStatus === 'active' ? (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Расторгнуть
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Расторжение договора</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Вы уверены, что хотите расторгнуть договор с {client.clientName}? 
-                                Это действие можно будет отменить позже.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Отмена</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleTerminateContract(client.clientName)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Расторгнуть договор
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      ) : (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Восстановить
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Восстановление договора</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Вы уверены, что хотите восстановить договор с {client.clientName}?
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Отмена</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleReactivateContract(client.clientName)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Восстановить договор
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </TableCell>
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('clientName')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        ФИО Клиента
+                        {getSortIcon('clientName')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('contractAmount')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Сумма договора
+                        {getSortIcon('contractAmount')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('firstPayment')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Первый платеж
+                        {getSortIcon('firstPayment')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('installmentPeriod')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Срок (мес.)
+                        {getSortIcon('installmentPeriod')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('totalPaid')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Оплачено
+                        {getSortIcon('totalPaid')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('remainingAmount')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Остаток
+                        {getSortIcon('remainingAmount')}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('lastPaymentDate')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Последний платеж
+                        {getSortIcon('lastPaymentDate')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('status')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Статус
+                        {getSortIcon('status')}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-center">Действия</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedClients.map((client, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{client.clientName}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(client.firstPayment)}</TableCell>
+                      <TableCell className="text-center">{client.installmentPeriod}</TableCell>
+                      <TableCell className="text-right text-green-600 font-semibold">
+                        {formatCurrency(client.totalPaid)}
+                      </TableCell>
+                      <TableCell className="text-right text-orange-600 font-semibold">
+                        {formatCurrency(client.remainingAmount)}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(client.lastPaymentDate).toLocaleDateString('ru-RU')}
+                        {client.terminationDate && (
+                          <div className="text-xs text-red-600">
+                            Расторгнут: {new Date(client.terminationDate).toLocaleDateString('ru-RU')}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {getStatusBadge(client.status)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {client.contractStatus === 'active' ? (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Расторгнуть
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Расторжение договора</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Вы уверены, что хотите расторгнуть договор с {client.clientName}? 
+                                  Это действие можно будет отменить позже.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleTerminateContract(client.clientName)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Расторгнуть договор
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        ) : (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Восстановить
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Восстановление договора</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Вы уверены, что хотите восстановить договор с {client.clientName}?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleReactivateContract(client.clientName)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  Восстановить договор
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block lg:hidden space-y-4">
+              {filteredAndSortedClients.map((client, index) => (
+                <div key={index} className="rounded-lg border bg-card p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-lg">{client.clientName}</h3>
+                    {getStatusBadge(client.status)}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Сумма договора:</span>
+                        <span className="font-medium">{formatCurrency(client.contractAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Первый платеж:</span>
+                        <span className="font-medium">{formatCurrency(client.firstPayment)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Срок:</span>
+                        <span className="font-medium">{client.installmentPeriod} мес.</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Оплачено:</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(client.totalPaid)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Остаток:</span>
+                        <span className="font-semibold text-orange-600">{formatCurrency(client.remainingAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Последний платеж:</span>
+                        <span className="font-medium text-xs">{new Date(client.lastPaymentDate).toLocaleDateString('ru-RU')}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {client.terminationDate && (
+                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                      Расторгнут: {new Date(client.terminationDate).toLocaleDateString('ru-RU')}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end pt-2 border-t">
+                    {client.contractStatus === 'active' ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Расторгнуть
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Расторжение договора</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Вы уверены, что хотите расторгнуть договор с {client.clientName}? 
+                              Это действие можно будет отменить позже.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Отмена</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleTerminateContract(client.clientName)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Расторгнуть договор
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Восстановить
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Восстановление договора</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Вы уверены, что хотите восстановить договор с {client.clientName}?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Отмена</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleReactivateContract(client.clientName)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Восстановить договор
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {filteredAndSortedClients.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">

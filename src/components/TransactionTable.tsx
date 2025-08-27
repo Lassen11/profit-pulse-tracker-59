@@ -63,7 +63,8 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -138,6 +139,98 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="block lg:hidden space-y-3">
+        {filteredTransactions.map((transaction) => (
+          <div key={transaction.id} className="rounded-lg border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">
+                {new Date(transaction.date).toLocaleDateString('ru-RU')}
+              </div>
+              <Badge 
+                variant={transaction.type === 'income' ? 'default' : 'destructive'}
+                className={cn(
+                  transaction.type === 'income' 
+                    ? 'bg-profit text-white' 
+                    : 'bg-loss text-white'
+                )}
+              >
+                {transaction.type === 'income' ? 'Доход' : 'Расход'}
+              </Badge>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Сумма:</span>
+                <span className={cn(
+                  "font-semibold",
+                  transaction.type === 'income' ? 'amount-positive' : 'amount-negative'
+                )}>
+                  {formatAmount(transaction.amount, transaction.type)}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Категория:</span>
+                <span className="text-sm">{transaction.category}</span>
+              </div>
+              
+              {transaction.subcategory && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Подкатегория:</span>
+                  <span className="text-sm">{transaction.subcategory}</span>
+                </div>
+              )}
+              
+              {transaction.client_name && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Клиент:</span>
+                  <span className="text-sm">{transaction.client_name}</span>
+                </div>
+              )}
+              
+              {transaction.description && (
+                <div className="pt-1">
+                  <span className="text-sm text-muted-foreground">Описание:</span>
+                  <p className="text-sm mt-1">{transaction.description}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-2 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit?.(transaction)}
+                className="h-9 px-3"
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Изменить
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onCopy?.(transaction)}
+                className="h-9 px-3"
+                title="Копировать операцию"
+              >
+                <Copy className="h-4 w-4 mr-1" />
+                Копировать
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete?.(transaction.id)}
+                className="h-9 px-3 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Удалить
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
