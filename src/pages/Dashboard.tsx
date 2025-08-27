@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [importMonth, setImportMonth] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -40,18 +41,17 @@ export default function Dashboard() {
     }
   }, [user, loading, navigate]);
 
-  // Fetch transactions from Supabase
-  useEffect(() => {
-    if (user) {
-      fetchTransactions();
-    } else if (!loading) {
-      // If no user and not loading, set loading to false explicitly
-      setLoading(false);
-    }
-  }, [user, loading]);
-
-  const fetchTransactions = async () => {
+  // Optimized fetch with caching and debouncing
+  const fetchTransactions = useCallback(async () => {
     if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    // Cache check - don't refetch if data is fresh (less than 30 seconds old)
+    const now = Date.now();
+    if (transactions.length > 0 && (now - lastFetchTime) < 30000) {
+      console.log('Using cached data');
       setLoading(false);
       return;
     }
@@ -60,72 +60,98 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       
-      // Add retry logic for network issues
-      const maxRetries = 3;
-      let lastError: any = null;
+      // Optimized query - only fetch recent data first, then older data
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       
-      for (let i = 0; i <= maxRetries; i++) {
-        try {
-          const { data, error } = await supabase
-            .from('transactions')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', threeMonthsAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false })
+        .limit(500); // Limit initial load
 
-          if (error) {
-            console.error('Supabase error:', error);
-            
-            // Check if it's a network connectivity error
-            if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
-              if (i < maxRetries) {
-                console.log(`Retrying... attempt ${i + 1}/${maxRetries}`);
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
-                continue;
-              }
-            }
-            
-            setError("Проблема с подключением к серверу");
-            toast({
-              title: "Ошибка сети",
-              description: "Проверьте подключение к интернету и попробуйте еще раз",
-              variant: "destructive"
-            });
-            return;
-          }
-
-          // Success - set data and break retry loop
-          setTransactions(data?.map(t => ({
-            ...t,
-            type: t.type as 'income' | 'expense'
-          })) || []);
-          return;
-          
-        } catch (attemptError) {
-          lastError = attemptError;
-          console.error(`Attempt ${i + 1} failed:`, attemptError);
-          
-          if (i < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
-          }
-        }
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
       }
+
+      const formattedData = data?.map(t => ({
+        ...t,
+        type: t.type as 'income' | 'expense'
+      })) || [];
+
+      setTransactions(formattedData);
+      setLastFetchTime(now);
       
-      throw lastError; // If all retries failed
-      
-    } catch (error) {
+      // Load older data in background if needed
+      if (formattedData.length >= 500) {
+        setTimeout(() => loadOlderTransactions(), 1000);
+      }
+
+    } catch (error: any) {
       console.error('Error fetching transactions:', error);
-      setError("Проблема с подключением к интернету");
-      toast({
-        title: "Ошибка подключения",
-        description: "Не удается подключиться к серверу. Проверьте интернет-соединение.",
-        variant: "destructive"
-      });
+      
+      if (error.message?.includes('Failed to fetch') || error.code === '') {
+        setError("Проблема с подключением к интернету");
+        toast({
+          title: "Ошибка подключения", 
+          description: "Проверьте интернет-соединение",
+          variant: "destructive"
+        });
+      } else {
+        setError("Ошибка загрузки данных");
+        toast({
+          title: "Ошибка",
+          description: "Не удалось загрузить транзакции",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, transactions.length, lastFetchTime, toast]);
+
+  // Load older transactions in background
+  const loadOlderTransactions = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .lt('date', threeMonthsAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false });
+
+      if (data && data.length > 0) {
+        const olderTransactions = data.map(t => ({
+          ...t,
+          type: t.type as 'income' | 'expense'
+        }));
+        
+        setTransactions(prev => [...prev, ...olderTransactions]);
+      }
+    } catch (error) {
+      console.error('Error loading older transactions:', error);
+    }
+  }, [user]);
+
+  // Fetch transactions from Supabase
+  useEffect(() => {
+    if (user) {
+      fetchTransactions();
+    } else if (!loading) {
+      setLoading(false);
+    }
+  }, [user, fetchTransactions]);
 
   const handleRetry = () => {
+    setLastFetchTime(0); // Force refresh
     fetchTransactions();
   };
 
@@ -134,8 +160,8 @@ export default function Dashboard() {
     navigate("/auth");
   };
 
-  // Filter transactions based on selected period
-  const getFilteredTransactions = () => {
+  // Memoized filtered transactions for better performance
+  const filteredTransactions = useMemo(() => {
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
@@ -166,33 +192,13 @@ export default function Dashboard() {
         return transactions;
     }
 
-    console.log('Filter period:', periodFilter);
-    console.log('Start date:', format(startDate, 'yyyy-MM-dd'));
-    console.log('End date:', format(endDate, 'yyyy-MM-dd'));
-    console.log('Selected month:', format(selectedMonth, 'yyyy-MM-dd'));
-
     return transactions.filter(transaction => {
-      const transactionDate = new Date(transaction.date + 'T00:00:00'); // Принудительно UTC
-      const isInRange = transactionDate >= startDate && transactionDate <= endDate;
-      
-      if (periodFilter === "specific-month") {
-        console.log(`Transaction ${transaction.id}: ${format(transactionDate, 'yyyy-MM-dd')} - In range: ${isInRange}, Start: ${format(startDate, 'yyyy-MM-dd')}, End: ${format(endDate, 'yyyy-MM-dd')}`);
-      }
-      
-      return isInRange;
+      const transactionDate = new Date(transaction.date);
+      return transactionDate >= startDate && transactionDate <= endDate;
     });
-  };
+  }, [transactions, periodFilter, customDateFrom, customDateTo, selectedMonth]);
 
-  const filteredTransactions = getFilteredTransactions();
-  
-  // Debug logging
-  console.log('Period filter:', periodFilter);
-  console.log('Selected month:', selectedMonth);
-  console.log('All transactions:', transactions.length);
-  console.log('Filtered transactions:', filteredTransactions.length);
-  console.log('Transactions sample:', transactions.slice(0, 3));
-  
-  const kpis = calculateKPIs(filteredTransactions);
+  const kpis = useMemo(() => calculateKPIs(filteredTransactions), [filteredTransactions]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -394,7 +400,6 @@ export default function Dashboard() {
   };
 
   const handleExportToExcel = () => {
-    const filteredTransactions = getFilteredTransactions();
     
     // Преобразуем данные для экспорта
     const exportData = filteredTransactions.map(transaction => ({
