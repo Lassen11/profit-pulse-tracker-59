@@ -11,16 +11,16 @@ export interface Transaction {
   date: string;
   type: 'income' | 'expense';
   category: string;
-  subcategory?: string;
+  subcategory?: string | null;
   amount: number;
-  description: string;
+  description?: string | null;
   user_id?: string;
   created_at?: string;
   updated_at?: string;
-  client_name?: string;
-  contract_amount?: number;
-  first_payment?: number;
-  installment_period?: number;
+  client_name?: string | null;
+  contract_amount?: number | null;
+  first_payment?: number | null;
+  installment_period?: number | null;
 }
 
 interface TransactionTableProps {
@@ -34,8 +34,8 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredTransactions = transactions.filter(transaction =>
-    transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (transaction.category && transaction.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (transaction.subcategory && transaction.subcategory.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (transaction.client_name && transaction.client_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -104,7 +104,7 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
                 )}>
                   {formatAmount(transaction.amount, transaction.type)}
                 </TableCell>
-                <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
+                <TableCell className="max-w-xs truncate">{transaction.description || '-'}</TableCell>
                 <TableCell>
                   <div className="flex space-x-1">
                     <Button
