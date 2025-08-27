@@ -17,6 +17,7 @@ interface TransactionDialogProps {
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
   onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => void;
+  copyMode?: boolean;
 }
 
 const incomeCategories = [
@@ -62,7 +63,7 @@ const expenseCategories = [
   "Прочие расходы"
 ];
 
-export function TransactionDialog({ open, onOpenChange, transaction, onSave }: TransactionDialogProps) {
+export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false }: TransactionDialogProps) {
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [formData, setFormData] = useState({
@@ -87,7 +88,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         subcategory: transaction.subcategory || '',
         amount: transaction.amount.toString(),
         description: transaction.description,
-        date: transaction.date,
+        date: copyMode ? new Date().toISOString().split('T')[0] : transaction.date,
         taxPercent: '',
         clientName: transaction.client_name || '',
         contractAmount: transaction.contract_amount?.toString() || '',
@@ -109,7 +110,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         installmentPeriod: ''
       });
     }
-  }, [transaction, open]);
+  }, [transaction, open, copyMode]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = async (clientName: string) => {
@@ -171,7 +172,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     }
 
     const mainTransaction = {
-      ...(transaction && { id: transaction.id }),
+      ...(transaction && !copyMode && { id: transaction.id }),
       type: formData.type,
       category: formData.category,
       subcategory: formData.subcategory,
@@ -189,7 +190,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     let taxTransaction = undefined;
 
     // Создаем налоговую операцию только для новых доходных операций с указанным процентом налогов
-    if (formData.type === 'income' && formData.taxPercent && parseFloat(formData.taxPercent) > 0 && !transaction) {
+    if (formData.type === 'income' && formData.taxPercent && parseFloat(formData.taxPercent) > 0 && (!transaction || copyMode)) {
       const taxAmount = parseFloat(formData.amount) * (parseFloat(formData.taxPercent) / 100);
       taxTransaction = {
         type: 'expense' as const,
@@ -212,10 +213,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {transaction ? 'Редактировать операцию' : 'Добавить операцию'}
+            {copyMode ? 'Копировать операцию' : transaction ? 'Редактировать операцию' : 'Добавить операцию'}
           </DialogTitle>
           <DialogDescription>
-            Заполните данные для финансовой операции
+            {copyMode ? 'Создание новой операции на основе существующей' : 'Заполните данные для финансовой операции'}
           </DialogDescription>
         </DialogHeader>
         
@@ -317,7 +318,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
             </div>
           </div>
 
-          {formData.type === 'income' && !transaction && (
+          {formData.type === 'income' && (!transaction || copyMode) && (
             <div className="space-y-2">
               <Label htmlFor="taxPercent">Налоги (%)</Label>
               <Input
@@ -342,7 +343,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
           )}
 
           {/* Предупреждение о существующем клиенте */}
-          {existingClient && formData.type === 'income' && formData.category === 'Продажи' && !transaction && (
+          {existingClient && formData.type === 'income' && formData.category === 'Продажи' && (!transaction || copyMode) && (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
@@ -414,7 +415,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
               Отмена
             </Button>
             <Button type="submit">
-              {transaction ? 'Сохранить' : 'Добавить'}
+              {copyMode ? 'Создать копию' : transaction ? 'Сохранить' : 'Добавить'}
             </Button>
           </DialogFooter>
         </form>

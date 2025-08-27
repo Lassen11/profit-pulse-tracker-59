@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
+  const [copyMode, setCopyMode] = useState(false);
   const [periodFilter, setPeriodFilter] = useState("month");
   const [customDateFrom, setCustomDateFrom] = useState<Date>();
   const [customDateTo, setCustomDateTo] = useState<Date>();
@@ -263,6 +264,13 @@ export default function Dashboard() {
 
   const handleEditTransaction = (transaction: Transaction) => {
     setEditTransaction(transaction);
+    setCopyMode(false);
+    setDialogOpen(true);
+  };
+
+  const handleCopyTransaction = (transaction: Transaction) => {
+    setEditTransaction(transaction);
+    setCopyMode(true);
     setDialogOpen(true);
   };
 
@@ -307,6 +315,7 @@ export default function Dashboard() {
 
   const handleAddNew = () => {
     setEditTransaction(null);
+    setCopyMode(false);
     setDialogOpen(true);
   };
 
@@ -499,6 +508,7 @@ export default function Dashboard() {
                 transactions={filteredTransactions}
                 onEdit={handleEditTransaction}
                 onDelete={handleDeleteTransaction}
+                onCopy={handleCopyTransaction}
               />
             </div>
           </div>
@@ -510,6 +520,7 @@ export default function Dashboard() {
           onOpenChange={setDialogOpen}
           transaction={editTransaction}
           onSave={handleSaveTransaction}
+          copyMode={copyMode}
         />
       </div>
     </div>

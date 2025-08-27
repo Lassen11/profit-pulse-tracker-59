@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Edit, Trash2 } from "lucide-react";
+import { Search, Edit, Trash2, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Transaction {
@@ -27,9 +27,10 @@ interface TransactionTableProps {
   transactions: Transaction[];
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
+  onCopy?: (transaction: Transaction) => void;
 }
 
-export function TransactionTable({ transactions, onEdit, onDelete }: TransactionTableProps) {
+export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: TransactionTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredTransactions = transactions.filter(transaction =>
@@ -113,6 +114,15 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
                       className="h-8 w-8 p-0"
                     >
                       <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onCopy?.(transaction)}
+                      className="h-8 w-8 p-0"
+                      title="Копировать операцию"
+                    >
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
