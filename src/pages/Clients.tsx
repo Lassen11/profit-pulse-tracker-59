@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, ArrowLeft, User, DollarSign, Calendar, Clock, XCircle, CheckCircle } from "lucide-react";
+import { Search, ArrowLeft, User, DollarSign, Calendar, Clock, XCircle, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +30,8 @@ export default function Clients() {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<keyof ClientData | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -138,9 +140,42 @@ export default function Clients() {
     }
   };
 
-  const filteredClients = clients.filter(client =>
-    client.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSort = (field: keyof ClientData) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: keyof ClientData) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+  };
+
+  const filteredAndSortedClients = clients
+    .filter(client =>
+      client.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortField) return 0;
+
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // Handle different data types
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -355,19 +390,91 @@ export default function Clients() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ФИО Клиента</TableHead>
-                  <TableHead className="text-right">Сумма договора</TableHead>
-                  <TableHead className="text-right">Первый платеж</TableHead>
-                  <TableHead className="text-center">Срок (мес.)</TableHead>
-                  <TableHead className="text-right">Оплачено</TableHead>
-                  <TableHead className="text-right">Остаток</TableHead>
-                  <TableHead>Последний платеж</TableHead>
-                  <TableHead className="text-center">Статус</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('clientName')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      ФИО Клиента
+                      {getSortIcon('clientName')}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('contractAmount')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Сумма договора
+                      {getSortIcon('contractAmount')}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('firstPayment')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Первый платеж
+                      {getSortIcon('firstPayment')}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('installmentPeriod')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Срок (мес.)
+                      {getSortIcon('installmentPeriod')}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('totalPaid')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Оплачено
+                      {getSortIcon('totalPaid')}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('remainingAmount')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Остаток
+                      {getSortIcon('remainingAmount')}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('lastPaymentDate')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Последний платеж
+                      {getSortIcon('lastPaymentDate')}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort('status')}
+                      className="h-auto p-0 font-medium hover:bg-transparent"
+                    >
+                      Статус
+                      {getSortIcon('status')}
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-center">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.map((client, index) => (
+                {filteredAndSortedClients.map((client, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">{client.clientName}</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
@@ -451,7 +558,7 @@ export default function Clients() {
               </TableBody>
             </Table>
 
-            {filteredClients.length === 0 && (
+            {filteredAndSortedClients.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 {searchTerm ? "Клиенты не найдены" : "Нет данных о клиентах с рассрочкой"}
               </div>
