@@ -8,7 +8,7 @@ import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -383,6 +383,10 @@ export default function Dashboard() {
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
               Добавить операцию
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/clients")}>
+              <Users className="w-4 h-4 mr-2" />
+              Клиенты
             </Button>
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
