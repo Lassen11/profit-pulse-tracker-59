@@ -1,22 +1,28 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { KPICard } from "@/components/KPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [periodFilter, setPeriodFilter] = useState("month");
+  const [customDateFrom, setCustomDateFrom] = useState<Date>();
+  const [customDateTo, setCustomDateTo] = useState<Date>();
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
@@ -71,7 +77,42 @@ export default function Dashboard() {
     navigate("/auth");
   };
 
-  const kpis = calculateKPIs(transactions);
+  // Filter transactions based on selected period
+  const getFilteredTransactions = () => {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (periodFilter) {
+      case "month":
+        startDate = startOfMonth(now);
+        endDate = endOfMonth(now);
+        break;
+      case "quarter":
+        startDate = startOfQuarter(now);
+        endDate = endOfQuarter(now);
+        break;
+      case "year":
+        startDate = startOfYear(now);
+        endDate = endOfYear(now);
+        break;
+      case "custom":
+        if (!customDateFrom || !customDateTo) return transactions;
+        startDate = customDateFrom;
+        endDate = customDateTo;
+        break;
+      default:
+        return transactions;
+    }
+
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      return transactionDate >= startDate && transactionDate <= endDate;
+    });
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+  const kpis = calculateKPIs(filteredTransactions);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -248,8 +289,61 @@ export default function Dashboard() {
                 <SelectItem value="month">Текущий месяц</SelectItem>
                 <SelectItem value="quarter">Квартал</SelectItem>
                 <SelectItem value="year">Год</SelectItem>
+                <SelectItem value="custom">Произвольный</SelectItem>
               </SelectContent>
             </Select>
+            
+            {periodFilter === "custom" && (
+              <div className="flex items-center space-x-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-40 justify-start text-left font-normal",
+                        !customDateFrom && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateFrom ? format(customDateFrom, "dd.MM.yyyy") : "От"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customDateFrom}
+                      onSelect={setCustomDateFrom}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-40 justify-start text-left font-normal",
+                        !customDateTo && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateTo ? format(customDateTo, "dd.MM.yyyy") : "До"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customDateTo}
+                      onSelect={setCustomDateTo}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
               Добавить операцию
@@ -317,7 +411,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Analytics Section */}
           <div className="lg:col-span-1">
-            <MonthlyAnalytics transactions={transactions} />
+            <MonthlyAnalytics transactions={filteredTransactions} />
           </div>
 
           {/* Transaction Table */}
@@ -332,7 +426,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <TransactionTable
-                transactions={transactions}
+                transactions={filteredTransactions}
                 onEdit={handleEditTransaction}
                 onDelete={handleDeleteTransaction}
               />
