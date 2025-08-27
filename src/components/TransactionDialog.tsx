@@ -66,7 +66,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
-    taxes: ''
+    taxPercent: ''
   });
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         amount: transaction.amount.toString(),
         description: transaction.description,
         date: transaction.date,
-        taxes: ''
+        taxPercent: ''
       });
     } else {
       setFormData({
@@ -88,7 +88,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         amount: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
-        taxes: ''
+        taxPercent: ''
       });
     }
   }, [transaction, open]);
@@ -112,14 +112,15 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
 
     let taxTransaction = undefined;
 
-    // Создаем налоговую операцию только для новых доходных операций с указанными налогами
-    if (formData.type === 'income' && formData.taxes && parseFloat(formData.taxes) > 0 && !transaction) {
+    // Создаем налоговую операцию только для новых доходных операций с указанным процентом налогов
+    if (formData.type === 'income' && formData.taxPercent && parseFloat(formData.taxPercent) > 0 && !transaction) {
+      const taxAmount = parseFloat(formData.amount) * (parseFloat(formData.taxPercent) / 100);
       taxTransaction = {
         type: 'expense' as const,
         category: 'Налог УСН',
         subcategory: 'Налоги',
-        amount: parseFloat(formData.taxes),
-        description: `Налог с операции: ${formData.description}`,
+        amount: taxAmount,
+        description: `Налог ${formData.taxPercent}% с операции: ${formData.description}`,
         date: formData.date
       };
     }
@@ -157,7 +158,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
                     type: value, 
                     category: currentCategoryExists ? formData.category : '', 
                     subcategory: currentCategoryExists ? formData.subcategory : '',
-                    taxes: value === 'expense' ? '' : formData.taxes
+                    taxPercent: value === 'expense' ? '' : formData.taxPercent
                   });
                 }}
               >
@@ -230,18 +231,24 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
 
           {formData.type === 'income' && !transaction && (
             <div className="space-y-2">
-              <Label htmlFor="taxes">Налоги (₽)</Label>
+              <Label htmlFor="taxPercent">Налоги (%)</Label>
               <Input
-                id="taxes"
+                id="taxPercent"
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.taxes}
-                onChange={(e) => setFormData({ ...formData, taxes: e.target.value })}
+                max="100"
+                value={formData.taxPercent}
+                onChange={(e) => setFormData({ ...formData, taxPercent: e.target.value })}
                 placeholder="0.00"
               />
               <p className="text-xs text-muted-foreground">
-                Если указать налоги, автоматически создастся операция расхода в категории "Налог УСН"
+                Укажите процент налогов. Сумма будет рассчитана автоматически и создана операция расхода в категории "Налог УСН"
+                {formData.taxPercent && formData.amount && (
+                  <span className="block font-medium">
+                    Налоги: {((parseFloat(formData.amount) || 0) * (parseFloat(formData.taxPercent) || 0) / 100).toFixed(2)} ₽
+                  </span>
+                )}
               </p>
             </div>
           )}
