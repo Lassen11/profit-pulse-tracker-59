@@ -60,17 +60,12 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       
-      // Optimized query - only fetch recent data first, then older data
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      
+      // Load all transactions for the user
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', threeMonthsAgo.toISOString().split('T')[0])
-        .order('date', { ascending: false })
-        .limit(500); // Limit initial load
+        .order('date', { ascending: false });
 
       if (error) {
         console.error('Supabase error:', error);
@@ -84,11 +79,6 @@ export default function Dashboard() {
 
       setTransactions(formattedData);
       setLastFetchTime(now);
-      
-      // Load older data in background if needed
-      if (formattedData.length >= 500) {
-        setTimeout(() => loadOlderTransactions(), 1000);
-      }
 
     } catch (error: any) {
       console.error('Error fetching transactions:', error);
