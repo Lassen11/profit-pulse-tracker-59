@@ -8,7 +8,7 @@ import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [customDateTo, setCustomDateTo] = useState<Date>();
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
+  const [importMonth, setImportMonth] = useState<Date>(new Date());
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -371,6 +372,130 @@ export default function Dashboard() {
     });
   };
 
+  const handleImportFromExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of jsonData) {
+          try {
+            const rowData = row as any;
+            
+            // Парсим данные из Excel
+            const date = parseExcelDate(rowData['Дата'] || rowData['date']);
+            const type = parseTransactionType(rowData['Тип'] || rowData['type']);
+            const category = rowData['Категория'] || rowData['category'] || '';
+            const subcategory = rowData['Подкатегория'] || rowData['subcategory'] || null;
+            const amount = parseFloat(rowData['Сумма'] || rowData['amount'] || '0');
+            const description = rowData['Описание'] || rowData['description'] || null;
+            const clientName = rowData['Клиент'] || rowData['client_name'] || null;
+            const contractAmount = parseFloat(rowData['Сумма договора'] || rowData['contract_amount'] || '0') || null;
+            const firstPayment = parseFloat(rowData['Первый взнос'] || rowData['first_payment'] || '0') || null;
+            const installmentPeriod = parseInt(rowData['Период рассрочки'] || rowData['installment_period'] || '0') || null;
+
+            if (!date || !type || !category || amount === 0) {
+              errorCount++;
+              continue;
+            }
+
+            // Устанавливаем дату на выбранный месяц, сохраняя день
+            const importDate = new Date(importMonth);
+            importDate.setDate(date.getDate());
+            
+            // Создаем транзакцию в базе данных
+            const { error } = await supabase
+              .from('transactions')
+              .insert({
+                user_id: user.id,
+                date: format(importDate, 'yyyy-MM-dd'),
+                type,
+                category,
+                subcategory,
+                amount,
+                description,
+                client_name: clientName,
+                contract_amount: contractAmount,
+                first_payment: firstPayment,
+                installment_period: installmentPeriod
+              });
+
+            if (error) {
+              errorCount++;
+            } else {
+              successCount++;
+            }
+          } catch (error) {
+            errorCount++;
+          }
+        }
+
+        // Обновляем список транзакций
+        await fetchTransactions();
+
+        toast({
+          title: "Импорт завершен",
+          description: `Успешно импортировано: ${successCount}, ошибок: ${errorCount}`,
+        });
+
+        // Очищаем input
+        event.target.value = '';
+      } catch (error) {
+        toast({
+          title: "Ошибка импорта",
+          description: "Не удалось прочитать файл Excel",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Вспомогательные функции для парсинга данных
+  const parseExcelDate = (dateValue: any): Date | null => {
+    if (!dateValue) return null;
+    
+    // Если это Excel серийный номер даты
+    if (typeof dateValue === 'number') {
+      return new Date((dateValue - 25569) * 86400 * 1000);
+    }
+    
+    // Если это строка в формате DD.MM.YYYY
+    if (typeof dateValue === 'string') {
+      const parts = dateValue.split('.');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1; // месяцы в JS начинаются с 0
+        const year = parseInt(parts[2]);
+        return new Date(year, month, day);
+      }
+    }
+    
+    // Пытаемся парсить как обычную дату
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const parseTransactionType = (typeValue: any): 'income' | 'expense' | null => {
+    if (!typeValue) return null;
+    
+    const type = typeValue.toString().toLowerCase();
+    if (type.includes('доход') || type.includes('income')) return 'income';
+    if (type.includes('расход') || type.includes('expense')) return 'expense';
+    
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -475,10 +600,48 @@ export default function Dashboard() {
               <Plus className="w-4 h-4 mr-2" />
               Добавить операцию
             </Button>
-            <Button variant="outline" onClick={handleExportToExcel}>
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Экспорт в Excel
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Импорт из Excel
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium">Выберите месяц для импорта</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Данные будут импортированы в выбранный месяц
+                      </p>
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={importMonth}
+                      onSelect={(date) => date && setImportMonth(date)}
+                      className="rounded-md border"
+                    />
+                    <div>
+                      <label htmlFor="excel-import" className="text-sm font-medium">
+                        Выберите Excel файл
+                      </label>
+                      <input
+                        id="excel-import"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleImportFromExcel}
+                        className="mt-2 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button variant="outline" onClick={handleExportToExcel}>
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Экспорт в Excel
+              </Button>
+            </div>
             <Button variant="outline" onClick={() => navigate("/clients")}>
               <Users className="w-4 h-4 mr-2" />
               Клиенты
