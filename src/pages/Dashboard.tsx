@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 import { cn } from "@/lib/utils";
+import * as XLSX from 'xlsx';
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -319,6 +320,57 @@ export default function Dashboard() {
     setDialogOpen(true);
   };
 
+  const handleExportToExcel = () => {
+    const filteredTransactions = getFilteredTransactions();
+    
+    // Преобразуем данные для экспорта
+    const exportData = filteredTransactions.map(transaction => ({
+      'Дата': format(new Date(transaction.date), 'dd.MM.yyyy'),
+      'Тип': transaction.type === 'income' ? 'Доход' : 'Расход',
+      'Категория': transaction.category,
+      'Подкатегория': transaction.subcategory || '',
+      'Клиент': transaction.client_name || '',
+      'Сумма': transaction.amount,
+      'Описание': transaction.description || '',
+      'Период рассрочки': transaction.installment_period || '',
+      'Сумма договора': transaction.contract_amount || '',
+      'Первый взнос': transaction.first_payment || ''
+    }));
+
+    // Создаем workbook и worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Настраиваем ширину колонок
+    const colWidths = [
+      { wch: 12 }, // Дата
+      { wch: 8 },  // Тип
+      { wch: 20 }, // Категория
+      { wch: 20 }, // Подкатегория
+      { wch: 25 }, // Клиент
+      { wch: 15 }, // Сумма
+      { wch: 30 }, // Описание
+      { wch: 15 }, // Период рассрочки
+      { wch: 15 }, // Сумма договора
+      { wch: 15 }  // Первый взнос
+    ];
+    ws['!cols'] = colWidths;
+
+    // Добавляем worksheet в workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Транзакции");
+
+    // Генерируем имя файла с текущей датой
+    const fileName = `transactions_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    
+    // Сохраняем файл
+    XLSX.writeFile(wb, fileName);
+    
+    toast({
+      title: "Экспорт завершен",
+      description: `Файл ${fileName} успешно сохранен`,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -422,6 +474,10 @@ export default function Dashboard() {
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
               Добавить операцию
+            </Button>
+            <Button variant="outline" onClick={handleExportToExcel}>
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Экспорт в Excel
             </Button>
             <Button variant="outline" onClick={() => navigate("/clients")}>
               <Users className="w-4 h-4 mr-2" />
