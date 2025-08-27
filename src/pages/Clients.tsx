@@ -232,7 +232,10 @@ export default function Clients() {
   const totalContracts = clients.length;
   const totalContractAmount = clients.reduce((sum, client) => sum + client.contractAmount, 0);
   const totalPaid = clients.reduce((sum, client) => sum + client.totalPaid, 0);
-  const totalRemaining = clients.reduce((sum, client) => sum + client.remainingAmount, 0);
+  // Исключаем расторгнутые договоры из расчета суммы к доплате
+  const totalRemaining = clients
+    .filter(client => client.contractStatus !== 'terminated')
+    .reduce((sum, client) => sum + client.remainingAmount, 0);
 
   if (loading) {
     return (
