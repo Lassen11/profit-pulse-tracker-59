@@ -48,7 +48,6 @@ export default function Clients() {
         .eq('type', 'income')
         .eq('category', 'Продажи')
         .not('client_name', 'is', null)
-        .not('contract_amount', 'is', null)
         .order('date', { ascending: false });
 
       if (error) {
@@ -67,27 +66,38 @@ export default function Clients() {
         const clientName = transaction.client_name!;
         
         if (!clientsMap.has(clientName)) {
-          // Инициализируем клиента с данными из первой транзакции
-          clientsMap.set(clientName, {
-            clientName,
-            contractAmount: transaction.contract_amount || 0,
-            firstPayment: transaction.first_payment || 0,
-            installmentPeriod: transaction.installment_period || 0,
-            totalPaid: 0,
-            remainingAmount: 0,
-            lastPaymentDate: transaction.date,
-            status: 'active',
-            transactions: []
-          });
+          // Ищем первую транзакцию с данными договора для этого клиента
+          const contractTransaction = transactions?.find(t => 
+            t.client_name === clientName && 
+            t.contract_amount && 
+            t.first_payment !== undefined && 
+            t.installment_period
+          );
+
+          if (contractTransaction) {
+            clientsMap.set(clientName, {
+              clientName,
+              contractAmount: contractTransaction.contract_amount || 0,
+              firstPayment: contractTransaction.first_payment || 0,
+              installmentPeriod: contractTransaction.installment_period || 0,
+              totalPaid: 0,
+              remainingAmount: 0,
+              lastPaymentDate: transaction.date,
+              status: 'active',
+              transactions: []
+            });
+          }
         }
 
-        const clientData = clientsMap.get(clientName)!;
-        clientData.transactions.push(transaction as Transaction);
-        clientData.totalPaid += transaction.amount;
-        
-        // Обновляем дату последнего платежа
-        if (new Date(transaction.date) > new Date(clientData.lastPaymentDate)) {
-          clientData.lastPaymentDate = transaction.date;
+        const clientData = clientsMap.get(clientName);
+        if (clientData) {
+          clientData.transactions.push(transaction as Transaction);
+          clientData.totalPaid += transaction.amount;
+          
+          // Обновляем дату последнего платежа
+          if (new Date(transaction.date) > new Date(clientData.lastPaymentDate)) {
+            clientData.lastPaymentDate = transaction.date;
+          }
         }
       });
 

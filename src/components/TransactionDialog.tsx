@@ -6,7 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Transaction } from "./TransactionTable";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Info } from "lucide-react";
 
 interface TransactionDialogProps {
   open: boolean;
@@ -59,6 +63,8 @@ const expenseCategories = [
 ];
 
 export function TransactionDialog({ open, onOpenChange, transaction, onSave }: TransactionDialogProps) {
+  const { user } = useAuth();
+  const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
     category: '',
@@ -105,7 +111,59 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     }
   }, [transaction, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Проверяем существующих клиентов при изменении ФИО
+  const checkExistingClient = async (clientName: string) => {
+    if (!user || !clientName.trim() || formData.type !== 'income' || formData.category !== 'Продажи') {
+      setExistingClient(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'income')
+        .eq('category', 'Продажи')
+        .eq('client_name', clientName.trim())
+        .not('contract_amount', 'is', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking existing client:', error);
+        return;
+      }
+
+      if (data) {
+        setExistingClient(data as Transaction);
+        // Очищаем поля рассрочки, так как клиент уже существует
+        setFormData(prev => ({
+          ...prev,
+          contractAmount: '',
+          firstPayment: '',
+          installmentPeriod: ''
+        }));
+      } else {
+        setExistingClient(null);
+      }
+    } catch (error) {
+      console.error('Error checking existing client:', error);
+    }
+  };
+
+  // Эффект для проверки клиентов при изменении ФИО
+  useEffect(() => {
+    if (!transaction) { // Только для новых операций
+      const timeoutId = setTimeout(() => {
+        checkExistingClient(formData.clientName);
+      }, 500); // Debounce для избежания частых запросов
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [formData.clientName, formData.type, formData.category, user, transaction]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.category || !formData.amount || !formData.date) {
@@ -283,7 +341,19 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
             </div>
           )}
 
-          {formData.type === 'income' && formData.category === 'Продажи' && (
+          {/* Предупреждение о существующем клиенте */}
+          {existingClient && formData.type === 'income' && formData.category === 'Продажи' && !transaction && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Клиент уже существует!</strong> Этот платеж будет добавлен к существующему договору клиента "{existingClient.client_name}". 
+                Стоимость договора: {existingClient.contract_amount?.toLocaleString('ru-RU')} ₽, 
+                срок рассрочки: {existingClient.installment_period} мес.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {formData.type === 'income' && formData.category === 'Продажи' && !existingClient && (
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-foreground">Параметры рассрочки</h3>
               <div className="grid grid-cols-3 gap-4">
