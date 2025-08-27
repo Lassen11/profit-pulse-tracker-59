@@ -66,7 +66,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
-    taxPercent: ''
+    taxPercent: '',
+    clientName: ''
   });
 
   useEffect(() => {
@@ -78,7 +79,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         amount: transaction.amount.toString(),
         description: transaction.description,
         date: transaction.date,
-        taxPercent: ''
+        taxPercent: '',
+        clientName: ''
       });
     } else {
       setFormData({
@@ -88,7 +90,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         amount: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
-        taxPercent: ''
+        taxPercent: '',
+        clientName: ''
       });
     }
   }, [transaction, open]);
@@ -107,7 +110,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       subcategory: formData.subcategory,
       amount: parseFloat(formData.amount),
       description: formData.description,
-      date: formData.date
+      date: formData.date,
+      ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName })
     };
 
     let taxTransaction = undefined;
@@ -200,6 +204,18 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
                 placeholder="Введите подкатегорию..."
               />
             </div>
+
+            {formData.type === 'income' && (
+              <div className="space-y-2">
+                <Label htmlFor="clientName">ФИО Клиента</Label>
+                <Input
+                  id="clientName"
+                  value={formData.clientName}
+                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                  placeholder="Введите ФИО клиента..."
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

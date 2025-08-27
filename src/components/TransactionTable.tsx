@@ -17,6 +17,7 @@ export interface Transaction {
   user_id?: string;
   created_at?: string;
   updated_at?: string;
+  client_name?: string;
 }
 
 interface TransactionTableProps {
@@ -31,7 +32,8 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
   const filteredTransactions = transactions.filter(transaction =>
     transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (transaction.subcategory && transaction.subcategory.toLowerCase().includes(searchTerm.toLowerCase()))
+    (transaction.subcategory && transaction.subcategory.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (transaction.client_name && transaction.client_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const formatAmount = (amount: number, type: 'income' | 'expense') => {
@@ -65,6 +67,7 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
               <TableHead>Тип</TableHead>
               <TableHead>Категория</TableHead>
               <TableHead>Подкатегория</TableHead>
+              <TableHead>Клиент</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Описание</TableHead>
               <TableHead className="w-20">Действия</TableHead>
@@ -90,6 +93,7 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
                 </TableCell>
                 <TableCell>{transaction.category}</TableCell>
                 <TableCell>{transaction.subcategory || '-'}</TableCell>
+                <TableCell>{transaction.client_name || '-'}</TableCell>
                 <TableCell className={cn(
                   "text-right font-semibold",
                   transaction.type === 'income' ? 'amount-positive' : 'amount-negative'
