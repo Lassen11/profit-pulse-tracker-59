@@ -59,33 +59,74 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
+      
+      // Add retry logic for network issues
+      const maxRetries = 3;
+      let lastError: any = null;
+      
+      for (let i = 0; i <= maxRetries; i++) {
+        try {
+          const { data, error } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('date', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        setError("Не удалось загрузить транзакции");
-        toast({
-          title: "Ошибка загрузки",
-          description: "Не удалось загрузить транзакции",
-          variant: "destructive"
-        });
-        return;
+          if (error) {
+            console.error('Supabase error:', error);
+            
+            // Check if it's a network connectivity error
+            if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
+              if (i < maxRetries) {
+                console.log(`Retrying... attempt ${i + 1}/${maxRetries}`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+                continue;
+              }
+            }
+            
+            setError("Проблема с подключением к серверу");
+            toast({
+              title: "Ошибка сети",
+              description: "Проверьте подключение к интернету и попробуйте еще раз",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          // Success - set data and break retry loop
+          setTransactions(data?.map(t => ({
+            ...t,
+            type: t.type as 'income' | 'expense'
+          })) || []);
+          return;
+          
+        } catch (attemptError) {
+          lastError = attemptError;
+          console.error(`Attempt ${i + 1} failed:`, attemptError);
+          
+          if (i < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+          }
+        }
       }
-
-      setTransactions(data?.map(t => ({
-        ...t,
-        type: t.type as 'income' | 'expense'
-      })) || []);
+      
+      throw lastError; // If all retries failed
+      
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      setError("Произошла ошибка при загрузке данных");
+      setError("Проблема с подключением к интернету");
+      toast({
+        title: "Ошибка подключения",
+        description: "Не удается подключиться к серверу. Проверьте интернет-соединение.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    fetchTransactions();
   };
 
   const handleSignOut = async () => {
@@ -551,7 +592,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <p className="text-destructive mb-4 text-sm sm:text-base">{error}</p>
-          <Button onClick={fetchTransactions} className="w-full sm:w-auto">
+          <Button onClick={handleRetry} className="w-full sm:w-auto">
             Повторить попытку
           </Button>
         </div>
