@@ -118,20 +118,16 @@ export default function Dashboard() {
     console.log('End date:', format(endDate, 'yyyy-MM-dd'));
     console.log('Selected month:', format(selectedMonth, 'yyyy-MM-dd'));
 
-    const filtered = transactions.filter(transaction => {
-      const transactionDate = new Date(transaction.date);
-      const transactionDateStr = format(transactionDate, 'yyyy-MM-dd');
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date + 'T00:00:00'); // Принудительно UTC
       const isInRange = transactionDate >= startDate && transactionDate <= endDate;
       
       if (periodFilter === "specific-month") {
-        console.log(`Transaction ${transaction.id}: ${transactionDateStr} - In range: ${isInRange}`);
+        console.log(`Transaction ${transaction.id}: ${format(transactionDate, 'yyyy-MM-dd')} - In range: ${isInRange}, Start: ${format(startDate, 'yyyy-MM-dd')}, End: ${format(endDate, 'yyyy-MM-dd')}`);
       }
       
       return isInRange;
     });
-
-    console.log('Filtered count:', filtered.length);
-    return filtered;
   };
 
   const filteredTransactions = getFilteredTransactions();
@@ -434,6 +430,10 @@ export default function Dashboard() {
             // Устанавливаем дату на выбранный месяц, сохраняя день
             const importDate = new Date(importMonth);
             importDate.setDate(date.getDate());
+            // Убеждаемся, что дата корректная (если день больше количества дней в месяце)
+            if (importDate.getMonth() !== importMonth.getMonth()) {
+              importDate.setDate(1);
+            }
             
             // Создаем транзакцию в базе данных
             const { error } = await supabase
