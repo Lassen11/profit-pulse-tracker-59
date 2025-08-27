@@ -387,32 +387,38 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-sm text-muted-foreground">Доходы</p>
-                          <p className="text-lg font-semibold amount-positive">
-                            {formatCurrency(data.income)}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span className="text-lg font-semibold amount-positive">
+                              {formatCurrency(data.income)}
+                            </span>
                             {formatChange(data.incomeChange)}
-                          </p>
+                          </div>
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-sm text-muted-foreground">Расходы</p>
-                          <p className="text-lg font-semibold amount-negative">
-                            {formatCurrency(data.expenses)}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span className="text-lg font-semibold amount-negative">
+                              {formatCurrency(data.expenses)}
+                            </span>
                             {formatChange(data.expenseChange)}
-                          </p>
+                          </div>
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-sm text-muted-foreground">Прибыль</p>
-                          <p className={`text-lg font-semibold ${data.profit >= 0 ? 'amount-positive' : 'amount-negative'}`}>
-                            {formatCurrency(data.profit)}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span className={`text-lg font-semibold ${data.profit >= 0 ? 'amount-positive' : 'amount-negative'}`}>
+                              {formatCurrency(data.profit)}
+                            </span>
                             {formatChange(data.profitChange)}
-                          </p>
+                          </div>
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-sm text-muted-foreground">Маржа</p>
-                          <p className={`text-lg font-semibold ${data.margin >= 0 ? 'amount-positive' : 'amount-negative'}`}>
+                          <span className={`text-lg font-semibold ${data.margin >= 0 ? 'amount-positive' : 'amount-negative'}`}>
                             {data.margin.toFixed(1)}%
-                          </p>
+                          </span>
                         </div>
                       </div>
                     </CardContent>
