@@ -385,37 +385,40 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg">{data.month}</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Доходы</p>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Доходы</span>
+                          <div className="flex items-center gap-2">
                             <span className="text-lg font-semibold amount-positive">
                               {formatCurrency(data.income)}
                             </span>
                             {formatChange(data.incomeChange)}
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Расходы</p>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Расходы</span>
+                          <div className="flex items-center gap-2">
                             <span className="text-lg font-semibold amount-negative">
                               {formatCurrency(data.expenses)}
                             </span>
                             {formatChange(data.expenseChange)}
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Прибыль</p>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Прибыль</span>
+                          <div className="flex items-center gap-2">
                             <span className={`text-lg font-semibold ${data.profit >= 0 ? 'amount-positive' : 'amount-negative'}`}>
                               {formatCurrency(data.profit)}
                             </span>
                             {formatChange(data.profitChange)}
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Маржа</p>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Маржа</span>
                           <span className={`text-lg font-semibold ${data.margin >= 0 ? 'amount-positive' : 'amount-negative'}`}>
                             {data.margin.toFixed(1)}%
                           </span>
