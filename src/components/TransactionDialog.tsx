@@ -129,9 +129,17 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
               <Label htmlFor="type">Тип операции</Label>
               <Select 
                 value={formData.type} 
-                 onValueChange={(value: 'income' | 'expense') => {
-                   setFormData({ ...formData, type: value, category: '', subcategory: '' });
-                 }}
+                onValueChange={(value: 'income' | 'expense') => {
+                  const newCategories = value === 'income' ? incomeCategories : expenseCategories;
+                  const currentCategoryExists = newCategories.includes(formData.category);
+                  
+                  setFormData({ 
+                    ...formData, 
+                    type: value, 
+                    category: currentCategoryExists ? formData.category : '', 
+                    subcategory: currentCategoryExists ? formData.subcategory : '' 
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
