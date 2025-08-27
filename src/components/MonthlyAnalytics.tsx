@@ -142,7 +142,7 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
     return (
       <Badge
         variant={isPositive ? "default" : isNegative ? "destructive" : "secondary"}
-        className="ml-2"
+        className="text-xs shrink-0"
       >
         <Icon className="w-3 h-3 mr-1" />
         {Math.abs(change).toFixed(1)}%
