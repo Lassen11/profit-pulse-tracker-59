@@ -120,6 +120,14 @@ export default function Dashboard() {
   };
 
   const filteredTransactions = getFilteredTransactions();
+  
+  // Debug logging
+  console.log('Period filter:', periodFilter);
+  console.log('Selected month:', selectedMonth);
+  console.log('All transactions:', transactions.length);
+  console.log('Filtered transactions:', filteredTransactions.length);
+  console.log('Transactions sample:', transactions.slice(0, 3));
+  
   const kpis = calculateKPIs(filteredTransactions);
 
   const formatCurrency = (amount: number) => {
@@ -441,6 +449,10 @@ export default function Dashboard() {
 
         // Обновляем список транзакций
         await fetchTransactions();
+
+        // Автоматически переключаемся на просмотр импортированного месяца
+        setPeriodFilter("specific-month");
+        setSelectedMonth(importMonth);
 
         toast({
           title: "Импорт завершен",
