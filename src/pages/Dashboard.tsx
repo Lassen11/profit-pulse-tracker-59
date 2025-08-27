@@ -582,6 +582,147 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Period Filter */}
+        <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center gap-4">
+          <Select value={periodFilter} onValueChange={(value) => setPeriodFilter(value)}>
+            <SelectTrigger className="w-full lg:w-48">
+              <SelectValue placeholder="Выберите период" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Текущий месяц</SelectItem>
+              <SelectItem value="specific-month">Конкретный месяц</SelectItem>
+              <SelectItem value="quarter">Текущий квартал</SelectItem>
+              <SelectItem value="year">Текущий год</SelectItem>
+              <SelectItem value="custom">Произвольный период</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {periodFilter === "specific-month" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full lg:w-64 justify-start text-left font-normal",
+                    !selectedMonth && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedMonth ? format(selectedMonth, "MMMM yyyy") : <span>Выберите месяц</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedMonth}
+                  onSelect={(date) => date && setSelectedMonth(date)}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {periodFilter === "custom" && (
+            <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-40 justify-start text-left font-normal",
+                      !customDateFrom && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateFrom ? format(customDateFrom, "dd.MM.yyyy") : "От"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customDateFrom}
+                    onSelect={setCustomDateFrom}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full sm:w-40 justify-start text-left font-normal",
+                      !customDateTo && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateTo ? format(customDateTo, "dd.MM.yyyy") : "До"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customDateTo}
+                    onSelect={setCustomDateTo}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+            <div className="relative flex-1 sm:flex-none">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <Upload className="w-4 h-4 mr-2" />
+                    <span className="hidden xs:inline">Импорт из Excel</span>
+                    <span className="xs:hidden">Импорт</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium">Выберите месяц для импорта</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Данные будут импортированы в выбранный месяц
+                      </p>
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={importMonth}
+                      onSelect={(date) => date && setImportMonth(date)}
+                      className="rounded-md border"
+                    />
+                    <div>
+                      <label htmlFor="excel-import" className="text-sm font-medium">
+                        Выберите Excel файл
+                      </label>
+                      <input
+                        id="excel-import"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleImportFromExcel}
+                        className="mt-2 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <Button variant="outline" onClick={handleExportToExcel} className="flex-1 sm:flex-none">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              <span className="hidden xs:inline">Экспорт в Excel</span>
+              <span className="xs:hidden">Экспорт</span>
+            </Button>
+          </div>
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
           <KPICard
