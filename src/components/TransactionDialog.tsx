@@ -67,7 +67,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     description: '',
     date: new Date().toISOString().split('T')[0],
     taxPercent: '',
-    clientName: ''
+    clientName: '',
+    contractAmount: '',
+    firstPayment: '',
+    installmentPeriod: ''
   });
 
   useEffect(() => {
@@ -80,7 +83,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         description: transaction.description,
         date: transaction.date,
         taxPercent: '',
-        clientName: transaction.client_name || ''
+        clientName: transaction.client_name || '',
+        contractAmount: transaction.contract_amount?.toString() || '',
+        firstPayment: transaction.first_payment?.toString() || '',
+        installmentPeriod: transaction.installment_period?.toString() || ''
       });
     } else {
       setFormData({
@@ -91,7 +97,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         description: '',
         date: new Date().toISOString().split('T')[0],
         taxPercent: '',
-        clientName: ''
+        clientName: '',
+        contractAmount: '',
+        firstPayment: '',
+        installmentPeriod: ''
       });
     }
   }, [transaction, open]);
@@ -111,7 +120,12 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       amount: parseFloat(formData.amount),
       description: formData.description,
       date: formData.date,
-      ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName })
+      ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName }),
+      ...(formData.type === 'income' && formData.category === 'Продажи' && {
+        contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
+        first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
+        installment_period: formData.installmentPeriod ? parseInt(formData.installmentPeriod) : undefined
+      })
     };
 
     let taxTransaction = undefined;
@@ -266,6 +280,51 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
                   </span>
                 )}
               </p>
+            </div>
+          )}
+
+          {formData.type === 'income' && formData.category === 'Продажи' && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-foreground">Параметры рассрочки</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contractAmount">Стоимость договора (₽)</Label>
+                  <Input
+                    id="contractAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.contractAmount}
+                    onChange={(e) => setFormData({ ...formData, contractAmount: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="firstPayment">Первый платеж (₽)</Label>
+                  <Input
+                    id="firstPayment"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.firstPayment}
+                    onChange={(e) => setFormData({ ...formData, firstPayment: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="installmentPeriod">Срок рассрочки (мес.)</Label>
+                  <Input
+                    id="installmentPeriod"
+                    type="number"
+                    min="1"
+                    value={formData.installmentPeriod}
+                    onChange={(e) => setFormData({ ...formData, installmentPeriod: e.target.value })}
+                    placeholder="6"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

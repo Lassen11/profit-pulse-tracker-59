@@ -18,6 +18,9 @@ export interface Transaction {
   created_at?: string;
   updated_at?: string;
   client_name?: string;
+  contract_amount?: number;
+  first_payment?: number;
+  installment_period?: number;
 }
 
 interface TransactionTableProps {

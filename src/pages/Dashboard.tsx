@@ -161,7 +161,10 @@ export default function Dashboard() {
             subcategory: transactionData.subcategory,
             amount: transactionData.amount,
             description: transactionData.description,
-            client_name: transactionData.client_name
+            client_name: transactionData.client_name,
+            contract_amount: transactionData.contract_amount,
+            first_payment: transactionData.first_payment,
+            installment_period: transactionData.installment_period
           })
           .eq('id', transactionData.id)
           .eq('user_id', user.id);
@@ -195,7 +198,10 @@ export default function Dashboard() {
             subcategory: transactionData.subcategory,
             amount: transactionData.amount,
             description: transactionData.description,
-            client_name: transactionData.client_name
+            client_name: transactionData.client_name,
+            contract_amount: transactionData.contract_amount,
+            first_payment: transactionData.first_payment,
+            installment_period: transactionData.installment_period
           })
           .select()
           .single();

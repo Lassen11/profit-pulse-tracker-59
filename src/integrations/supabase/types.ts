@@ -19,10 +19,13 @@ export type Database = {
           amount: number
           category: string
           client_name: string | null
+          contract_amount: number | null
           created_at: string
           date: string
           description: string | null
+          first_payment: number | null
           id: string
+          installment_period: number | null
           subcategory: string | null
           type: string
           updated_at: string
@@ -32,10 +35,13 @@ export type Database = {
           amount: number
           category: string
           client_name?: string | null
+          contract_amount?: number | null
           created_at?: string
           date: string
           description?: string | null
+          first_payment?: number | null
           id?: string
+          installment_period?: number | null
           subcategory?: string | null
           type: string
           updated_at?: string
@@ -45,10 +51,13 @@ export type Database = {
           amount?: number
           category?: string
           client_name?: string | null
+          contract_amount?: number | null
           created_at?: string
           date?: string
           description?: string | null
+          first_payment?: number | null
           id?: string
+          installment_period?: number | null
           subcategory?: string | null
           type?: string
           updated_at?: string
