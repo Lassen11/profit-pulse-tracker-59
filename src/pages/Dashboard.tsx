@@ -113,10 +113,25 @@ export default function Dashboard() {
         return transactions;
     }
 
-    return transactions.filter(transaction => {
+    console.log('Filter period:', periodFilter);
+    console.log('Start date:', format(startDate, 'yyyy-MM-dd'));
+    console.log('End date:', format(endDate, 'yyyy-MM-dd'));
+    console.log('Selected month:', format(selectedMonth, 'yyyy-MM-dd'));
+
+    const filtered = transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
-      return transactionDate >= startDate && transactionDate <= endDate;
+      const transactionDateStr = format(transactionDate, 'yyyy-MM-dd');
+      const isInRange = transactionDate >= startDate && transactionDate <= endDate;
+      
+      if (periodFilter === "specific-month") {
+        console.log(`Transaction ${transaction.id}: ${transactionDateStr} - In range: ${isInRange}`);
+      }
+      
+      return isInRange;
     });
+
+    console.log('Filtered count:', filtered.length);
+    return filtered;
   };
 
   const filteredTransactions = getFilteredTransactions();
