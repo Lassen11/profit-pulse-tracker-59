@@ -110,7 +110,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         installmentPeriod: ''
       });
     }
-  }, [transaction, open, copyMode]);
+  }, [transaction, open]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = async (clientName: string) => {
