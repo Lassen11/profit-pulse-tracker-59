@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Transaction } from "./TransactionTable";
+import ProfitForecast from "./ProfitForecast";
 
 interface MonthlyAnalyticsProps {
   transactions: Transaction[];
@@ -201,10 +202,11 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="chart" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="chart">Графики</TabsTrigger>
               <TabsTrigger value="categories">Категории</TabsTrigger>
               <TabsTrigger value="table">Таблица</TabsTrigger>
+              <TabsTrigger value="forecast">Прогноз</TabsTrigger>
             </TabsList>
             
             <TabsContent value="chart" className="space-y-6">
@@ -428,6 +430,10 @@ export function MonthlyAnalytics({ transactions }: MonthlyAnalyticsProps) {
                   </Card>
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="forecast">
+              <ProfitForecast transactions={transactions} />
             </TabsContent>
           </Tabs>
         </CardContent>
