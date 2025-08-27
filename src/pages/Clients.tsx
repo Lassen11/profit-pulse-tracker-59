@@ -39,13 +39,20 @@ export default function Clients() {
   useEffect(() => {
     if (user) {
       fetchClientsData();
+    } else {
+      // If there's no user, we don't need to keep loading
+      setLoading(false);
     }
   }, [user]);
 
   const fetchClientsData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
+      setLoading(true);
       const { data: transactions, error } = await supabase
         .from('transactions')
         .select('*')
@@ -56,6 +63,7 @@ export default function Clients() {
         .order('date', { ascending: false });
 
       if (error) {
+        console.error('Supabase error:', error);
         toast({
           title: "Ошибка загрузки",
           description: "Не удалось загрузить данные клиентов",
@@ -279,10 +287,10 @@ export default function Clients() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Загрузка данных клиентов...</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Загрузка данных клиентов...</p>
         </div>
       </div>
     );

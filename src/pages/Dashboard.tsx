@@ -44,13 +44,20 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchTransactions();
+    } else if (!loading) {
+      // If no user and not loading, set loading to false explicitly
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, loading]);
 
   const fetchTransactions = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
     try {
+      setLoading(true);
       setError(null);
       const { data, error } = await supabase
         .from('transactions')
@@ -59,6 +66,7 @@ export default function Dashboard() {
         .order('date', { ascending: false });
 
       if (error) {
+        console.error('Supabase error:', error);
         setError("Не удалось загрузить транзакции");
         toast({
           title: "Ошибка загрузки",
@@ -529,10 +537,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Загрузка данных...</p>
+          <p className="mt-4 text-muted-foreground text-sm sm:text-base">Загрузка данных...</p>
         </div>
       </div>
     );
@@ -540,11 +548,11 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Перезагрузить страницу
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <p className="text-destructive mb-4 text-sm sm:text-base">{error}</p>
+          <Button onClick={fetchTransactions} className="w-full sm:w-auto">
+            Повторить попытку
           </Button>
         </div>
       </div>
