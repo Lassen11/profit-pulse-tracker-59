@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ interface TransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
-  onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }) => void;
+  onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => void;
 }
 
 const incomeCategories = [
@@ -64,7 +65,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
     subcategory: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    taxes: ''
   });
 
   useEffect(() => {
@@ -75,7 +77,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         subcategory: transaction.subcategory || '',
         amount: transaction.amount.toString(),
         description: transaction.description,
-        date: transaction.date
+        date: transaction.date,
+        taxes: ''
       });
     } else {
       setFormData({
@@ -84,7 +87,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         subcategory: '',
         amount: '',
         description: '',
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        taxes: ''
       });
     }
   }, [transaction, open]);
@@ -96,7 +100,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       return;
     }
 
-    onSave({
+    const mainTransaction = {
       ...(transaction && { id: transaction.id }),
       type: formData.type,
       category: formData.category,
@@ -104,8 +108,23 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
       amount: parseFloat(formData.amount),
       description: formData.description,
       date: formData.date
-    });
+    };
 
+    let taxTransaction = undefined;
+
+    // Создаем налоговую операцию только для новых доходных операций с указанными налогами
+    if (formData.type === 'income' && formData.taxes && parseFloat(formData.taxes) > 0 && !transaction) {
+      taxTransaction = {
+        type: 'expense' as const,
+        category: 'Налог УСН',
+        subcategory: 'Налоги',
+        amount: parseFloat(formData.taxes),
+        description: `Налог с операции: ${formData.description}`,
+        date: formData.date
+      };
+    }
+
+    onSave(mainTransaction, taxTransaction);
     onOpenChange(false);
   };
 
@@ -137,7 +156,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
                     ...formData, 
                     type: value, 
                     category: currentCategoryExists ? formData.category : '', 
-                    subcategory: currentCategoryExists ? formData.subcategory : '' 
+                    subcategory: currentCategoryExists ? formData.subcategory : '',
+                    taxes: value === 'expense' ? '' : formData.taxes
                   });
                 }}
               >
@@ -207,6 +227,24 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
               />
             </div>
           </div>
+
+          {formData.type === 'income' && !transaction && (
+            <div className="space-y-2">
+              <Label htmlFor="taxes">Налоги (₽)</Label>
+              <Input
+                id="taxes"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.taxes}
+                onChange={(e) => setFormData({ ...formData, taxes: e.target.value })}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Если указать налоги, автоматически создастся операция расхода в категории "Налог УСН"
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Описание</Label>

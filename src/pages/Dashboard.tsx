@@ -146,7 +146,7 @@ export default function Dashboard() {
     moneyInProject: 95000
   };
 
-  const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & { id?: string }) => {
+  const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => {
     if (!user) return;
 
     if (transactionData.id) {
@@ -204,10 +204,38 @@ export default function Dashboard() {
           ...data,
           type: data.type as 'income' | 'expense'
         };
-        setTransactions(prev => [newTransaction, ...prev]);
+        
+        const newTransactions = [newTransaction];
+
+        // Создаем налоговую операцию если она указана
+        if (taxTransaction) {
+          const { data: taxData, error: taxError } = await supabase
+            .from('transactions')
+            .insert({
+              user_id: user.id,
+              date: taxTransaction.date,
+              type: taxTransaction.type,
+              category: taxTransaction.category,
+              subcategory: taxTransaction.subcategory,
+              amount: taxTransaction.amount,
+              description: taxTransaction.description
+            })
+            .select()
+            .single();
+
+          if (taxError) throw taxError;
+
+          const newTaxTransaction: Transaction = {
+            ...taxData,
+            type: taxData.type as 'income' | 'expense'
+          };
+          newTransactions.push(newTaxTransaction);
+        }
+
+        setTransactions(prev => [...newTransactions, ...prev]);
         toast({
-          title: "Операция добавлена",
-          description: "Новая транзакция успешно создана",
+          title: taxTransaction ? "Операции добавлены" : "Операция добавлена",
+          description: taxTransaction ? "Основная операция и налог успешно созданы" : "Новая транзакция успешно создана",
         });
       } catch (error) {
         toast({
