@@ -80,7 +80,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave }: T
         description: transaction.description,
         date: transaction.date,
         taxPercent: '',
-        clientName: ''
+        clientName: transaction.client_name || ''
       });
     } else {
       setFormData({

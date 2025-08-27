@@ -160,7 +160,8 @@ export default function Dashboard() {
             category: transactionData.category,
             subcategory: transactionData.subcategory,
             amount: transactionData.amount,
-            description: transactionData.description
+            description: transactionData.description,
+            client_name: transactionData.client_name
           })
           .eq('id', transactionData.id)
           .eq('user_id', user.id);
@@ -193,7 +194,8 @@ export default function Dashboard() {
             category: transactionData.category,
             subcategory: transactionData.subcategory,
             amount: transactionData.amount,
-            description: transactionData.description
+            description: transactionData.description,
+            client_name: transactionData.client_name
           })
           .select()
           .single();
