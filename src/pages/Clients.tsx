@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowLeft, User, DollarSign, Calendar, Clock } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Search, ArrowLeft, User, DollarSign, Calendar, Clock, XCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -19,7 +20,9 @@ interface ClientData {
   totalPaid: number;
   remainingAmount: number;
   lastPaymentDate: string;
-  status: 'active' | 'completed' | 'overdue';
+  status: 'active' | 'completed' | 'overdue' | 'terminated';
+  contractStatus: 'active' | 'terminated';
+  terminationDate?: string;
   transactions: Transaction[];
 }
 
@@ -84,6 +87,8 @@ export default function Clients() {
               remainingAmount: 0,
               lastPaymentDate: transaction.date,
               status: 'active',
+              contractStatus: (contractTransaction.contract_status as 'active' | 'terminated') || 'active',
+              terminationDate: contractTransaction.termination_date || undefined,
               transactions: []
             });
           }
@@ -106,7 +111,9 @@ export default function Clients() {
         client.remainingAmount = client.contractAmount - client.totalPaid;
         
         // Определяем статус
-        if (client.remainingAmount <= 0) {
+        if (client.contractStatus === 'terminated') {
+          client.status = 'terminated';
+        } else if (client.remainingAmount <= 0) {
           client.status = 'completed';
         } else {
           // Проверяем, не просрочена ли рассрочка
@@ -150,9 +157,75 @@ export default function Clients() {
         return <Badge variant="default" className="bg-green-100 text-green-800">Оплачен</Badge>;
       case 'overdue':
         return <Badge variant="destructive">Просрочен</Badge>;
+      case 'terminated':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Расторгнут</Badge>;
       case 'active':
       default:
         return <Badge variant="secondary">Активен</Badge>;
+    }
+  };
+
+  const handleTerminateContract = async (clientName: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ 
+          contract_status: 'terminated',
+          termination_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('user_id', user?.id)
+        .eq('client_name', clientName);
+
+      if (error) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось расторгнуть договор",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Договор расторгнут",
+        description: `Договор с ${clientName} успешно расторгнут`,
+      });
+
+      // Обновляем данные
+      fetchClientsData();
+    } catch (error) {
+      console.error('Error terminating contract:', error);
+    }
+  };
+
+  const handleReactivateContract = async (clientName: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ 
+          contract_status: 'active',
+          termination_date: null
+        })
+        .eq('user_id', user?.id)
+        .eq('client_name', clientName);
+
+      if (error) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось восстановить договор",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Договор восстановлен",
+        description: `Договор с ${clientName} успешно восстановлен`,
+      });
+
+      // Обновляем данные
+      fetchClientsData();
+    } catch (error) {
+      console.error('Error reactivating contract:', error);
     }
   };
 
@@ -263,6 +336,7 @@ export default function Clients() {
                   <TableHead className="text-right">Остаток</TableHead>
                   <TableHead>Последний платеж</TableHead>
                   <TableHead className="text-center">Статус</TableHead>
+                  <TableHead className="text-center">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -280,9 +354,70 @@ export default function Clients() {
                     </TableCell>
                     <TableCell>
                       {new Date(client.lastPaymentDate).toLocaleDateString('ru-RU')}
+                      {client.terminationDate && (
+                        <div className="text-xs text-red-600">
+                          Расторгнут: {new Date(client.terminationDate).toLocaleDateString('ru-RU')}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {getStatusBadge(client.status)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {client.contractStatus === 'active' ? (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Расторгнуть
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Расторжение договора</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Вы уверены, что хотите расторгнуть договор с {client.clientName}? 
+                                Это действие можно будет отменить позже.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Отмена</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleTerminateContract(client.clientName)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Расторгнуть договор
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ) : (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Восстановить
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Восстановление договора</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Вы уверены, что хотите восстановить договор с {client.clientName}?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Отмена</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleReactivateContract(client.clientName)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Восстановить договор
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
