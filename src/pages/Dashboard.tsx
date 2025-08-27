@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [importMonth, setImportMonth] = useState<Date>(new Date());
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ export default function Dashboard() {
     if (!user) return;
     
     try {
+      setError(null);
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
@@ -57,6 +59,7 @@ export default function Dashboard() {
         .order('date', { ascending: false });
 
       if (error) {
+        setError("Не удалось загрузить транзакции");
         toast({
           title: "Ошибка загрузки",
           description: "Не удалось загрузить транзакции",
@@ -71,6 +74,7 @@ export default function Dashboard() {
       })) || []);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      setError("Произошла ошибка при загрузке данных");
     } finally {
       setLoading(false);
     }
@@ -523,8 +527,33 @@ export default function Dashboard() {
     return null;
   };
 
-  return (
-    <div className="min-h-screen bg-background p-6">
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Загрузка данных...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Перезагрузить страницу
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  try {
+    return (
+      <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -768,7 +797,20 @@ export default function Dashboard() {
           onSave={handleSaveTransaction}
           copyMode={copyMode}
         />
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error('Dashboard render error:', error);
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Произошла ошибка при отображении данных</p>
+          <Button onClick={() => window.location.reload()}>
+            Перезагрузить страницу
+          </Button>
+        </div>
+      </div>
+    );
+  }
 }
