@@ -186,6 +186,12 @@ export default function Clients() {
     });
 
   const formatCurrency = (amount: number) => {
+    // Для больших сумм используем сокращенный формат
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M ₽`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K ₽`;
+    }
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: 'RUB',
@@ -324,7 +330,7 @@ export default function Clients() {
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold truncate">{totalContracts}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalContracts}</div>
             </CardContent>
           </Card>
 
@@ -334,7 +340,7 @@ export default function Clients() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-sm sm:text-base lg:text-lg font-bold truncate" title={formatCurrency(totalContractAmount)}>{formatCurrency(totalContractAmount)}</div>
+              <div className="text-base sm:text-lg lg:text-xl font-bold" title={formatCurrency(totalContractAmount)}>{formatCurrency(totalContractAmount)}</div>
             </CardContent>
           </Card>
 
@@ -344,7 +350,7 @@ export default function Clients() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-sm sm:text-base lg:text-lg font-bold text-green-600 truncate" title={formatCurrency(totalPaid)}>{formatCurrency(totalPaid)}</div>
+              <div className="text-base sm:text-lg lg:text-xl font-bold text-green-600" title={formatCurrency(totalPaid)}>{formatCurrency(totalPaid)}</div>
             </CardContent>
           </Card>
 
@@ -354,7 +360,7 @@ export default function Clients() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-sm sm:text-base lg:text-lg font-bold text-orange-600 truncate" title={formatCurrency(totalRemaining)}>{formatCurrency(totalRemaining)}</div>
+              <div className="text-base sm:text-lg lg:text-xl font-bold text-orange-600" title={formatCurrency(totalRemaining)}>{formatCurrency(totalRemaining)}</div>
             </CardContent>
           </Card>
 
@@ -364,7 +370,7 @@ export default function Clients() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 truncate">{totalInProgress}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{totalInProgress}</div>
             </CardContent>
           </Card>
 
@@ -374,7 +380,7 @@ export default function Clients() {
               <XCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 truncate">{totalTerminated}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">{totalTerminated}</div>
             </CardContent>
           </Card>
 
@@ -384,7 +390,7 @@ export default function Clients() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 truncate">{totalCompleted}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{totalCompleted}</div>
             </CardContent>
           </Card>
         </div>
