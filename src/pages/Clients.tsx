@@ -186,12 +186,6 @@ export default function Clients() {
     });
 
   const formatCurrency = (amount: number) => {
-    // Для больших сумм используем сокращенный формат
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M ₽`;
-    } else if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(0)}K ₽`;
-    }
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: 'RUB',
@@ -340,7 +334,7 @@ export default function Clients() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-base sm:text-lg lg:text-xl font-bold" title={formatCurrency(totalContractAmount)}>{formatCurrency(totalContractAmount)}</div>
+              <div className="text-xs sm:text-sm lg:text-base font-bold break-words" title={formatCurrency(totalContractAmount)}>{formatCurrency(totalContractAmount)}</div>
             </CardContent>
           </Card>
 
@@ -350,7 +344,7 @@ export default function Clients() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-base sm:text-lg lg:text-xl font-bold text-green-600" title={formatCurrency(totalPaid)}>{formatCurrency(totalPaid)}</div>
+              <div className="text-xs sm:text-sm lg:text-base font-bold text-green-600 break-words" title={formatCurrency(totalPaid)}>{formatCurrency(totalPaid)}</div>
             </CardContent>
           </Card>
 
@@ -360,7 +354,7 @@ export default function Clients() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-base sm:text-lg lg:text-xl font-bold text-orange-600" title={formatCurrency(totalRemaining)}>{formatCurrency(totalRemaining)}</div>
+              <div className="text-xs sm:text-sm lg:text-base font-bold text-orange-600 break-words" title={formatCurrency(totalRemaining)}>{formatCurrency(totalRemaining)}</div>
             </CardContent>
           </Card>
 
