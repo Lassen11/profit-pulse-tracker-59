@@ -188,7 +188,16 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
         first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
         installment_period: formData.installmentPeriod ? parseInt(formData.installmentPeriod) : undefined,
-        lump_sum: formData.lumpSum ? parseFloat(formData.lumpSum) : undefined
+        lump_sum: (() => {
+          const contractAmount = parseFloat(formData.contractAmount) || 0;
+          const firstPayment = parseFloat(formData.firstPayment) || 0;
+          const installmentPeriod = parseInt(formData.installmentPeriod) || 0;
+          
+          if (contractAmount > 0 && installmentPeriod > 0) {
+            return (contractAmount - firstPayment) / installmentPeriod;
+          }
+          return undefined;
+        })()
       })
     };
 
@@ -398,10 +407,24 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.lumpSum}
-                    onChange={(e) => setFormData({ ...formData, lumpSum: e.target.value })}
+                    value={(() => {
+                      const contractAmount = parseFloat(formData.contractAmount) || 0;
+                      const firstPayment = parseFloat(formData.firstPayment) || 0;
+                      const installmentPeriod = parseInt(formData.installmentPeriod) || 0;
+                      
+                      if (contractAmount > 0 && installmentPeriod > 0) {
+                        const lumpSum = (contractAmount - firstPayment) / installmentPeriod;
+                        return lumpSum.toFixed(2);
+                      }
+                      return '';
+                    })()}
                     placeholder="0.00"
+                    readOnly
+                    className="bg-muted/50"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Рассчитывается автоматически по формуле: (Стоимость договора - Первый платеж) / Срок рассрочки
+                  </p>
                 </div>
 
                 <div className="space-y-2 col-span-2">
