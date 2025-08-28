@@ -27,6 +27,7 @@ export type Database = {
           first_payment: number | null
           id: string
           installment_period: number | null
+          lump_sum: number | null
           subcategory: string | null
           termination_date: string | null
           type: string
@@ -45,6 +46,7 @@ export type Database = {
           first_payment?: number | null
           id?: string
           installment_period?: number | null
+          lump_sum?: number | null
           subcategory?: string | null
           termination_date?: string | null
           type: string
@@ -63,6 +65,7 @@ export type Database = {
           first_payment?: number | null
           id?: string
           installment_period?: number | null
+          lump_sum?: number | null
           subcategory?: string | null
           termination_date?: string | null
           type?: string

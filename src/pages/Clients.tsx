@@ -16,6 +16,7 @@ interface ClientData {
   clientName: string;
   contractAmount: number;
   firstPayment: number;
+  lumpSum: number;
   installmentPeriod: number;
   totalPaid: number;
   remainingAmount: number;
@@ -92,6 +93,7 @@ export default function Clients() {
               clientName,
               contractAmount: contractTransaction.contract_amount || 0,
               firstPayment: contractTransaction.first_payment || 0,
+              lumpSum: (contractTransaction as any).lump_sum || 0,
               installmentPeriod: contractTransaction.installment_period || 0,
               totalPaid: 0,
               remainingAmount: 0,
@@ -442,6 +444,7 @@ export default function Clients() {
                         {getSortIcon('firstPayment')}
                       </Button>
                     </TableHead>
+                    <TableHead className="text-right">ЕП</TableHead>
                     <TableHead className="text-center">
                       <Button
                         variant="ghost"
@@ -501,6 +504,7 @@ export default function Clients() {
                       <TableCell className="font-medium">{client.clientName}</TableCell>
                       <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(client.firstPayment)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(client.lumpSum)}</TableCell>
                       <TableCell className="text-center">{client.installmentPeriod}</TableCell>
                       <TableCell className="text-right text-green-600 font-semibold">
                         {formatCurrency(client.totalPaid)}
@@ -599,6 +603,10 @@ export default function Clients() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Первый платеж:</span>
                         <span className="font-medium">{formatCurrency(client.firstPayment)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">ЕП:</span>
+                        <span className="font-medium">{formatCurrency(client.lumpSum)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Срок:</span>

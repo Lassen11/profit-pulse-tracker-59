@@ -77,7 +77,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     clientName: '',
     contractAmount: '',
     firstPayment: '',
-    installmentPeriod: ''
+    installmentPeriod: '',
+    lumpSum: ''
   });
 
   useEffect(() => {
@@ -93,7 +94,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         clientName: transaction.client_name || '',
         contractAmount: transaction.contract_amount?.toString() || '',
         firstPayment: transaction.first_payment?.toString() || '',
-        installmentPeriod: transaction.installment_period?.toString() || ''
+        installmentPeriod: transaction.installment_period?.toString() || '',
+        lumpSum: (transaction as any).lump_sum?.toString() || ''
       });
     } else {
       setFormData({
@@ -107,7 +109,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         clientName: '',
         contractAmount: '',
         firstPayment: '',
-        installmentPeriod: ''
+        installmentPeriod: '',
+        lumpSum: ''
       });
     }
   }, [transaction, open]);
@@ -143,7 +146,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           ...prev,
           contractAmount: '',
           firstPayment: '',
-          installmentPeriod: ''
+          installmentPeriod: '',
+          lumpSum: ''
         }));
       } else {
         setExistingClient(null);
@@ -183,7 +187,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       ...(formData.type === 'income' && formData.category === 'Продажи' && {
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
         first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
-        installment_period: formData.installmentPeriod ? parseInt(formData.installmentPeriod) : undefined
+        installment_period: formData.installmentPeriod ? parseInt(formData.installmentPeriod) : undefined,
+        lump_sum: formData.lumpSum ? parseFloat(formData.lumpSum) : undefined
       })
     };
 
@@ -348,7 +353,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               <Info className="h-4 w-4" />
               <AlertDescription>
                 <strong>Клиент уже существует!</strong> Этот платеж будет добавлен к существующему договору клиента "{existingClient.client_name}". 
-                Стоимость договора: {existingClient.contract_amount?.toLocaleString('ru-RU')} ₽, 
+                Стоимость договора: {existingClient.contract_amount?.toLocaleString('ru-RU')} ₽,
+                {existingClient.first_payment && ` первый платеж: ${existingClient.first_payment?.toLocaleString('ru-RU')} ₽,`}
+                {(existingClient as any).lump_sum && ` ЕП: ${(existingClient as any).lump_sum?.toLocaleString('ru-RU')} ₽,`} 
                 срок рассрочки: {existingClient.installment_period} мес.
               </AlertDescription>
             </Alert>
@@ -357,8 +364,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           {formData.type === 'income' && formData.category === 'Продажи' && !existingClient && (
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-foreground">Параметры рассрочки</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="contractAmount">Стоимость договора (₽)</Label>
                   <Input
                     id="contractAmount"
@@ -385,6 +392,19 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="lumpSum">ЕП (₽)</Label>
+                  <Input
+                    id="lumpSum"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.lumpSum}
+                    onChange={(e) => setFormData({ ...formData, lumpSum: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="installmentPeriod">Срок рассрочки (мес.)</Label>
                   <Input
                     id="installmentPeriod"
