@@ -324,7 +324,7 @@ export default function Clients() {
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold">{totalContracts}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold truncate">{totalContracts}</div>
             </CardContent>
           </Card>
 
@@ -334,7 +334,7 @@ export default function Clients() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold">{formatCurrency(totalContractAmount)}</div>
+              <div className="text-sm sm:text-base lg:text-lg font-bold truncate" title={formatCurrency(totalContractAmount)}>{formatCurrency(totalContractAmount)}</div>
             </CardContent>
           </Card>
 
@@ -344,7 +344,7 @@ export default function Clients() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
+              <div className="text-sm sm:text-base lg:text-lg font-bold text-green-600 truncate" title={formatCurrency(totalPaid)}>{formatCurrency(totalPaid)}</div>
             </CardContent>
           </Card>
 
@@ -354,7 +354,7 @@ export default function Clients() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-orange-600">{formatCurrency(totalRemaining)}</div>
+              <div className="text-sm sm:text-base lg:text-lg font-bold text-orange-600 truncate" title={formatCurrency(totalRemaining)}>{formatCurrency(totalRemaining)}</div>
             </CardContent>
           </Card>
 
@@ -364,7 +364,7 @@ export default function Clients() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-blue-600">{totalInProgress}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 truncate">{totalInProgress}</div>
             </CardContent>
           </Card>
 
@@ -374,7 +374,7 @@ export default function Clients() {
               <XCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-red-600">{totalTerminated}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600 truncate">{totalTerminated}</div>
             </CardContent>
           </Card>
 
@@ -384,7 +384,7 @@ export default function Clients() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-green-600">{totalCompleted}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 truncate">{totalCompleted}</div>
             </CardContent>
           </Card>
         </div>
