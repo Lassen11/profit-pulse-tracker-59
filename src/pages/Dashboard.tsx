@@ -31,15 +31,15 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect to auth if not logged in
   useEffect(() => {
-    if (!user && !loading) {
+    if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
   // Optimized fetch with caching and debouncing
   const fetchTransactions = useCallback(async () => {
@@ -135,10 +135,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchTransactions();
-    } else if (!loading) {
+    } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user, fetchTransactions]);
+  }, [user, authLoading, fetchTransactions]);
 
   const handleRetry = () => {
     setLastFetchTime(0); // Force refresh
