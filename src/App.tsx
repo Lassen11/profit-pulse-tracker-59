@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import Auth from "./pages/Auth";
+import AllProjects from "./pages/AllProjects";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/clients" element={<Clients />} />
+            <Route path="/all-projects" element={<AllProjects />} />
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
