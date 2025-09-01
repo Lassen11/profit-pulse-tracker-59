@@ -22,6 +22,7 @@ export interface Transaction {
   first_payment?: number | null;
   installment_period?: number | null;
   lump_sum?: number | null;
+  company: string;
 }
 
 interface TransactionTableProps {

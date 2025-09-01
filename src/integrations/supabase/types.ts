@@ -19,6 +19,7 @@ export type Database = {
           amount: number
           category: string
           client_name: string | null
+          company: string
           contract_amount: number | null
           contract_status: string | null
           created_at: string
@@ -38,6 +39,7 @@ export type Database = {
           amount: number
           category: string
           client_name?: string | null
+          company?: string
           contract_amount?: number | null
           contract_status?: string | null
           created_at?: string
@@ -57,6 +59,7 @@ export type Database = {
           amount?: number
           category?: string
           client_name?: string | null
+          company?: string
           contract_amount?: number | null
           contract_status?: string | null
           created_at?: string

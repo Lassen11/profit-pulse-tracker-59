@@ -183,6 +183,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       amount: parseFloat(formData.amount),
       description: formData.description,
       date: formData.date,
+      company: transaction?.company || 'Спасение',
       ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName }),
       ...(formData.type === 'income' && formData.category === 'Продажи' && {
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
@@ -212,7 +213,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         subcategory: 'Налоги',
         amount: taxAmount,
         description: `Налог ${formData.taxPercent}% с операции: ${formData.description}`,
-        date: formData.date
+        date: formData.date,
+        company: transaction?.company || 'Спасение'
       };
     }
 

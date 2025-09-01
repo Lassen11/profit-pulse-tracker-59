@@ -17,6 +17,8 @@ import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOf
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 
+const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
+
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -30,6 +32,7 @@ export default function Dashboard() {
   const [importMonth, setImportMonth] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -60,11 +63,12 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       
-      // Load all transactions for the user
+      // Load all transactions for the user and selected company
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', user.id)
+        .eq('company', selectedCompany)
         .order('date', { ascending: false });
 
       if (error) {
@@ -101,7 +105,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user, transactions.length, lastFetchTime, toast]);
+  }, [user, transactions.length, lastFetchTime, toast, selectedCompany]);
 
   // Load older transactions in background
   const loadOlderTransactions = useCallback(async () => {
@@ -115,6 +119,7 @@ export default function Dashboard() {
         .from('transactions')
         .select('*')
         .eq('user_id', user.id)
+        .eq('company', selectedCompany)
         .lt('date', threeMonthsAgo.toISOString().split('T')[0])
         .order('date', { ascending: false });
 
@@ -129,7 +134,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error loading older transactions:', error);
     }
-  }, [user]);
+  }, [user, selectedCompany]);
 
   // Fetch transactions from Supabase
   useEffect(() => {
@@ -139,6 +144,14 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, [user, authLoading, fetchTransactions]);
+
+  // Refetch when company changes
+  useEffect(() => {
+    if (user && selectedCompany) {
+      setLastFetchTime(0); // Force refresh
+      fetchTransactions();
+    }
+  }, [selectedCompany, user, fetchTransactions]);
 
   const handleRetry = () => {
     setLastFetchTime(0); // Force refresh
@@ -240,7 +253,9 @@ export default function Dashboard() {
             client_name: transactionData.client_name,
             contract_amount: transactionData.contract_amount,
             first_payment: transactionData.first_payment,
-            installment_period: transactionData.installment_period
+            installment_period: transactionData.installment_period,
+            lump_sum: transactionData.lump_sum,
+            company: selectedCompany
           })
           .eq('id', transactionData.id)
           .eq('user_id', user.id);
@@ -277,7 +292,9 @@ export default function Dashboard() {
             client_name: transactionData.client_name,
             contract_amount: transactionData.contract_amount,
             first_payment: transactionData.first_payment,
-            installment_period: transactionData.installment_period
+            installment_period: transactionData.installment_period,
+            lump_sum: transactionData.lump_sum,
+            company: selectedCompany
           })
           .select()
           .single();
@@ -302,7 +319,8 @@ export default function Dashboard() {
               category: taxTransaction.category,
               subcategory: taxTransaction.subcategory,
               amount: taxTransaction.amount,
-              description: taxTransaction.description
+              description: taxTransaction.description,
+              company: selectedCompany
             })
             .select()
             .single();
@@ -608,6 +626,18 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Выберите компанию" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company} value={company}>
+                    {company}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Добавить операцию</span>
