@@ -51,10 +51,11 @@ export default function Dashboard() {
       return;
     }
 
-    // Cache check - don't refetch if data is fresh (less than 30 seconds old)
+    // Cache check - don't refetch if data is fresh (less than 30 seconds old) AND we have data for current company
     const now = Date.now();
-    if (transactions.length > 0 && (now - lastFetchTime) < 30000) {
-      console.log('Using cached data');
+    const hasDataForCompany = transactions.length > 0 && transactions[0]?.company === selectedCompany;
+    if (hasDataForCompany && (now - lastFetchTime) < 30000) {
+      console.log('Using cached data for company:', selectedCompany);
       setLoading(false);
       return;
     }
@@ -105,7 +106,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user, transactions.length, lastFetchTime, toast, selectedCompany]);
+  }, [user, selectedCompany, toast]);
 
   // Load older transactions in background
   const loadOlderTransactions = useCallback(async () => {
@@ -148,7 +149,8 @@ export default function Dashboard() {
   // Refetch when company changes
   useEffect(() => {
     if (user && selectedCompany) {
-      setLastFetchTime(0); // Force refresh
+      setLastFetchTime(0); // Force refresh when company changes
+      setTransactions([]); // Clear current transactions
       fetchTransactions();
     }
   }, [selectedCompany, user, fetchTransactions]);
