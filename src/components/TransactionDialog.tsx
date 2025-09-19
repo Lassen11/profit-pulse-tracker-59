@@ -63,6 +63,14 @@ const expenseCategories = [
   "Прочие расходы"
 ];
 
+const accountOptions = [
+  "Зайнаб карта",
+  "Касса офис Диана",
+  "Мариана Карта - депозит",
+  "Карта Visa/Т-Банк (КИ)",
+  "Наличные Сейф (КИ)"
+];
+
 export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false }: TransactionDialogProps) {
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
@@ -78,7 +86,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     contractAmount: '',
     firstPayment: '',
     installmentPeriod: '',
-    lumpSum: ''
+    lumpSum: '',
+    incomeAccount: '',
+    expenseAccount: ''
   });
 
   useEffect(() => {
@@ -95,7 +105,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         contractAmount: transaction.contract_amount?.toString() || '',
         firstPayment: transaction.first_payment?.toString() || '',
         installmentPeriod: transaction.installment_period?.toString() || '',
-        lumpSum: (transaction as any).lump_sum?.toString() || ''
+        lumpSum: (transaction as any).lump_sum?.toString() || '',
+        incomeAccount: (transaction as any).income_account || '',
+        expenseAccount: (transaction as any).expense_account || ''
       });
     } else {
       setFormData({
@@ -110,7 +122,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         contractAmount: '',
         firstPayment: '',
         installmentPeriod: '',
-        lumpSum: ''
+        lumpSum: '',
+        incomeAccount: '',
+        expenseAccount: ''
       });
     }
   }, [transaction, open]);
@@ -185,6 +199,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       date: formData.date,
       company: transaction?.company || 'Спасение',
       ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName }),
+      ...(formData.type === 'income' && formData.incomeAccount && { income_account: formData.incomeAccount }),
+      ...(formData.type === 'expense' && formData.expenseAccount && { expense_account: formData.expenseAccount }),
       ...(formData.type === 'income' && formData.category === 'Продажи' && {
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
         first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
@@ -303,6 +319,48 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                   placeholder="Введите ФИО клиента..."
                 />
+              </div>
+            )}
+            
+            {formData.type === 'income' && (
+              <div className="space-y-2">
+                <Label htmlFor="incomeAccount">Счет пополнения</Label>
+                <Select 
+                  value={formData.incomeAccount} 
+                  onValueChange={(value) => setFormData({ ...formData, incomeAccount: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите счет пополнения" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accountOptions.map((account) => (
+                      <SelectItem key={account} value={account}>
+                        {account}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {formData.type === 'expense' && (
+              <div className="space-y-2">
+                <Label htmlFor="expenseAccount">Счет списания</Label>
+                <Select 
+                  value={formData.expenseAccount} 
+                  onValueChange={(value) => setFormData({ ...formData, expenseAccount: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите счет списания" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accountOptions.map((account) => (
+                      <SelectItem key={account} value={account}>
+                        {account}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>

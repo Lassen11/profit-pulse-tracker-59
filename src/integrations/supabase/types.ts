@@ -25,8 +25,10 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          expense_account: string | null
           first_payment: number | null
           id: string
+          income_account: string | null
           installment_period: number | null
           lump_sum: number | null
           subcategory: string | null
@@ -45,8 +47,10 @@ export type Database = {
           created_at?: string
           date: string
           description?: string | null
+          expense_account?: string | null
           first_payment?: number | null
           id?: string
+          income_account?: string | null
           installment_period?: number | null
           lump_sum?: number | null
           subcategory?: string | null
@@ -65,8 +69,10 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          expense_account?: string | null
           first_payment?: number | null
           id?: string
+          income_account?: string | null
           installment_period?: number | null
           lump_sum?: number | null
           subcategory?: string | null
