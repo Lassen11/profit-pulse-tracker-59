@@ -5,8 +5,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeadDialog } from "@/components/LeadDialog";
-import { CalendarIcon, Upload, Download, LogOut, TrendingUp } from "lucide-react";
+import { LeadDashboard } from "@/components/LeadDashboard";
+import { CalendarIcon, Upload, Download, LogOut, TrendingUp, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -356,85 +358,104 @@ export default function LeadGeneration() {
         </div>
 
         {/* Summary Table */}
-        <div className="bg-card rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6 border-b">
-            <h2 className="text-xl font-semibold">Сводная таблица по лидогенерации</h2>
-            <p className="text-muted-foreground mt-1">
-              {selectedCompany} | {format(customDateFrom, 'dd.MM.yyyy')} - {format(customDateTo, 'dd.MM.yyyy')}
-            </p>
-          </div>
-          
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/2">Показатель</TableHead>
-                <TableHead className="text-right">Значение</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="font-medium">Общее кол. лидов</TableCell>
-                <TableCell className="text-right">{calculateTotals.total_leads}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Квал. лиды</TableCell>
-                <TableCell className="text-right">{calculateTotals.qualified_leads}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Конверсия в % из квал. лидов в общее кол. лидов</TableCell>
-                <TableCell className="text-right">{calculateTotals.qualified_conversion.toFixed(2)}%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Долг выше 300к</TableCell>
-                <TableCell className="text-right">{calculateTotals.debt_above_300k}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Конверсия общая в % из долг выше 300к в общее кол. лидов</TableCell>
-                <TableCell className="text-right">{calculateTotals.debt_conversion_total.toFixed(2)}%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Конверсия квал в % из долг выше 300к в квал. лиды</TableCell>
-                <TableCell className="text-right">{calculateTotals.debt_conversion_qualified.toFixed(2)}%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Договор</TableCell>
-                <TableCell className="text-right">{calculateTotals.contracts}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Конверсия в % из договор в общее кол. лидов</TableCell>
-                <TableCell className="text-right">{calculateTotals.contract_conversion.toFixed(2)}%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Чек</TableCell>
-                <TableCell className="text-right">{calculateTotals.payments}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Конверсия общая в % из чек в общее кол. лидов</TableCell>
-                <TableCell className="text-right">{calculateTotals.payment_conversion_total.toFixed(2)}%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Конверсия качество в % из чек в Долг выше 300к</TableCell>
-                <TableCell className="text-right">{calculateTotals.payment_conversion_quality.toFixed(2)}%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Стоимость всех лидов</TableCell>
-                <TableCell className="text-right">{formatCurrency(calculateTotals.total_cost)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Стоимость 1 лида</TableCell>
-                <TableCell className="text-right">{formatCurrency(calculateTotals.cost_per_lead)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Стоимость качественного лида</TableCell>
-                <TableCell className="text-right">{formatCurrency(calculateTotals.cost_per_quality_lead)}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Стоимость оплаченного лида</TableCell>
-                <TableCell className="text-right">{formatCurrency(calculateTotals.cost_per_paid_lead)}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <Tabs defaultValue="summary" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="summary" className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Сводная таблица</span>
+            </TabsTrigger>
+            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
+              <BarChart3 className="h-4 w-4" />
+              <span>Дашборд</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="summary">
+            <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+              <div className="p-6 border-b">
+                <h2 className="text-xl font-semibold">Сводная таблица по лидогенерации</h2>
+                <p className="text-muted-foreground mt-1">
+                  {selectedCompany} | {format(customDateFrom, 'dd.MM.yyyy')} - {format(customDateTo, 'dd.MM.yyyy')}
+                </p>
+              </div>
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/2">Показатель</TableHead>
+                    <TableHead className="text-right">Значение</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Общее кол. лидов</TableCell>
+                    <TableCell className="text-right">{calculateTotals.total_leads}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Квал. лиды</TableCell>
+                    <TableCell className="text-right">{calculateTotals.qualified_leads}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Конверсия в % из квал. лидов в общее кол. лидов</TableCell>
+                    <TableCell className="text-right">{calculateTotals.qualified_conversion.toFixed(2)}%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Долг выше 300к</TableCell>
+                    <TableCell className="text-right">{calculateTotals.debt_above_300k}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Конверсия общая в % из долг выше 300к в общее кол. лидов</TableCell>
+                    <TableCell className="text-right">{calculateTotals.debt_conversion_total.toFixed(2)}%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Конверсия квал в % из долг выше 300к в квал. лиды</TableCell>
+                    <TableCell className="text-right">{calculateTotals.debt_conversion_qualified.toFixed(2)}%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Договор</TableCell>
+                    <TableCell className="text-right">{calculateTotals.contracts}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Конверсия в % из договор в общее кол. лидов</TableCell>
+                    <TableCell className="text-right">{calculateTotals.contract_conversion.toFixed(2)}%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Чек</TableCell>
+                    <TableCell className="text-right">{calculateTotals.payments}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Конверсия общая в % из чек в общее кол. лидов</TableCell>
+                    <TableCell className="text-right">{calculateTotals.payment_conversion_total.toFixed(2)}%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Конверсия качество в % из чек в Долг выше 300к</TableCell>
+                    <TableCell className="text-right">{calculateTotals.payment_conversion_quality.toFixed(2)}%</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Стоимость всех лидов</TableCell>
+                    <TableCell className="text-right">{formatCurrency(calculateTotals.total_cost)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Стоимость 1 лида</TableCell>
+                    <TableCell className="text-right">{formatCurrency(calculateTotals.cost_per_lead)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Стоимость качественного лида</TableCell>
+                    <TableCell className="text-right">{formatCurrency(calculateTotals.cost_per_quality_lead)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Стоимость оплаченного лида</TableCell>
+                    <TableCell className="text-right">{formatCurrency(calculateTotals.cost_per_paid_lead)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="dashboard">
+            <LeadDashboard leadData={leadData} selectedCompany={selectedCompany} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
