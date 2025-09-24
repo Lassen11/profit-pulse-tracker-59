@@ -16,9 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
-
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
-
 interface LeadData {
   id: string;
   company: string;
@@ -30,15 +28,20 @@ interface LeadData {
   payments: number;
   total_cost: number;
 }
-
 export default function LeadGeneration() {
   const [leadData, setLeadData] = useState<LeadData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
   const [customDateFrom, setCustomDateFrom] = useState<Date>(startOfMonth(new Date()));
   const [customDateTo, setCustomDateTo] = useState<Date>(endOfMonth(new Date()));
-  const { toast } = useToast();
-  const { user, signOut, loading: authLoading } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user,
+    signOut,
+    loading: authLoading
+  } = useAuth();
   const navigate = useNavigate();
 
   // Redirect to auth if not logged in
@@ -47,27 +50,20 @@ export default function LeadGeneration() {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
-
   const fetchLeadData = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
     }
-    
     try {
       setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('lead_generation')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('company', selectedCompany)
-        .gte('date', customDateFrom.toISOString().split('T')[0])
-        .lte('date', customDateTo.toISOString().split('T')[0])
-        .order('date', { ascending: false });
-
+      const {
+        data,
+        error
+      } = await supabase.from('lead_generation').select('*').eq('user_id', user.id).eq('company', selectedCompany).gte('date', customDateFrom.toISOString().split('T')[0]).lte('date', customDateTo.toISOString().split('T')[0]).order('date', {
+        ascending: false
+      });
       if (error) throw error;
-
       setLeadData(data || []);
     } catch (error: any) {
       console.error('Error fetching lead data:', error);
@@ -80,13 +76,11 @@ export default function LeadGeneration() {
       setLoading(false);
     }
   }, [user, selectedCompany, customDateFrom, customDateTo, toast]);
-
   useEffect(() => {
     if (user) {
       fetchLeadData();
     }
   }, [user, fetchLeadData]);
-
   const calculateTotals = useMemo(() => {
     const totals = leadData.reduce((acc, item) => ({
       total_leads: acc.total_leads + item.total_leads,
@@ -103,17 +97,15 @@ export default function LeadGeneration() {
       payments: 0,
       total_cost: 0
     });
-
-    const qualified_conversion = totals.total_leads > 0 ? (totals.qualified_leads / totals.total_leads * 100) : 0;
-    const debt_conversion_total = totals.total_leads > 0 ? (totals.debt_above_300k / totals.total_leads * 100) : 0;
-    const debt_conversion_qualified = totals.qualified_leads > 0 ? (totals.debt_above_300k / totals.qualified_leads * 100) : 0;
-    const contract_conversion = totals.total_leads > 0 ? (totals.contracts / totals.total_leads * 100) : 0;
-    const payment_conversion_total = totals.total_leads > 0 ? (totals.payments / totals.total_leads * 100) : 0;
-    const payment_conversion_quality = totals.debt_above_300k > 0 ? (totals.payments / totals.debt_above_300k * 100) : 0;
-    const cost_per_lead = totals.total_leads > 0 ? (totals.total_cost / totals.total_leads) : 0;
-    const cost_per_quality_lead = totals.debt_above_300k > 0 ? (totals.total_cost / totals.debt_above_300k) : 0;
-    const cost_per_paid_lead = totals.payments > 0 ? (totals.total_cost / totals.payments) : 0;
-
+    const qualified_conversion = totals.total_leads > 0 ? totals.qualified_leads / totals.total_leads * 100 : 0;
+    const debt_conversion_total = totals.total_leads > 0 ? totals.debt_above_300k / totals.total_leads * 100 : 0;
+    const debt_conversion_qualified = totals.qualified_leads > 0 ? totals.debt_above_300k / totals.qualified_leads * 100 : 0;
+    const contract_conversion = totals.total_leads > 0 ? totals.contracts / totals.total_leads * 100 : 0;
+    const payment_conversion_total = totals.total_leads > 0 ? totals.payments / totals.total_leads * 100 : 0;
+    const payment_conversion_quality = totals.debt_above_300k > 0 ? totals.payments / totals.debt_above_300k * 100 : 0;
+    const cost_per_lead = totals.total_leads > 0 ? totals.total_cost / totals.total_leads : 0;
+    const cost_per_quality_lead = totals.debt_above_300k > 0 ? totals.total_cost / totals.debt_above_300k : 0;
+    const cost_per_paid_lead = totals.payments > 0 ? totals.total_cost / totals.payments : 0;
     return {
       ...totals,
       qualified_conversion,
@@ -127,64 +119,89 @@ export default function LeadGeneration() {
       cost_per_paid_lead
     };
   }, [leadData]);
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
   };
-
   const handleExportToExcel = () => {
-    const exportData = [
-      { 'Показатель': 'Общее кол. лидов', 'Значение': calculateTotals.total_leads },
-      { 'Показатель': 'Квал. лиды', 'Значение': calculateTotals.qualified_leads },
-      { 'Показатель': 'Конверсия в % из квал. лидов в общее кол. лидов', 'Значение': `${calculateTotals.qualified_conversion.toFixed(2)}%` },
-      { 'Показатель': 'Долг выше 300к', 'Значение': calculateTotals.debt_above_300k },
-      { 'Показатель': 'Конверсия общая в % из долг выше 300к в общее кол. лидов', 'Значение': `${calculateTotals.debt_conversion_total.toFixed(2)}%` },
-      { 'Показатель': 'Конверсия квал в % из долг выше 300к в квал. лиды', 'Значение': `${calculateTotals.debt_conversion_qualified.toFixed(2)}%` },
-      { 'Показатель': 'Договор', 'Значение': calculateTotals.contracts },
-      { 'Показатель': 'Конверсия в % из договор в общее кол. лидов', 'Значение': `${calculateTotals.contract_conversion.toFixed(2)}%` },
-      { 'Показатель': 'Чек', 'Значение': calculateTotals.payments },
-      { 'Показатель': 'Конверсия общая в % из чек в общее кол. лидов', 'Значение': `${calculateTotals.payment_conversion_total.toFixed(2)}%` },
-      { 'Показатель': 'Конверсия качество в % из чек в Долг выше 300к', 'Значение': `${calculateTotals.payment_conversion_quality.toFixed(2)}%` },
-      { 'Показатель': 'Стоимость всех лидов', 'Значение': calculateTotals.total_cost },
-      { 'Показатель': 'Стоимость 1 лида', 'Значение': calculateTotals.cost_per_lead.toFixed(2) },
-      { 'Показатель': 'Стоимость качественного лида', 'Значение': calculateTotals.cost_per_quality_lead.toFixed(2) },
-      { 'Показатель': 'Стоимость оплаченного лида', 'Значение': calculateTotals.cost_per_paid_lead.toFixed(2) }
-    ];
-
+    const exportData = [{
+      'Показатель': 'Общее кол. лидов',
+      'Значение': calculateTotals.total_leads
+    }, {
+      'Показатель': 'Квал. лиды',
+      'Значение': calculateTotals.qualified_leads
+    }, {
+      'Показатель': 'Конверсия в % из квал. лидов в общее кол. лидов',
+      'Значение': `${calculateTotals.qualified_conversion.toFixed(2)}%`
+    }, {
+      'Показатель': 'Долг выше 300к',
+      'Значение': calculateTotals.debt_above_300k
+    }, {
+      'Показатель': 'Конверсия общая в % из долг выше 300к в общее кол. лидов',
+      'Значение': `${calculateTotals.debt_conversion_total.toFixed(2)}%`
+    }, {
+      'Показатель': 'Конверсия квал в % из долг выше 300к в квал. лиды',
+      'Значение': `${calculateTotals.debt_conversion_qualified.toFixed(2)}%`
+    }, {
+      'Показатель': 'Договор',
+      'Значение': calculateTotals.contracts
+    }, {
+      'Показатель': 'Конверсия в % из договор в общее кол. лидов',
+      'Значение': `${calculateTotals.contract_conversion.toFixed(2)}%`
+    }, {
+      'Показатель': 'Чек',
+      'Значение': calculateTotals.payments
+    }, {
+      'Показатель': 'Конверсия общая в % из чек в общее кол. лидов',
+      'Значение': `${calculateTotals.payment_conversion_total.toFixed(2)}%`
+    }, {
+      'Показатель': 'Конверсия качество в % из чек в Долг выше 300к',
+      'Значение': `${calculateTotals.payment_conversion_quality.toFixed(2)}%`
+    }, {
+      'Показатель': 'Стоимость всех лидов',
+      'Значение': calculateTotals.total_cost
+    }, {
+      'Показатель': 'Стоимость 1 лида',
+      'Значение': calculateTotals.cost_per_lead.toFixed(2)
+    }, {
+      'Показатель': 'Стоимость качественного лида',
+      'Значение': calculateTotals.cost_per_quality_lead.toFixed(2)
+    }, {
+      'Показатель': 'Стоимость оплаченного лида',
+      'Значение': calculateTotals.cost_per_paid_lead.toFixed(2)
+    }];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(exportData);
-    ws['!cols'] = [{ wch: 50 }, { wch: 20 }];
+    ws['!cols'] = [{
+      wch: 50
+    }, {
+      wch: 20
+    }];
     XLSX.utils.book_append_sheet(wb, ws, "Лидогенерация");
-    
     const fileName = `lead_generation_${selectedCompany}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     XLSX.writeFile(wb, fileName);
-    
     toast({
       title: "Экспорт завершен",
-      description: `Файл ${fileName} успешно сохранен`,
+      description: `Файл ${fileName} успешно сохранен`
     });
   };
-
   const handleImportFromExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
-
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = async e => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, {
+          type: 'array'
+        });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
         let successCount = 0;
         let errorCount = 0;
-
         for (const row of jsonData) {
           try {
             const rowData = row as any;
-            
             const date = new Date(rowData['Дата'] || rowData['date']).toISOString().split('T')[0];
             const total_leads = parseInt(rowData['Общее кол. лидов'] || rowData['total_leads'] || '0');
             const qualified_leads = parseInt(rowData['Квал. лиды'] || rowData['qualified_leads'] || '0');
@@ -192,21 +209,19 @@ export default function LeadGeneration() {
             const contracts = parseInt(rowData['Договор'] || rowData['contracts'] || '0');
             const payments = parseInt(rowData['Чек'] || rowData['payments'] || '0');
             const total_cost = parseFloat(rowData['Стоимость всех лидов'] || rowData['total_cost'] || '0');
-
-            const { error } = await supabase
-              .from('lead_generation')
-              .insert({
-                user_id: user.id,
-                company: selectedCompany,
-                date,
-                total_leads,
-                qualified_leads,
-                debt_above_300k,
-                contracts,
-                payments,
-                total_cost
-              });
-
+            const {
+              error
+            } = await supabase.from('lead_generation').insert({
+              user_id: user.id,
+              company: selectedCompany,
+              date,
+              total_leads,
+              qualified_leads,
+              debt_above_300k,
+              contracts,
+              payments,
+              total_cost
+            });
             if (error) throw error;
             successCount++;
           } catch (error) {
@@ -214,12 +229,10 @@ export default function LeadGeneration() {
             errorCount++;
           }
         }
-
         toast({
           title: "Импорт завершен",
-          description: `Успешно импортировано: ${successCount}, ошибок: ${errorCount}`,
+          description: `Успешно импортировано: ${successCount}, ошибок: ${errorCount}`
         });
-
         fetchLeadData();
       } catch (error) {
         toast({
@@ -232,7 +245,6 @@ export default function LeadGeneration() {
     reader.readAsArrayBuffer(file);
     event.target.value = '';
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -241,20 +253,15 @@ export default function LeadGeneration() {
       maximumFractionDigits: 0
     }).format(amount);
   };
-
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           <p className="mt-4 text-muted-foreground">Загрузка...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -264,17 +271,10 @@ export default function LeadGeneration() {
               <h1 className="text-2xl font-bold">Лидогенерация</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate("/")}
-              >
+              <Button variant="outline" onClick={() => navigate("/")}>
                 К транзакциям
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleSignOut}
-                className="flex items-center space-x-2"
-              >
+              <Button variant="outline" onClick={handleSignOut} className="flex items-center space-x-2">
                 <LogOut className="h-4 w-4" />
                 <span>Выйти</span>
               </Button>
@@ -295,9 +295,7 @@ export default function LeadGeneration() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {companies.map(company => (
-                    <SelectItem key={company} value={company}>{company}</SelectItem>
-                  ))}
+                  {companies.map(company => <SelectItem key={company} value={company}>{company}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -345,13 +343,7 @@ export default function LeadGeneration() {
                     <span>Импорт</span>
                   </span>
                 </Button>
-                <Input
-                  id="import-excel"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImportFromExcel}
-                  className="hidden"
-                />
+                <Input id="import-excel" type="file" accept=".xlsx,.xls" onChange={handleImportFromExcel} className="hidden" />
               </label>
             </div>
           </div>
@@ -396,7 +388,7 @@ export default function LeadGeneration() {
                     <TableCell className="text-right">{calculateTotals.qualified_leads}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Конверсия в % из квал. лидов в общее кол. лидов</TableCell>
+                    <TableCell className="font-medium">Конверсия </TableCell>
                     <TableCell className="text-right">{calculateTotals.qualified_conversion.toFixed(2)}%</TableCell>
                   </TableRow>
                   <TableRow>
@@ -404,11 +396,11 @@ export default function LeadGeneration() {
                     <TableCell className="text-right">{calculateTotals.debt_above_300k}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Конверсия общая в % из долг выше 300к в общее кол. лидов</TableCell>
+                    <TableCell className="font-medium">Конверсия общая </TableCell>
                     <TableCell className="text-right">{calculateTotals.debt_conversion_total.toFixed(2)}%</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Конверсия квал в % из долг выше 300к в квал. лиды</TableCell>
+                    <TableCell className="font-medium">Конверсия квал </TableCell>
                     <TableCell className="text-right">{calculateTotals.debt_conversion_qualified.toFixed(2)}%</TableCell>
                   </TableRow>
                   <TableRow>
@@ -416,7 +408,7 @@ export default function LeadGeneration() {
                     <TableCell className="text-right">{calculateTotals.contracts}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Конверсия в % из договор в общее кол. лидов</TableCell>
+                    <TableCell className="font-medium">Конверсия </TableCell>
                     <TableCell className="text-right">{calculateTotals.contract_conversion.toFixed(2)}%</TableCell>
                   </TableRow>
                   <TableRow>
@@ -424,11 +416,11 @@ export default function LeadGeneration() {
                     <TableCell className="text-right">{calculateTotals.payments}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Конверсия общая в % из чек в общее кол. лидов</TableCell>
+                    <TableCell className="font-medium">Конверсия общая</TableCell>
                     <TableCell className="text-right">{calculateTotals.payment_conversion_total.toFixed(2)}%</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Конверсия качество в % из чек в Долг выше 300к</TableCell>
+                    <TableCell className="font-medium">Конверсия качество </TableCell>
                     <TableCell className="text-right">{calculateTotals.payment_conversion_quality.toFixed(2)}%</TableCell>
                   </TableRow>
                   <TableRow>
@@ -457,6 +449,5 @@ export default function LeadGeneration() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>;
 }
