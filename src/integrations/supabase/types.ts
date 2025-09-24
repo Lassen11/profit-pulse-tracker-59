@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      lead_generation: {
+        Row: {
+          company: string
+          contracts: number
+          created_at: string
+          date: string
+          debt_above_300k: number
+          id: string
+          payments: number
+          qualified_leads: number
+          total_cost: number
+          total_leads: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string
+          contracts?: number
+          created_at?: string
+          date?: string
+          debt_above_300k?: number
+          id?: string
+          payments?: number
+          qualified_leads?: number
+          total_cost?: number
+          total_leads?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string
+          contracts?: number
+          created_at?: string
+          date?: string
+          debt_above_300k?: number
+          id?: string
+          payments?: number
+          qualified_leads?: number
+          total_cost?: number
+          total_leads?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
