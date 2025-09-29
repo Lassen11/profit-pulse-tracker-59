@@ -443,6 +443,7 @@ export default function Dashboard() {
       'Категория': transaction.category,
       'Подкатегория': transaction.subcategory || '',
       'Клиент': transaction.client_name || '',
+      'Компания': transaction.company,
       'Сумма': transaction.amount,
       'Описание': transaction.description || '',
       'Период рассрочки': transaction.installment_period || '',
@@ -461,6 +462,7 @@ export default function Dashboard() {
       { wch: 20 }, // Категория
       { wch: 20 }, // Подкатегория
       { wch: 25 }, // Клиент
+      { wch: 20 }, // Компания
       { wch: 15 }, // Сумма
       { wch: 30 }, // Описание
       { wch: 15 }, // Период рассрочки
@@ -511,6 +513,7 @@ export default function Dashboard() {
             const amount = parseFloat(rowData['Сумма'] || rowData['amount'] || '0');
             const description = rowData['Описание'] || rowData['description'] || null;
             const clientName = rowData['Клиент'] || rowData['client_name'] || null;
+            const company = rowData['Компания'] || rowData['company'] || selectedCompany;
             const contractAmount = parseFloat(rowData['Сумма договора'] || rowData['contract_amount'] || '0') || null;
             const firstPayment = parseFloat(rowData['Первый взнос'] || rowData['first_payment'] || '0') || null;
             const installmentPeriod = parseInt(rowData['Период рассрочки'] || rowData['installment_period'] || '0') || null;
@@ -540,6 +543,7 @@ export default function Dashboard() {
                 amount,
                 description,
                 client_name: clientName,
+                company,
                 contract_amount: contractAmount,
                 first_payment: firstPayment,
                 installment_period: installmentPeriod

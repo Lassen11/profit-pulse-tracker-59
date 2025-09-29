@@ -125,6 +125,9 @@ export default function LeadGeneration() {
   };
   const handleExportToExcel = () => {
     const exportData = [{
+      'Показатель': 'Компания',
+      'Значение': selectedCompany
+    }, {
       'Показатель': 'Общее кол. лидов',
       'Значение': calculateTotals.total_leads
     }, {
@@ -203,6 +206,7 @@ export default function LeadGeneration() {
           try {
             const rowData = row as any;
             const date = new Date(rowData['Дата'] || rowData['date']).toISOString().split('T')[0];
+            const company = rowData['Компания'] || rowData['company'] || selectedCompany;
             const total_leads = parseInt(rowData['Общее кол. лидов'] || rowData['total_leads'] || '0');
             const qualified_leads = parseInt(rowData['Квал. лиды'] || rowData['qualified_leads'] || '0');
             const debt_above_300k = parseInt(rowData['Долг выше 300к'] || rowData['debt_above_300k'] || '0');
@@ -213,7 +217,7 @@ export default function LeadGeneration() {
               error
             } = await supabase.from('lead_generation').insert({
               user_id: user.id,
-              company: selectedCompany,
+              company,
               date,
               total_leads,
               qualified_leads,
