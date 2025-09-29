@@ -60,9 +60,13 @@ export default function LeadGeneration() {
       const {
         data,
         error
-      } = await supabase.from('lead_generation').select('*').eq('user_id', user.id).eq('company', selectedCompany).gte('date', customDateFrom.toISOString().split('T')[0]).lte('date', customDateTo.toISOString().split('T')[0]).order('date', {
-        ascending: false
-      });
+      } = await supabase
+        .from('lead_generation')
+        .select('*')
+        .eq('company', selectedCompany)
+        .gte('date', customDateFrom.toISOString().split('T')[0])
+        .lte('date', customDateTo.toISOString().split('T')[0])
+        .order('date', { ascending: false });
       if (error) throw error;
       setLeadData(data || []);
     } catch (error: any) {

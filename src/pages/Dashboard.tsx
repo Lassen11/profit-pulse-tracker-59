@@ -93,7 +93,6 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user.id)
         .eq('company', selectedCompany)
         .order('date', { ascending: false });
 
@@ -141,13 +140,12 @@ export default function Dashboard() {
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       
-      const { data } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('company', selectedCompany)
-        .lt('date', threeMonthsAgo.toISOString().split('T')[0])
-        .order('date', { ascending: false });
+       const { data } = await supabase
+         .from('transactions')
+         .select('*')
+         .eq('company', selectedCompany)
+         .lt('date', threeMonthsAgo.toISOString().split('T')[0])
+         .order('date', { ascending: false });
 
       if (data && data.length > 0) {
         const olderTransactions = data.map(t => ({
