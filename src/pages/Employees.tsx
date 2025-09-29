@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { UserPlus, Users, Shield, User } from "lucide-react";
+import { UserPlus, Users, Shield, User, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Profile {
@@ -43,6 +43,7 @@ export default function Employees() {
   const [department, setDepartment] = useState("");
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -184,6 +185,55 @@ export default function Employees() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (userId: string, firstName: string, lastName: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить сотрудника ${firstName} ${lastName}?`)) {
+      return;
+    }
+
+    setDeletingUserId(userId);
+
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      if (!authData.session) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(`https://rdpxbbddqxwbufzqozqz.supabase.co/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+
+      toast({
+        title: "Успешно",
+        description: `Сотрудник ${firstName} ${lastName} удален`,
+      });
+
+      // Обновляем список
+      fetchEmployees();
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось удалить сотрудника",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -346,6 +396,7 @@ export default function Employees() {
                     <TableHead>Роль</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead>Дата регистрации</TableHead>
+                    <TableHead>Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -379,6 +430,26 @@ export default function Employees() {
                       </TableCell>
                       <TableCell>
                         {new Date(employee.created_at).toLocaleDateString('ru-RU')}
+                      </TableCell>
+                      <TableCell>
+                        {employee.user_id !== user?.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteEmployee(employee.user_id, employee.first_name, employee.last_name)}
+                            disabled={deletingUserId === employee.user_id}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {deletingUserId === employee.user_id ? (
+                              "Удаление..."
+                            ) : (
+                              <>
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Удалить
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
