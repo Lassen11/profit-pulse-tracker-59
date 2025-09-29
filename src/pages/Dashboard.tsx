@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +44,30 @@ export default function Dashboard() {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .single();
+          
+        if (!error && data) {
+          setIsAdmin(true);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [user]);
 
   // Optimized fetch with caching and debouncing
   const fetchTransactions = useCallback(async () => {
@@ -660,6 +685,13 @@ export default function Dashboard() {
               <span className="hidden xs:inline">Лидогенерация</span>
               <span className="xs:hidden">Лиды</span>
             </Button>
+            {isAdmin && (
+              <Button variant="outline" onClick={() => navigate("/employees")}>
+                <Users className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Сотрудники</span>
+                <span className="xs:hidden">Сотрудники</span>
+              </Button>
+            )}
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Выйти</span>
