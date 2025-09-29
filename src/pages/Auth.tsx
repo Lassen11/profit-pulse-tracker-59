@@ -12,6 +12,10 @@ import { User, Session } from '@supabase/supabase-js';
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [position, setPosition] = useState("");
+  const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -55,7 +59,13 @@ export default function Auth() {
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl
+          emailRedirectTo: redirectUrl,
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            position: position,
+            department: department
+          }
         }
       });
 
@@ -174,6 +184,30 @@ export default function Auth() {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first-name">Имя</Label>
+                    <Input
+                      id="first-name"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      placeholder="Иван"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last-name">Фамилия</Label>
+                    <Input
+                      id="last-name"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      placeholder="Иванов"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
@@ -182,7 +216,7 @@ export default function Auth() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="your@email.com"
+                    placeholder="ivan.ivanov@company.com"
                   />
                 </div>
                 <div className="space-y-2">
@@ -197,8 +231,30 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Должность</Label>
+                    <Input
+                      id="position"
+                      type="text"
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      placeholder="Менеджер"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Отдел</Label>
+                    <Input
+                      id="department"
+                      type="text"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      placeholder="Продажи"
+                    />
+                  </div>
+                </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Регистрация..." : "Зарегистрироваться"}
+                  {loading ? "Регистрация..." : "Зарегистрировать сотрудника"}
                 </Button>
               </form>
             </TabsContent>

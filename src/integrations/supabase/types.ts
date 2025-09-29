@@ -59,6 +59,48 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          department: string | null
+          first_name: string
+          id: string
+          is_active: boolean
+          last_name: string
+          phone: string | null
+          position: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          department?: string | null
+          first_name: string
+          id?: string
+          is_active?: boolean
+          last_name: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          department?: string | null
+          first_name?: string
+          id?: string
+          is_active?: boolean
+          last_name?: string
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
