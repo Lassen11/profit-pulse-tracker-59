@@ -18,6 +18,7 @@ interface TransactionDialogProps {
   transaction?: Transaction | null;
   onSave: (transaction: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => void;
   copyMode?: boolean;
+  selectedCompany?: string;
 }
 
 const incomeCategories = [
@@ -71,7 +72,7 @@ const accountOptions = [
   "Наличные Сейф (КИ)"
 ];
 
-export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false }: TransactionDialogProps) {
+export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false, selectedCompany }: TransactionDialogProps) {
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [formData, setFormData] = useState({
@@ -197,7 +198,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       amount: parseFloat(formData.amount),
       description: formData.description,
       date: formData.date,
-      company: transaction?.company || 'Спасение',
+      company: transaction?.company || selectedCompany || 'Спасение',
       ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName }),
       ...(formData.type === 'income' && formData.incomeAccount && { income_account: formData.incomeAccount }),
       ...(formData.type === 'expense' && formData.expenseAccount && { expense_account: formData.expenseAccount }),
@@ -230,7 +231,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         amount: taxAmount,
         description: `Налог ${formData.taxPercent}% с операции: ${formData.description}`,
         date: formData.date,
-        company: transaction?.company || 'Спасение'
+        company: transaction?.company || selectedCompany || 'Спасение'
       };
     }
 

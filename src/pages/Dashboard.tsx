@@ -932,6 +932,7 @@ export default function Dashboard() {
           transaction={editTransaction}
           onSave={handleSaveTransaction}
           copyMode={copyMode}
+          selectedCompany={selectedCompany}
         />
         </div>
       </div>
