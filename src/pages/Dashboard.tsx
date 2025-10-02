@@ -228,6 +228,34 @@ export default function Dashboard() {
 
   const kpis = useMemo(() => calculateKPIs(filteredTransactions), [filteredTransactions]);
 
+  // Calculate account balances
+  const accountBalances = useMemo(() => {
+    const accounts = [
+      "Зайнаб карта",
+      "Касса офис Диана",
+      "Мариана Карта - депозит",
+      "Карта Visa/Т-Банк (КИ)",
+      "Наличные Сейф (КИ)"
+    ];
+
+    return accounts.map(account => {
+      const income = filteredTransactions
+        .filter(t => t.type === 'income' && (t as any).income_account === account)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expense = filteredTransactions
+        .filter(t => t.type === 'expense' && (t as any).expense_account === account)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      return {
+        account,
+        balance: income - expense,
+        income,
+        expense
+      };
+    });
+  }, [filteredTransactions]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -280,6 +308,8 @@ export default function Dashboard() {
             first_payment: transactionData.first_payment,
             installment_period: transactionData.installment_period,
             lump_sum: transactionData.lump_sum,
+            income_account: (transactionData as any).income_account,
+            expense_account: (transactionData as any).expense_account,
             company: selectedCompany
           })
           .eq('id', transactionData.id)
@@ -319,6 +349,8 @@ export default function Dashboard() {
             first_payment: transactionData.first_payment,
             installment_period: transactionData.installment_period,
             lump_sum: transactionData.lump_sum,
+            income_account: (transactionData as any).income_account,
+            expense_account: (transactionData as any).expense_account,
             company: selectedCompany
           })
           .select()
@@ -893,6 +925,52 @@ export default function Dashboard() {
             icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
+        </div>
+
+        {/* Account Balances */}
+        <div className="kpi-card">
+          <div className="mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-card-foreground flex items-center gap-2">
+              <Wallet className="w-5 h-5" />
+              Остатки на счетах
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Актуальные балансы по счетам компании
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {accountBalances.map(({ account, balance, income, expense }) => (
+              <div key={account} className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground truncate" title={account}>
+                    {account}
+                  </p>
+                  <p className={cn(
+                    "text-xl font-bold",
+                    balance > 0 ? "text-green-600 dark:text-green-400" : 
+                    balance < 0 ? "text-red-600 dark:text-red-400" : 
+                    "text-muted-foreground"
+                  )}>
+                    {formatCurrency(balance)}
+                  </p>
+                  <div className="pt-2 border-t text-xs space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Поступления:</span>
+                      <span className="text-green-600 dark:text-green-400 font-medium">
+                        +{formatCurrency(income)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Списания:</span>
+                      <span className="text-red-600 dark:text-red-400 font-medium">
+                        -{formatCurrency(expense)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Main Content */}
