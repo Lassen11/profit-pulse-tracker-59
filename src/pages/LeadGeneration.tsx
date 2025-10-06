@@ -62,13 +62,9 @@ export default function LeadGeneration() {
       const {
         data,
         error
-      } = await supabase
-        .from('lead_generation')
-        .select('*')
-        .eq('company', selectedCompany)
-.gte('date', format(customDateFrom, 'yyyy-MM-dd'))
-.lte('date', format(customDateTo, 'yyyy-MM-dd'))
-.order('date', { ascending: false });
+      } = await supabase.from('lead_generation').select('*').eq('company', selectedCompany).gte('date', customDateFrom.toISOString().split('T')[0]).lte('date', customDateTo.toISOString().split('T')[0]).order('date', {
+        ascending: false
+      });
       if (error) throw error;
       setLeadData(data || []);
     } catch (error: any) {
@@ -211,7 +207,7 @@ export default function LeadGeneration() {
         for (const row of jsonData) {
           try {
             const rowData = row as any;
-            const date = format(new Date(rowData['Дата'] || rowData['date']), 'yyyy-MM-dd');
+            const date = new Date(rowData['Дата'] || rowData['date']).toISOString().split('T')[0];
             const company = rowData['Компания'] || rowData['company'] || selectedCompany;
             const total_leads = parseInt(rowData['Общее кол. лидов'] || rowData['total_leads'] || '0');
             const qualified_leads = parseInt(rowData['Квал. лиды'] || rowData['qualified_leads'] || '0');
@@ -482,15 +478,11 @@ export default function LeadGeneration() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {leadData.length === 0 ? (
-                      <TableRow>
+                    {leadData.length === 0 ? <TableRow>
                         <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                           Нет данных для отображения
                         </TableCell>
-                      </TableRow>
-                    ) : (
-                      leadData.map((lead) => (
-                        <TableRow key={lead.id}>
+                      </TableRow> : leadData.map(lead => <TableRow key={lead.id}>
                           <TableCell>{format(new Date(lead.date), 'dd.MM.yyyy')}</TableCell>
                           <TableCell className="text-right">{lead.total_leads}</TableCell>
                           <TableCell className="text-right">{lead.qualified_leads}</TableCell>
@@ -499,20 +491,14 @@ export default function LeadGeneration() {
                           <TableCell className="text-right">{lead.payments}</TableCell>
                           <TableCell className="text-right">{formatCurrency(lead.total_cost)}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditingLead(lead);
-                                setEditDialogOpen(true);
-                              }}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => {
+                        setEditingLead(lead);
+                        setEditDialogOpen(true);
+                      }}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           </TableCell>
-                        </TableRow>
-                      ))
-                    )}
+                        </TableRow>)}
                   </TableBody>
                 </Table>
               </div>
@@ -525,16 +511,11 @@ export default function LeadGeneration() {
         </Tabs>
 
         {/* Edit Dialog */}
-        {editingLead && (
-          <LeadDialog
-            editData={editingLead}
-            onSuccess={() => {
-              fetchLeadData();
-              setEditDialogOpen(false);
-              setEditingLead(undefined);
-            }}
-          />
-        )}
+        {editingLead && <LeadDialog editData={editingLead} onSuccess={() => {
+        fetchLeadData();
+        setEditDialogOpen(false);
+        setEditingLead(undefined);
+      }} />}
       </div>
     </div>;
 }
