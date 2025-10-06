@@ -35,6 +35,7 @@ export function LeadDashboard({ leadData, selectedCompany }: LeadDashboardProps)
       
       if (!acc[monthKey]) {
         acc[monthKey] = {
+          monthKey,
           month: monthLabel,
           total_leads: 0,
           qualified_leads: 0,
@@ -68,7 +69,7 @@ export function LeadDashboard({ leadData, selectedCompany }: LeadDashboardProps)
       contract_conversion: month.total_leads > 0 ? (month.contracts / month.total_leads * 100) : 0,
       payment_conversion: month.total_leads > 0 ? (month.payments / month.total_leads * 100) : 0,
       cost_per_lead: month.total_leads > 0 ? (month.total_cost / month.total_leads) : 0
-    })).sort((a, b) => a.month.localeCompare(b.month));
+    })).sort((a: any, b: any) => a.monthKey.localeCompare(b.monthKey));
   }, [leadData]);
 
   const pieData = useMemo(() => {

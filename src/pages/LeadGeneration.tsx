@@ -66,9 +66,9 @@ export default function LeadGeneration() {
         .from('lead_generation')
         .select('*')
         .eq('company', selectedCompany)
-        .gte('date', customDateFrom.toISOString().split('T')[0])
-        .lte('date', customDateTo.toISOString().split('T')[0])
-        .order('date', { ascending: false });
+.gte('date', format(customDateFrom, 'yyyy-MM-dd'))
+.lte('date', format(customDateTo, 'yyyy-MM-dd'))
+.order('date', { ascending: false });
       if (error) throw error;
       setLeadData(data || []);
     } catch (error: any) {
@@ -211,7 +211,7 @@ export default function LeadGeneration() {
         for (const row of jsonData) {
           try {
             const rowData = row as any;
-            const date = new Date(rowData['Дата'] || rowData['date']).toISOString().split('T')[0];
+            const date = format(new Date(rowData['Дата'] || rowData['date']), 'yyyy-MM-dd');
             const company = rowData['Компания'] || rowData['company'] || selectedCompany;
             const total_leads = parseInt(rowData['Общее кол. лидов'] || rowData['total_leads'] || '0');
             const qualified_leads = parseInt(rowData['Квал. лиды'] || rowData['qualified_leads'] || '0');

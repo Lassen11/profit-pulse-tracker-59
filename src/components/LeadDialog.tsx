@@ -76,7 +76,7 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
           .from('lead_generation')
           .update({
             company: formData.company,
-            date: formData.date.toISOString().split('T')[0],
+            date: format(formData.date, 'yyyy-MM-dd'),
             total_leads: formData.total_leads,
             qualified_leads: formData.qualified_leads,
             debt_above_300k: formData.debt_above_300k,
@@ -99,7 +99,7 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
           .insert({
             user_id: user.id,
             company: formData.company,
-            date: formData.date.toISOString().split('T')[0],
+            date: format(formData.date, 'yyyy-MM-dd'),
             total_leads: formData.total_leads,
             qualified_leads: formData.qualified_leads,
             debt_above_300k: formData.debt_above_300k,
