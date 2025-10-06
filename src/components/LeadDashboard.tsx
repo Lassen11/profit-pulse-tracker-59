@@ -27,8 +27,10 @@ export function LeadDashboard({ leadData, selectedCompany }: LeadDashboardProps)
   const chartData = useMemo(() => {
     // Группируем данные по месяцам
     const monthlyData = leadData.reduce((acc, item) => {
-      const date = parseISO(item.date);
-      const monthKey = format(date, 'yyyy-MM');
+      // Извлекаем год-месяц напрямую из строки без конвертации временных зон
+      const monthKey = item.date.substring(0, 7); // "2024-07"
+      const [year, month] = monthKey.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 15); // 15 число для избежания проблем с временными зонами
       const monthLabel = format(date, 'LLLL yyyy', { locale: ru });
       
       if (!acc[monthKey]) {
