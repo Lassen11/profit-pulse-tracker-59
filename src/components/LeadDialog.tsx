@@ -12,28 +12,57 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
 
 interface LeadDialogProps {
   onSuccess: () => void;
+  editData?: {
+    id: string;
+    company: string;
+    date: string;
+    total_leads: number;
+    qualified_leads: number;
+    debt_above_300k: number;
+    contracts: number;
+    payments: number;
+    total_cost: number;
+  };
 }
 
-export function LeadDialog({ onSuccess }: LeadDialogProps) {
+export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    company: "Спасение",
-    date: new Date(),
-    total_leads: 0,
-    qualified_leads: 0,
-    debt_above_300k: 0,
-    contracts: 0,
-    payments: 0,
-    total_cost: 0
+    company: editData?.company || "Спасение",
+    date: editData?.date ? new Date(editData.date) : new Date(),
+    total_leads: editData?.total_leads || 0,
+    qualified_leads: editData?.qualified_leads || 0,
+    debt_above_300k: editData?.debt_above_300k || 0,
+    contracts: editData?.contracts || 0,
+    payments: editData?.payments || 0,
+    total_cost: editData?.total_cost || 0
   });
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Update form data when editData changes
+  useEffect(() => {
+    if (editData) {
+      setFormData({
+        company: editData.company,
+        date: new Date(editData.date),
+        total_leads: editData.total_leads,
+        qualified_leads: editData.qualified_leads,
+        debt_above_300k: editData.debt_above_300k,
+        contracts: editData.contracts,
+        payments: editData.payments,
+        total_cost: editData.total_cost
+      });
+      setOpen(true);
+    }
+  }, [editData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,26 +70,51 @@ export function LeadDialog({ onSuccess }: LeadDialogProps) {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('lead_generation')
-        .insert({
-          user_id: user.id,
-          company: formData.company,
-          date: formData.date.toISOString().split('T')[0],
-          total_leads: formData.total_leads,
-          qualified_leads: formData.qualified_leads,
-          debt_above_300k: formData.debt_above_300k,
-          contracts: formData.contracts,
-          payments: formData.payments,
-          total_cost: formData.total_cost
+      if (editData) {
+        // Update existing record
+        const { error } = await supabase
+          .from('lead_generation')
+          .update({
+            company: formData.company,
+            date: formData.date.toISOString().split('T')[0],
+            total_leads: formData.total_leads,
+            qualified_leads: formData.qualified_leads,
+            debt_above_300k: formData.debt_above_300k,
+            contracts: formData.contracts,
+            payments: formData.payments,
+            total_cost: formData.total_cost
+          })
+          .eq('id', editData.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Данные обновлены",
+          description: "Информация о лидогенерации успешно обновлена",
         });
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('lead_generation')
+          .insert({
+            user_id: user.id,
+            company: formData.company,
+            date: formData.date.toISOString().split('T')[0],
+            total_leads: formData.total_leads,
+            qualified_leads: formData.qualified_leads,
+            debt_above_300k: formData.debt_above_300k,
+            contracts: formData.contracts,
+            payments: formData.payments,
+            total_cost: formData.total_cost
+          });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Данные добавлены",
-        description: "Информация о лидогенерации успешно сохранена",
-      });
+        toast({
+          title: "Данные добавлены",
+          description: "Информация о лидогенерации успешно сохранена",
+        });
+      }
 
       setOpen(false);
       setFormData({
@@ -88,15 +142,17 @@ export function LeadDialog({ onSuccess }: LeadDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="flex items-center space-x-2">
-          <Plus className="h-4 w-4" />
-          <span>Добавить данные</span>
-        </Button>
-      </DialogTrigger>
+      {!editData && (
+        <DialogTrigger asChild>
+          <Button className="flex items-center space-x-2">
+            <Plus className="h-4 w-4" />
+            <span>Добавить данные</span>
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Добавить данные лидогенерации</DialogTitle>
+          <DialogTitle>{editData ? "Редактировать данные лидогенерации" : "Добавить данные лидогенерации"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

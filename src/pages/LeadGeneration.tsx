@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeadDialog } from "@/components/LeadDialog";
 import { LeadDashboard } from "@/components/LeadDashboard";
-import { CalendarIcon, Upload, Download, LogOut, TrendingUp, BarChart3 } from "lucide-react";
+import { CalendarIcon, Upload, Download, LogOut, TrendingUp, BarChart3, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +34,8 @@ export default function LeadGeneration() {
   const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
   const [customDateFrom, setCustomDateFrom] = useState<Date>(startOfMonth(new Date()));
   const [customDateTo, setCustomDateTo] = useState<Date>(endOfMonth(new Date()));
+  const [editingLead, setEditingLead] = useState<LeadData | undefined>(undefined);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const {
     toast
   } = useToast();
@@ -359,10 +361,14 @@ export default function LeadGeneration() {
 
         {/* Summary Table */}
         <Tabs defaultValue="summary" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="summary" className="flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
               <span>Сводная таблица</span>
+            </TabsTrigger>
+            <TabsTrigger value="details" className="flex items-center space-x-2">
+              <Edit className="h-4 w-4" />
+              <span>Детали</span>
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
@@ -452,10 +458,83 @@ export default function LeadGeneration() {
             </div>
           </TabsContent>
 
+          <TabsContent value="details">
+            <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+              <div className="p-6 border-b">
+                <h2 className="text-xl font-semibold">Детальные записи по лидогенерации</h2>
+                <p className="text-muted-foreground mt-1">
+                  {selectedCompany} | {format(customDateFrom, 'dd.MM.yyyy')} - {format(customDateTo, 'dd.MM.yyyy')}
+                </p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Дата</TableHead>
+                      <TableHead className="text-right">Всего лидов</TableHead>
+                      <TableHead className="text-right">Квал. лиды</TableHead>
+                      <TableHead className="text-right">Долг &gt;300к</TableHead>
+                      <TableHead className="text-right">Договор</TableHead>
+                      <TableHead className="text-right">Чек</TableHead>
+                      <TableHead className="text-right">Стоимость</TableHead>
+                      <TableHead className="text-right">Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leadData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          Нет данных для отображения
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      leadData.map((lead) => (
+                        <TableRow key={lead.id}>
+                          <TableCell>{format(new Date(lead.date), 'dd.MM.yyyy')}</TableCell>
+                          <TableCell className="text-right">{lead.total_leads}</TableCell>
+                          <TableCell className="text-right">{lead.qualified_leads}</TableCell>
+                          <TableCell className="text-right">{lead.debt_above_300k}</TableCell>
+                          <TableCell className="text-right">{lead.contracts}</TableCell>
+                          <TableCell className="text-right">{lead.payments}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(lead.total_cost)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingLead(lead);
+                                setEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="dashboard">
             <LeadDashboard leadData={leadData} selectedCompany={selectedCompany} />
           </TabsContent>
         </Tabs>
+
+        {/* Edit Dialog */}
+        {editingLead && (
+          <LeadDialog
+            editData={editingLead}
+            onSuccess={() => {
+              fetchLeadData();
+              setEditDialogOpen(false);
+              setEditingLead(undefined);
+            }}
+          />
+        )}
       </div>
     </div>;
 }
