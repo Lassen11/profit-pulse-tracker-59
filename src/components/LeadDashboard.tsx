@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
 interface LeadData {
@@ -27,8 +27,9 @@ export function LeadDashboard({ leadData, selectedCompany }: LeadDashboardProps)
   const chartData = useMemo(() => {
     // Группируем данные по месяцам
     const monthlyData = leadData.reduce((acc, item) => {
-      const monthKey = format(new Date(item.date), 'yyyy-MM');
-      const monthLabel = format(new Date(item.date), 'LLL yyyy', { locale: ru });
+      const date = parseISO(item.date);
+      const monthKey = format(date, 'yyyy-MM');
+      const monthLabel = format(date, 'LLLL yyyy', { locale: ru });
       
       if (!acc[monthKey]) {
         acc[monthKey] = {
