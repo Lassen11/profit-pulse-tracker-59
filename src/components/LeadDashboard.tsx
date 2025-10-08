@@ -179,36 +179,9 @@ export function LeadDashboard({
       </div>
 
       {/* Общее распределение */}
-      <Card className="p-6">
-        
-        <div className="flex justify-center">
-          <ResponsiveContainer width="100%" height={400}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" labelLine={false} label={({
-              name,
-              percent
-            }) => `${name}: ${(percent * 100).toFixed(1)}%`} outerRadius={120} fill="#8884d8" dataKey="value">
-                {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+      
 
       {/* Сводка по месяцам */}
-      <Card className="p-6">
-        
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip formatter={(value: any) => [`${value.toLocaleString('ru-RU')} ₽`, '']} />
-            <Legend />
-            <Bar dataKey="total_cost" fill="#8884d8" name="Общие затраты" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Card>
+      
     </div>;
 }
