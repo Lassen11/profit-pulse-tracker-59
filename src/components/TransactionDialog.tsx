@@ -69,7 +69,8 @@ const accountOptions = [
   "Касса офис Диана",
   "Мариана Карта - депозит",
   "Карта Visa/Т-Банк (КИ)",
-  "Наличные Сейф (КИ)"
+  "Наличные Сейф (КИ)",
+  "Расчетный счет"
 ];
 
 export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false, selectedCompany }: TransactionDialogProps) {
