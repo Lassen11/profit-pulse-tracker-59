@@ -4,13 +4,20 @@ import { KPICard } from "@/components/KPICard";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TransactionTable } from "@/components/TransactionTable";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, ArrowLeft, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, ArrowLeft, Building2, CalendarIcon, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Transaction } from "@/components/TransactionTable";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
 
@@ -18,6 +25,9 @@ export default function AllProjects() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([...companies]);
+  const [dateFrom, setDateFrom] = useState<Date>();
+  const [dateTo, setDateTo] = useState<Date>();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -44,7 +54,6 @@ export default function AllProjects() {
         const { data, error } = await supabase
           .from('transactions')
           .select('*')
-          .eq('user_id', user.id)
           .order('date', { ascending: false });
 
         if (error) {
@@ -79,20 +88,39 @@ export default function AllProjects() {
     }
   }, [user, authLoading, toast]);
 
+  // Filtered transactions based on company and date filters
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const matchesCompany = selectedCompanies.includes(t.company);
+      const transactionDate = new Date(t.date);
+      const matchesDateFrom = !dateFrom || transactionDate >= dateFrom;
+      const matchesDateTo = !dateTo || transactionDate <= dateTo;
+      return matchesCompany && matchesDateFrom && matchesDateTo;
+    });
+  }, [transactions, selectedCompanies, dateFrom, dateTo]);
+
   // Calculate KPIs for all companies combined
-  const allKpis = useMemo(() => calculateKPIs(transactions), [transactions]);
+  const allKpis = useMemo(() => calculateKPIs(filteredTransactions), [filteredTransactions]);
 
   // Calculate KPIs by company
   const companiesKpis = useMemo(() => {
     return companies.map(company => {
-      const companyTransactions = transactions.filter(t => t.company === company);
+      const companyTransactions = filteredTransactions.filter(t => t.company === company);
       return {
         company,
         kpis: calculateKPIs(companyTransactions),
         transactionsCount: companyTransactions.length
       };
     });
-  }, [transactions]);
+  }, [filteredTransactions]);
+
+  const toggleCompany = (company: string) => {
+    setSelectedCompanies(prev =>
+      prev.includes(company)
+        ? prev.filter(c => c !== company)
+        : [...prev, company]
+    );
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -172,6 +200,98 @@ export default function AllProjects() {
           </div>
         </div>
 
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              Фильтры
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Company Filters */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Компании</Label>
+                <div className="space-y-2">
+                  {companies.map((company) => (
+                    <div key={company} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={company}
+                        checked={selectedCompanies.includes(company)}
+                        onCheckedChange={() => toggleCompany(company)}
+                      />
+                      <Label htmlFor={company} className="cursor-pointer">
+                        {company}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date Filters */}
+              <div className="flex-1 space-y-3">
+                <Label className="text-sm font-medium">Период</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full sm:w-48 justify-start text-left font-normal",
+                          !dateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, "dd.MM.yyyy") : "От"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={setDateFrom}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full sm:w-48 justify-start text-left font-normal",
+                          !dateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, "dd.MM.yyyy") : "До"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={setDateTo}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setDateFrom(undefined);
+                      setDateTo(undefined);
+                    }}
+                  >
+                    Сбросить
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="overview">Общий обзор</TabsTrigger>
@@ -231,7 +351,17 @@ export default function AllProjects() {
                 <CardTitle>Общая аналитика по месяцам</CardTitle>
               </CardHeader>
               <CardContent>
-                <MonthlyAnalytics transactions={transactions} />
+                <MonthlyAnalytics transactions={filteredTransactions} />
+              </CardContent>
+            </Card>
+
+            {/* All Transactions Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Все операции ({filteredTransactions.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TransactionTable transactions={filteredTransactions} showFilters={true} />
               </CardContent>
             </Card>
           </TabsContent>

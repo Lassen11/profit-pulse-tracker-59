@@ -21,6 +21,7 @@ const companies = ["Спасение", "Дело Бизнеса", "Кебаб Б
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]); // All transactions across companies for account balances
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [copyMode, setCopyMode] = useState(false);
@@ -89,24 +90,27 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       
-      // Load all transactions for the user and selected company
-      const { data, error } = await supabase
+      // Load all transactions for the user (all companies) for account balances
+      const { data: allData, error: allError } = await supabase
         .from('transactions')
         .select('*')
-        .eq('company', selectedCompany)
         .order('date', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (allError) {
+        console.error('Supabase error:', allError);
+        throw allError;
       }
 
-      const formattedData = data?.map(t => ({
+      const formattedAllData = allData?.map(t => ({
         ...t,
         type: t.type as 'income' | 'expense'
       })) || [];
 
-      setTransactions(formattedData);
+      setAllTransactions(formattedAllData);
+      
+      // Filter for selected company
+      const companyData = formattedAllData.filter(t => t.company === selectedCompany);
+      setTransactions(companyData);
       setLastFetchTime(now);
 
     } catch (error: any) {
@@ -173,10 +177,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (user && selectedCompany) {
       setLastFetchTime(0); // Force refresh when company changes
-      setTransactions([]); // Clear current transactions
-      fetchTransactions();
+      // Filter from allTransactions instead of fetching again
+      const companyData = allTransactions.filter(t => t.company === selectedCompany);
+      setTransactions(companyData);
+      // Only fetch if allTransactions is empty
+      if (allTransactions.length === 0) {
+        fetchTransactions();
+      }
     }
-  }, [selectedCompany, user, fetchTransactions]);
+  }, [selectedCompany, user, allTransactions]);
 
   const handleRetry = () => {
     setLastFetchTime(0); // Force refresh
@@ -228,7 +237,7 @@ export default function Dashboard() {
 
   const kpis = useMemo(() => calculateKPIs(filteredTransactions), [filteredTransactions]);
 
-  // Calculate account balances
+  // Calculate account balances across ALL companies and up to current period
   const accountBalances = useMemo(() => {
     const accounts = [
       "Зайнаб карта",
@@ -239,12 +248,42 @@ export default function Dashboard() {
       "Расчетный счет"
     ];
 
+    // Get end date of current filter period
+    let endDate: Date;
+    const now = new Date();
+    
+    switch (periodFilter) {
+      case "month":
+        endDate = endOfMonth(now);
+        break;
+      case "specific-month":
+        endDate = endOfMonth(selectedMonth);
+        break;
+      case "quarter":
+        endDate = endOfQuarter(now);
+        break;
+      case "year":
+        endDate = endOfYear(now);
+        break;
+      case "custom":
+        endDate = customDateTo || now;
+        break;
+      default:
+        endDate = now;
+    }
+
+    // Calculate balance from ALL transactions (all companies) up to the end date
     return accounts.map(account => {
-      const income = filteredTransactions
+      const relevantTransactions = allTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return transactionDate <= endDate;
+      });
+
+      const income = relevantTransactions
         .filter(t => t.type === 'income' && (t as any).income_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      const expense = filteredTransactions
+      const expense = relevantTransactions
         .filter(t => t.type === 'expense' && (t as any).expense_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
@@ -255,7 +294,7 @@ export default function Dashboard() {
         expense
       };
     });
-  }, [filteredTransactions]);
+  }, [allTransactions, periodFilter, selectedMonth, customDateTo]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -319,6 +358,10 @@ export default function Dashboard() {
         if (error) throw error;
 
         setTransactions(prev => 
+          prev.map(t => t.id === transactionData.id ? { ...transactionData, id: transactionData.id } as Transaction : t)
+        );
+        // Also update allTransactions
+        setAllTransactions(prev =>
           prev.map(t => t.id === transactionData.id ? { ...transactionData, id: transactionData.id } as Transaction : t)
         );
         toast({
@@ -393,6 +436,7 @@ export default function Dashboard() {
         }
 
         setTransactions(prev => [...newTransactions, ...prev]);
+        setAllTransactions(prev => [...newTransactions, ...prev]);
         toast({
           title: taxTransaction ? "Операции добавлены" : "Операция добавлена",
           description: taxTransaction ? "Основная операция и налог успешно созданы" : "Новая транзакция успешно создана",
@@ -444,6 +488,7 @@ export default function Dashboard() {
         if (error) throw error;
 
         setTransactions(prev => prev.filter(t => t.id !== id));
+        setAllTransactions(prev => prev.filter(t => t.id !== id));
         toast({
           title: "Операция удалена",
           description: "Транзакция была успешно удалена",
@@ -475,6 +520,7 @@ export default function Dashboard() {
       'Подкатегория': transaction.subcategory || '',
       'Клиент': transaction.client_name || '',
       'Компания': transaction.company,
+      'Счет': transaction.type === 'income' ? (transaction as any).income_account || '' : (transaction as any).expense_account || '',
       'Сумма': transaction.amount,
       'Описание': transaction.description || '',
       'Период рассрочки': transaction.installment_period || '',
@@ -494,6 +540,7 @@ export default function Dashboard() {
       { wch: 20 }, // Подкатегория
       { wch: 25 }, // Клиент
       { wch: 20 }, // Компания
+      { wch: 25 }, // Счет
       { wch: 15 }, // Сумма
       { wch: 30 }, // Описание
       { wch: 15 }, // Период рассрочки
@@ -545,6 +592,7 @@ export default function Dashboard() {
             const description = rowData['Описание'] || rowData['description'] || null;
             const clientName = rowData['Клиент'] || rowData['client_name'] || null;
             const company = rowData['Компания'] || rowData['company'] || selectedCompany;
+            const account = rowData['Счет'] || rowData['account'] || null;
             const contractAmount = parseFloat(rowData['Сумма договора'] || rowData['contract_amount'] || '0') || null;
             const firstPayment = parseFloat(rowData['Первый взнос'] || rowData['first_payment'] || '0') || null;
             const installmentPeriod = parseInt(rowData['Период рассрочки'] || rowData['installment_period'] || '0') || null;
@@ -575,6 +623,8 @@ export default function Dashboard() {
                 description,
                 client_name: clientName,
                 company,
+                ...(type === 'income' && account && { income_account: account }),
+                ...(type === 'expense' && account && { expense_account: account }),
                 contract_amount: contractAmount,
                 first_payment: firstPayment,
                 installment_period: installmentPeriod
@@ -974,34 +1024,24 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
-          {/* Analytics Section */}
-          <div className="xl:col-span-1 order-2 xl:order-1">
-            <MonthlyAnalytics transactions={filteredTransactions} />
+        {/* Transaction Table - Full Width */}
+        <div className="kpi-card">
+          <div className="mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-card-foreground">
+              Операции
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Список всех финансовых операций
+            </p>
           </div>
-
-          {/* Transaction Table */}
-          <div className="xl:col-span-2 order-1 xl:order-2">
-            <div className="kpi-card">
-              <div className="mb-6">
-                <h2 className="text-lg sm:text-xl font-semibold text-card-foreground">
-                  Операции
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  Список всех финансовых операций
-                </p>
-              </div>
-              <TransactionTable
-                transactions={filteredTransactions}
-                onEdit={handleEditTransaction}
-                onDelete={handleDeleteTransaction}
-                onCopy={handleCopyTransaction}
-              />
-            </div>
-          </div>
+          <TransactionTable
+            transactions={filteredTransactions}
+            onEdit={isAdmin ? handleEditTransaction : undefined}
+            onDelete={isAdmin ? handleDeleteTransaction : undefined}
+            onCopy={isAdmin ? handleCopyTransaction : undefined}
+            showFilters={true}
+          />
         </div>
-
         {/* Transaction Dialog */}
         <TransactionDialog
           open={dialogOpen}

@@ -23,6 +23,8 @@ export interface Transaction {
   installment_period?: number | null;
   lump_sum?: number | null;
   company: string;
+  income_account?: string | null;
+  expense_account?: string | null;
 }
 
 interface TransactionTableProps {
@@ -30,17 +32,36 @@ interface TransactionTableProps {
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
   onCopy?: (transaction: Transaction) => void;
+  showFilters?: boolean;
 }
 
-export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: TransactionTableProps) {
+export function TransactionTable({ transactions, onEdit, onDelete, onCopy, showFilters = false }: TransactionTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [accountFilter, setAccountFilter] = useState("");
 
-  const filteredTransactions = transactions.filter(transaction =>
-    (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (transaction.category && transaction.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (transaction.subcategory && transaction.subcategory.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (transaction.client_name && transaction.client_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredTransactions = transactions.filter(transaction => {
+    const matchesSearch = 
+      (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (transaction.category && transaction.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (transaction.subcategory && transaction.subcategory.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (transaction.client_name && transaction.client_name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesDate = !dateFilter || transaction.date.includes(dateFilter);
+    const matchesType = !typeFilter || transaction.type === typeFilter;
+    const matchesCategory = !categoryFilter || transaction.category.toLowerCase().includes(categoryFilter.toLowerCase());
+    const matchesSubcategory = !subcategoryFilter || (transaction.subcategory && transaction.subcategory.toLowerCase().includes(subcategoryFilter.toLowerCase()));
+    const matchesClient = !clientFilter || (transaction.client_name && transaction.client_name.toLowerCase().includes(clientFilter.toLowerCase()));
+    
+    const transactionAccount = transaction.type === 'income' ? transaction.income_account : transaction.expense_account;
+    const matchesAccount = !accountFilter || (transactionAccount && transactionAccount.toLowerCase().includes(accountFilter.toLowerCase()));
+
+    return matchesSearch && matchesDate && matchesType && matchesCategory && matchesSubcategory && matchesClient && matchesAccount;
+  });
 
   const formatAmount = (amount: number, type: 'income' | 'expense') => {
     const formatted = new Intl.NumberFormat('ru-RU', {
@@ -75,10 +96,66 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
               <TableHead>Категория</TableHead>
               <TableHead>Подкатегория</TableHead>
               <TableHead>Клиент</TableHead>
+              <TableHead>Счет</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Описание</TableHead>
-              <TableHead className="w-20">Действия</TableHead>
+              {(onEdit || onDelete || onCopy) && <TableHead className="w-20">Действия</TableHead>}
             </TableRow>
+            {showFilters && (
+              <TableRow>
+                <TableHead>
+                  <Input
+                    placeholder="Фильтр..."
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="h-8"
+                  />
+                </TableHead>
+                <TableHead>
+                  <Input
+                    placeholder="Фильтр..."
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="h-8"
+                  />
+                </TableHead>
+                <TableHead>
+                  <Input
+                    placeholder="Фильтр..."
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="h-8"
+                  />
+                </TableHead>
+                <TableHead>
+                  <Input
+                    placeholder="Фильтр..."
+                    value={subcategoryFilter}
+                    onChange={(e) => setSubcategoryFilter(e.target.value)}
+                    className="h-8"
+                  />
+                </TableHead>
+                <TableHead>
+                  <Input
+                    placeholder="Фильтр..."
+                    value={clientFilter}
+                    onChange={(e) => setClientFilter(e.target.value)}
+                    className="h-8"
+                  />
+                </TableHead>
+                <TableHead>
+                  <Input
+                    placeholder="Фильтр..."
+                    value={accountFilter}
+                    onChange={(e) => setAccountFilter(e.target.value)}
+                    className="h-8"
+                  />
+                </TableHead>
+                <TableHead></TableHead>
+                <TableHead></TableHead>
+                {(onEdit || onDelete || onCopy) && <TableHead></TableHead>}
+              </TableRow>
+            )}
           </TableHeader>
           <TableBody>
             {filteredTransactions.map((transaction) => (
@@ -101,6 +178,7 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
                 <TableCell>{transaction.category}</TableCell>
                 <TableCell>{transaction.subcategory || '-'}</TableCell>
                 <TableCell>{transaction.client_name || '-'}</TableCell>
+                <TableCell>{(transaction.type === 'income' ? transaction.income_account : transaction.expense_account) || '-'}</TableCell>
                 <TableCell className={cn(
                   "text-right font-semibold",
                   transaction.type === 'income' ? 'amount-positive' : 'amount-negative'
@@ -108,35 +186,43 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
                   {formatAmount(transaction.amount, transaction.type)}
                 </TableCell>
                 <TableCell className="max-w-xs truncate">{transaction.description || '-'}</TableCell>
-                <TableCell>
-                  <div className="flex space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit?.(transaction)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onCopy?.(transaction)}
-                      className="h-8 w-8 p-0"
-                      title="Копировать операцию"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete?.(transaction.id)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {(onEdit || onDelete || onCopy) && (
+                  <TableCell>
+                    <div className="flex space-x-1">
+                      {onEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(transaction)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onCopy && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onCopy(transaction)}
+                          className="h-8 w-8 p-0"
+                          title="Копировать операцию"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(transaction.id)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -193,6 +279,11 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
                 </div>
               )}
               
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Счет:</span>
+                <span className="text-sm">{(transaction.type === 'income' ? transaction.income_account : transaction.expense_account) || '-'}</span>
+              </div>
+              
               {transaction.description && (
                 <div className="pt-1">
                   <span className="text-sm text-muted-foreground">Описание:</span>
@@ -201,36 +292,44 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy }: Tra
               )}
             </div>
             
-            <div className="flex justify-end space-x-2 pt-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEdit?.(transaction)}
-                className="h-9 px-3"
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Изменить
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onCopy?.(transaction)}
-                className="h-9 px-3"
-                title="Копировать операцию"
-              >
-                <Copy className="h-4 w-4 mr-1" />
-                Копировать
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDelete?.(transaction.id)}
-                className="h-9 px-3 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Удалить
-              </Button>
-            </div>
+            {(onEdit || onDelete || onCopy) && (
+              <div className="flex justify-end space-x-2 pt-2 border-t">
+                {onEdit && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEdit(transaction)}
+                    className="h-9 px-3"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Изменить
+                  </Button>
+                )}
+                {onCopy && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onCopy(transaction)}
+                    className="h-9 px-3"
+                    title="Копировать операцию"
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Копировать
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDelete(transaction.id)}
+                    className="h-9 px-3 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Удалить
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
