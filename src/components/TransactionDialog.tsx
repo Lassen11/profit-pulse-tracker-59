@@ -225,12 +225,23 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     // Создаем налоговую операцию только для новых доходных операций с указанным процентом налогов
     if (formData.type === 'income' && formData.taxPercent && parseFloat(formData.taxPercent) > 0 && (!transaction || copyMode)) {
       const taxAmount = parseFloat(formData.amount) * (parseFloat(formData.taxPercent) / 100);
+      
+      // Формируем детальное описание налога
+      let taxDescription = `Налог ${formData.taxPercent}% с операции: ${formData.category}`;
+      if (formData.clientName) {
+        taxDescription += ` - Клиент: ${formData.clientName}`;
+      }
+      taxDescription += ` - Сумма: ${parseFloat(formData.amount).toLocaleString('ru-RU')} ₽`;
+      if (formData.description) {
+        taxDescription += ` (${formData.description})`;
+      }
+      
       taxTransaction = {
         type: 'expense' as const,
         category: 'Налог УСН',
         subcategory: 'Налоги',
         amount: taxAmount,
-        description: `Налог ${formData.taxPercent}% с операции: ${formData.description}`,
+        description: taxDescription,
         date: formData.date,
         company: transaction?.company || selectedCompany || 'Спасение'
       };
