@@ -235,8 +235,6 @@ export default function Dashboard() {
     });
   }, [transactions, periodFilter, customDateFrom, customDateTo, selectedMonth]);
 
-  const kpis = useMemo(() => calculateKPIs(filteredTransactions), [filteredTransactions]);
-
   // Calculate account balances across ALL companies and up to current period
   const accountBalances = useMemo(() => {
     const accounts = [
@@ -296,6 +294,16 @@ export default function Dashboard() {
     });
   }, [allTransactions, periodFilter, selectedMonth, customDateTo]);
 
+  const kpis = useMemo(() => {
+    const baseKpis = calculateKPIs(filteredTransactions);
+    // Calculate moneyInProject as sum of all account balances
+    const totalAccountBalance = accountBalances.reduce((sum, acc) => sum + acc.balance, 0);
+    return {
+      ...baseKpis,
+      moneyInProject: totalAccountBalance
+    };
+  }, [filteredTransactions, accountBalances]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -350,6 +358,7 @@ export default function Dashboard() {
             lump_sum: transactionData.lump_sum,
             income_account: (transactionData as any).income_account,
             expense_account: (transactionData as any).expense_account,
+            organization_name: (transactionData as any).organization_name,
             company: selectedCompany
           })
           .eq('id', transactionData.id)
@@ -395,6 +404,7 @@ export default function Dashboard() {
             lump_sum: transactionData.lump_sum,
             income_account: (transactionData as any).income_account,
             expense_account: (transactionData as any).expense_account,
+            organization_name: (transactionData as any).organization_name,
             company: selectedCompany
           })
           .select()
@@ -520,6 +530,7 @@ export default function Dashboard() {
       'Подкатегория': transaction.subcategory || '',
       'Клиент': transaction.client_name || '',
       'Компания': transaction.company,
+      'Наименование организации': (transaction as any).organization_name || '',
       'Счет': transaction.type === 'income' ? (transaction as any).income_account || '' : (transaction as any).expense_account || '',
       'Сумма': transaction.amount,
       'Описание': transaction.description || '',
@@ -540,6 +551,7 @@ export default function Dashboard() {
       { wch: 20 }, // Подкатегория
       { wch: 25 }, // Клиент
       { wch: 20 }, // Компания
+      { wch: 30 }, // Наименование организации
       { wch: 25 }, // Счет
       { wch: 15 }, // Сумма
       { wch: 30 }, // Описание
@@ -592,6 +604,7 @@ export default function Dashboard() {
             const description = rowData['Описание'] || rowData['description'] || null;
             const clientName = rowData['Клиент'] || rowData['client_name'] || null;
             const company = rowData['Компания'] || rowData['company'] || selectedCompany;
+            const organizationName = rowData['Наименование организации'] || rowData['organization_name'] || null;
             const account = rowData['Счет'] || rowData['account'] || null;
             const contractAmount = parseFloat(rowData['Сумма договора'] || rowData['contract_amount'] || '0') || null;
             const firstPayment = parseFloat(rowData['Первый взнос'] || rowData['first_payment'] || '0') || null;
@@ -623,6 +636,7 @@ export default function Dashboard() {
                 description,
                 client_name: clientName,
                 company,
+                organization_name: organizationName,
                 ...(type === 'income' && account && { income_account: account }),
                 ...(type === 'expense' && account && { expense_account: account }),
                 contract_amount: contractAmount,

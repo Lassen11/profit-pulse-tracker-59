@@ -25,6 +25,7 @@ const incomeCategories = [
   "Продажи",
   "Услуги", 
   "Инвестиции",
+  "Возврат депозита",
   "Прочие доходы"
 ];
 
@@ -90,7 +91,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     installmentPeriod: '',
     lumpSum: '',
     incomeAccount: '',
-    expenseAccount: ''
+    expenseAccount: '',
+    organizationName: ''
   });
 
   useEffect(() => {
@@ -109,7 +111,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         installmentPeriod: transaction.installment_period?.toString() || '',
         lumpSum: (transaction as any).lump_sum?.toString() || '',
         incomeAccount: (transaction as any).income_account || '',
-        expenseAccount: (transaction as any).expense_account || ''
+        expenseAccount: (transaction as any).expense_account || '',
+        organizationName: (transaction as any).organization_name || ''
       });
     } else {
       setFormData({
@@ -126,7 +129,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         installmentPeriod: '',
         lumpSum: '',
         incomeAccount: '',
-        expenseAccount: ''
+        expenseAccount: '',
+        organizationName: ''
       });
     }
   }, [transaction, open]);
@@ -203,6 +207,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName }),
       ...(formData.type === 'income' && formData.incomeAccount && { income_account: formData.incomeAccount }),
       ...(formData.type === 'expense' && formData.expenseAccount && { expense_account: formData.expenseAccount }),
+      ...(formData.organizationName && { organization_name: formData.organizationName }),
       ...(formData.type === 'income' && formData.category === 'Продажи' && {
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
         first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
@@ -331,6 +336,18 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   value={formData.clientName}
                   onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                   placeholder="Введите ФИО клиента..."
+                />
+              </div>
+            )}
+
+            {(transaction?.company === 'Дело Бизнеса' || selectedCompany === 'Дело Бизнеса') && (
+              <div className="space-y-2">
+                <Label htmlFor="organizationName">Наименование организации</Label>
+                <Input
+                  id="organizationName"
+                  value={formData.organizationName}
+                  onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
+                  placeholder="Введите наименование организации..."
                 />
               </div>
             )}

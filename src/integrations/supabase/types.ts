@@ -118,6 +118,7 @@ export type Database = {
           income_account: string | null
           installment_period: number | null
           lump_sum: number | null
+          organization_name: string | null
           subcategory: string | null
           termination_date: string | null
           type: string
@@ -140,6 +141,7 @@ export type Database = {
           income_account?: string | null
           installment_period?: number | null
           lump_sum?: number | null
+          organization_name?: string | null
           subcategory?: string | null
           termination_date?: string | null
           type: string
@@ -162,6 +164,7 @@ export type Database = {
           income_account?: string | null
           installment_period?: number | null
           lump_sum?: number | null
+          organization_name?: string | null
           subcategory?: string | null
           termination_date?: string | null
           type?: string
@@ -203,10 +206,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
