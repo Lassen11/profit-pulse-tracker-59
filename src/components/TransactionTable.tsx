@@ -53,7 +53,7 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy, showF
       (transaction.client_name && transaction.client_name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesDate = !dateFilter || transaction.date.includes(dateFilter);
-    const matchesType = !typeFilter || transaction.type === typeFilter;
+    const matchesType = !typeFilter || typeFilter === 'all' || transaction.type === typeFilter;
     const matchesCategory = !categoryFilter || transaction.category.toLowerCase().includes(categoryFilter.toLowerCase());
     const matchesSubcategory = !subcategoryFilter || (transaction.subcategory && transaction.subcategory.toLowerCase().includes(subcategoryFilter.toLowerCase()));
     const matchesClient = !clientFilter || (transaction.client_name && transaction.client_name.toLowerCase().includes(clientFilter.toLowerCase()));
@@ -113,12 +113,12 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy, showF
                   />
                 </TableHead>
                 <TableHead>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <Select value={typeFilter || "all"} onValueChange={(value) => setTypeFilter(value === "all" ? "" : value)}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Все" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все</SelectItem>
+                      <SelectItem value="all">Все</SelectItem>
                       <SelectItem value="income">Доход</SelectItem>
                       <SelectItem value="expense">Расход</SelectItem>
                     </SelectContent>
