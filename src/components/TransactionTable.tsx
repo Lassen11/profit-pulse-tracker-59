@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Edit, Trash2, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -112,12 +113,16 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy, showF
                   />
                 </TableHead>
                 <TableHead>
-                  <Input
-                    placeholder="Фильтр..."
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    className="h-8"
-                  />
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Все" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Все</SelectItem>
+                      <SelectItem value="income">Доход</SelectItem>
+                      <SelectItem value="expense">Расход</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </TableHead>
                 <TableHead>
                   <Input
