@@ -44,6 +44,7 @@ export default function Employees() {
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [submitting, setSubmitting] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -237,6 +238,54 @@ export default function Employees() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'user', firstName: string, lastName: string) => {
+    setUpdatingRoleUserId(userId);
+
+    try {
+      const { data: authData } = await supabase.auth.getSession();
+      if (!authData.session) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(`https://rdpxbbddqxwbufzqozqz.supabase.co/functions/v1/update-user-role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          role: newRole
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update role');
+      }
+
+      toast({
+        title: "Успешно",
+        description: `Роль сотрудника ${firstName} ${lastName} изменена на ${newRole === 'admin' ? 'Администратор' : 'Пользователь'}`,
+      });
+
+      // Обновляем список
+      fetchEmployees();
+    } catch (error: any) {
+      console.error('Error updating role:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось изменить роль",
+        variant: "destructive"
+      });
+      // Обновляем список для отката изменений в UI
+      fetchEmployees();
+    } finally {
+      setUpdatingRoleUserId(null);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -409,19 +458,47 @@ export default function Employees() {
                       <TableCell>{employee.position || "-"}</TableCell>
                       <TableCell>{employee.department || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant={employee.role === 'admin' ? 'default' : 'secondary'}>
-                          {employee.role === 'admin' ? (
-                            <>
-                              <Shield className="h-3 w-3 mr-1" />
-                              Администратор
-                            </>
-                          ) : (
-                            <>
-                              <User className="h-3 w-3 mr-1" />
-                              Пользователь
-                            </>
-                          )}
-                        </Badge>
+                        {employee.user_id === user?.id ? (
+                          <Badge variant={employee.role === 'admin' ? 'default' : 'secondary'}>
+                            {employee.role === 'admin' ? (
+                              <>
+                                <Shield className="h-3 w-3 mr-1" />
+                                Администратор
+                              </>
+                            ) : (
+                              <>
+                                <User className="h-3 w-3 mr-1" />
+                                Пользователь
+                              </>
+                            )}
+                          </Badge>
+                        ) : (
+                          <Select 
+                            value={employee.role} 
+                            onValueChange={(value: 'admin' | 'user') => 
+                              handleRoleChange(employee.user_id, value, employee.first_name, employee.last_name)
+                            }
+                            disabled={updatingRoleUserId === employee.user_id}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">
+                                <div className="flex items-center">
+                                  <User className="h-3 w-3 mr-2" />
+                                  Пользователь
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="admin">
+                                <div className="flex items-center">
+                                  <Shield className="h-3 w-3 mr-2" />
+                                  Администратор
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={employee.is_active ? 'default' : 'secondary'}>
