@@ -1107,17 +1107,19 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Money in Project by Company */}
+        {/* Money in Project for Selected Company */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {moneyInProjectByCompany.map(({ company, balance }) => (
-            <KPICard
-              key={company}
-              title={`Деньги в ${company}`}
-              value={formatCurrency(balance)}
-              icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
-              className="shadow-kpi"
-            />
-          ))}
+          {moneyInProjectByCompany
+            .filter(({ company }) => company === selectedCompany)
+            .map(({ company, balance }) => (
+              <KPICard
+                key={company}
+                title={`Деньги в ${company}`}
+                value={formatCurrency(balance)}
+                icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
+                className="shadow-kpi"
+              />
+            ))}
         </div>
 
         {/* Account Balances */}
