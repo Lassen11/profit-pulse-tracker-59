@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { KPICard } from "@/components/KPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
+import { AccountTransferDialog, AccountTransfer } from "@/components/AccountTransferDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3 } from "lucide-react";
@@ -18,6 +19,15 @@ import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
+
+const accountOptions = [
+  "Зайнаб карта",
+  "Касса офис Диана",
+  "Мариана Карта - депозит",
+  "Карта Visa/Т-Банк (КИ)",
+  "Наличные Сейф (КИ)",
+  "Расчетный счет"
+];
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -35,6 +45,8 @@ export default function Dashboard() {
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedAccountForTransfer, setSelectedAccountForTransfer] = useState<string>();
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -518,6 +530,68 @@ export default function Dashboard() {
     setEditTransaction(null);
     setCopyMode(false);
     setDialogOpen(true);
+  };
+
+  const handleAccountClick = (account: string) => {
+    if (!isAdmin) return;
+    setSelectedAccountForTransfer(account);
+    setTransferDialogOpen(true);
+  };
+
+  const handleSaveTransfer = async (transfer: AccountTransfer) => {
+    if (!user) return;
+
+    try {
+      // Создаем две транзакции: расход со счета списания и доход на счет зачисления
+      const expenseTransaction = {
+        user_id: user.id,
+        company: selectedCompany,
+        type: 'expense',
+        category: 'Перевод между счетами',
+        amount: transfer.amount,
+        date: transfer.date,
+        description: transfer.description ? `Перевод на ${transfer.toAccount}. ${transfer.description}` : `Перевод на ${transfer.toAccount}`,
+        expense_account: transfer.fromAccount,
+      };
+
+      const incomeTransaction = {
+        user_id: user.id,
+        company: selectedCompany,
+        type: 'income',
+        category: 'Перевод между счетами',
+        amount: transfer.amount,
+        date: transfer.date,
+        description: transfer.description ? `Перевод с ${transfer.fromAccount}. ${transfer.description}` : `Перевод с ${transfer.fromAccount}`,
+        income_account: transfer.toAccount,
+      };
+
+      const { error: expenseError } = await supabase
+        .from('transactions')
+        .insert([expenseTransaction]);
+
+      if (expenseError) throw expenseError;
+
+      const { error: incomeError } = await supabase
+        .from('transactions')
+        .insert([incomeTransaction]);
+
+      if (incomeError) throw incomeError;
+
+      // Обновляем данные
+      await fetchTransactions();
+      
+      toast({
+        title: "Перевод выполнен",
+        description: `${transfer.amount} ₽ переведено с ${transfer.fromAccount} на ${transfer.toAccount}`,
+      });
+    } catch (error) {
+      console.error('Error creating transfer:', error);
+      toast({
+        title: "Ошибка перевода",
+        description: "Не удалось выполнить перевод между счетами",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleExportToExcel = () => {
@@ -1005,7 +1079,22 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {accountBalances.map(({ account, balance, income, expense }) => (
-              <div key={account} className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
+              <div 
+                key={account} 
+                className={cn(
+                  "p-4 rounded-lg border bg-card hover:shadow-md transition-shadow",
+                  isAdmin && "cursor-pointer hover:border-primary/50"
+                )}
+                onClick={() => handleAccountClick(account)}
+                role={isAdmin ? "button" : undefined}
+                tabIndex={isAdmin ? 0 : undefined}
+                onKeyDown={isAdmin ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleAccountClick(account);
+                  }
+                } : undefined}
+              >
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground truncate" title={account}>
                     {account}
@@ -1064,6 +1153,15 @@ export default function Dashboard() {
           onSave={handleSaveTransaction}
           copyMode={copyMode}
           selectedCompany={selectedCompany}
+        />
+
+        {/* Account Transfer Dialog */}
+        <AccountTransferDialog
+          open={transferDialogOpen}
+          onOpenChange={setTransferDialogOpen}
+          accounts={accountOptions}
+          selectedAccount={selectedAccountForTransfer}
+          onSave={handleSaveTransfer}
         />
         </div>
       </div>
