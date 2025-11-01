@@ -1064,7 +1064,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KPICard
             title="Выручка"
             value={formatCurrency(kpis.income)}
@@ -1108,7 +1108,7 @@ export default function Dashboard() {
         </div>
 
         {/* Money in Project for Selected Company */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {moneyInProjectByCompany
             .filter(({ company }) => company === selectedCompany)
             .map(({ company, balance }) => (

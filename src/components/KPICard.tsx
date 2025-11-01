@@ -26,7 +26,7 @@ export function KPICard({ title, value, delta, deltaType = 'neutral', icon, clas
           )}
         </div>
         {icon && (
-          <div className="text-muted-foreground">
+          <div className="text-muted-foreground opacity-70">
             {icon}
           </div>
         )}
