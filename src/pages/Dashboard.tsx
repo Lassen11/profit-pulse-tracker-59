@@ -306,6 +306,55 @@ export default function Dashboard() {
     });
   }, [allTransactions, periodFilter, selectedMonth, customDateTo]);
 
+  // Calculate money in project for each company separately
+  const moneyInProjectByCompany = useMemo(() => {
+    return companies.map(company => {
+      // Get end date of current filter period
+      let endDate: Date;
+      const now = new Date();
+      
+      switch (periodFilter) {
+        case "month":
+          endDate = endOfMonth(now);
+          break;
+        case "specific-month":
+          endDate = endOfMonth(selectedMonth);
+          break;
+        case "quarter":
+          endDate = endOfQuarter(now);
+          break;
+        case "year":
+          endDate = endOfYear(now);
+          break;
+        case "custom":
+          endDate = customDateTo || now;
+          break;
+        default:
+          endDate = now;
+      }
+
+      // Get all transactions for this company up to end date
+      const companyTransactions = allTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.company === company && transactionDate <= endDate;
+      });
+
+      // Calculate total income and expenses for this company
+      const income = companyTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expense = companyTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      return {
+        company,
+        balance: income - expense
+      };
+    });
+  }, [allTransactions, periodFilter, selectedMonth, customDateTo]);
+
   const kpis = useMemo(() => {
     const baseKpis = calculateKPIs(filteredTransactions);
     // Calculate moneyInProject as sum of all account balances
@@ -1015,7 +1064,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <KPICard
             title="Выручка"
             value={formatCurrency(kpis.income)}
@@ -1056,14 +1105,19 @@ export default function Dashboard() {
             icon={<ArrowUpFromLine className="w-5 h-5 sm:w-6 sm:h-6" />}
             className="shadow-kpi"
           />
-          <KPICard
-            title="Деньги в проекте"
-            value={formatCurrency(kpis.moneyInProject)}
-            delta={calculateDelta(kpis.moneyInProject, previousKpis.moneyInProject)}
-            deltaType={getDeltaType(kpis.moneyInProject, previousKpis.moneyInProject)}
-            icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
+        </div>
+
+        {/* Money in Project by Company */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {moneyInProjectByCompany.map(({ company, balance }) => (
+            <KPICard
+              key={company}
+              title={`Деньги в ${company}`}
+              value={formatCurrency(balance)}
+              icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
+              className="shadow-kpi"
+            />
+          ))}
         </div>
 
         {/* Account Balances */}
