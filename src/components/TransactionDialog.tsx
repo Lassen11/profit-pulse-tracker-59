@@ -264,7 +264,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {copyMode ? 'Копировать операцию' : transaction ? 'Редактировать операцию' : 'Добавить операцию'}
@@ -274,7 +274,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Тип операции</Label>
