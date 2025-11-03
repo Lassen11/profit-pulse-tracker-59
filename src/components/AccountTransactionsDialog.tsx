@@ -24,16 +24,19 @@ export function AccountTransactionsDialog({
   account,
   transactions,
 }: AccountTransactionsDialogProps) {
-  const [filterType, setFilterType] = useState<"date" | "month">("month");
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [filterType, setFilterType] = useState<"range" | "month">("month");
+  const [dateFrom, setDateFrom] = useState<Date>(new Date());
+  const [dateTo, setDateTo] = useState<Date>(new Date());
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
   // Reset filters when dialog opens
   useEffect(() => {
     if (open) {
       setFilterType("month");
-      setSelectedDate(new Date());
-      setSelectedMonth(new Date());
+      const today = new Date();
+      setDateFrom(new Date(today.getFullYear(), today.getMonth(), 1));
+      setDateTo(today);
+      setSelectedMonth(today);
     }
   }, [open]);
 
@@ -46,13 +49,16 @@ export function AccountTransactionsDialog({
 
       if (!matchesAccount) return false;
 
-      // Filter by date or month
+      // Filter by date range or month
       const transactionDate = new Date(transaction.date);
+      transactionDate.setHours(0, 0, 0, 0);
       
-      if (filterType === "date") {
-        return (
-          transactionDate.toDateString() === selectedDate.toDateString()
-        );
+      if (filterType === "range") {
+        const fromDate = new Date(dateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        return transactionDate >= fromDate && transactionDate <= toDate;
       } else {
         const monthStart = startOfMonth(selectedMonth);
         const monthEnd = endOfMonth(selectedMonth);
@@ -62,7 +68,7 @@ export function AccountTransactionsDialog({
 
     // Sort by date descending
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, account, filterType, selectedDate, selectedMonth]);
+  }, [transactions, account, filterType, dateFrom, dateTo, selectedMonth]);
 
   const totalIncome = filteredTransactions
     .filter((t) => t.type === "income")
@@ -93,40 +99,66 @@ export function AccountTransactionsDialog({
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-2">
               <label className="text-sm font-medium">Фильтр</label>
-              <Select value={filterType} onValueChange={(value: "date" | "month") => setFilterType(value)}>
+              <Select value={filterType} onValueChange={(value: "range" | "month") => setFilterType(value)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date">По дате</SelectItem>
+                  <SelectItem value="range">По диапазону</SelectItem>
                   <SelectItem value="month">По месяцу</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {filterType === "date" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "dd MMMM yyyy", { locale: ru }) : "Выберите дату"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            {filterType === "range" && (
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal",
+                        !dateFrom && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, "dd.MM.yyyy") : "От"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateFrom}
+                      onSelect={(date) => date && setDateFrom(date)}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal",
+                        !dateTo && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateTo ? format(dateTo, "dd.MM.yyyy") : "До"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateTo}
+                      onSelect={(date) => date && setDateTo(date)}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </>
             )}
 
             {filterType === "month" && (
