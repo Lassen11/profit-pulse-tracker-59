@@ -7,6 +7,8 @@ import { KPICard } from "@/components/KPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { AccountTransferDialog, AccountTransfer } from "@/components/AccountTransferDialog";
+import { AccountActionsDialog } from "@/components/AccountActionsDialog";
+import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3 } from "lucide-react";
@@ -47,6 +49,9 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedAccountForTransfer, setSelectedAccountForTransfer] = useState<string>();
+  const [accountActionsDialogOpen, setAccountActionsDialogOpen] = useState(false);
+  const [accountTransactionsDialogOpen, setAccountTransactionsDialogOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<string>("");
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -583,8 +588,23 @@ export default function Dashboard() {
 
   const handleAccountClick = (account: string) => {
     if (!isAdmin) return;
-    setSelectedAccountForTransfer(account);
+    setSelectedAccount(account);
+    setAccountActionsDialogOpen(true);
+  };
+
+  const handleTransferClick = () => {
+    setSelectedAccountForTransfer(selectedAccount);
     setTransferDialogOpen(true);
+  };
+
+  const handleAddTransactionClick = () => {
+    setEditTransaction(null);
+    setCopyMode(false);
+    setDialogOpen(true);
+  };
+
+  const handleViewTransactionsClick = () => {
+    setAccountTransactionsDialogOpen(true);
   };
 
   const handleSaveTransfer = async (transfer: AccountTransfer) => {
@@ -1218,6 +1238,24 @@ export default function Dashboard() {
           accounts={accountOptions}
           selectedAccount={selectedAccountForTransfer}
           onSave={handleSaveTransfer}
+        />
+
+        {/* Account Actions Dialog */}
+        <AccountActionsDialog
+          open={accountActionsDialogOpen}
+          onOpenChange={setAccountActionsDialogOpen}
+          account={selectedAccount}
+          onTransferClick={handleTransferClick}
+          onAddTransactionClick={handleAddTransactionClick}
+          onViewTransactionsClick={handleViewTransactionsClick}
+        />
+
+        {/* Account Transactions Dialog */}
+        <AccountTransactionsDialog
+          open={accountTransactionsDialogOpen}
+          onOpenChange={setAccountTransactionsDialogOpen}
+          account={selectedAccount}
+          transactions={allTransactions}
         />
         </div>
       </div>

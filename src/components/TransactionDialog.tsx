@@ -26,6 +26,7 @@ const incomeCategories = [
   "Услуги", 
   "Инвестиции",
   "Возврат депозита",
+  "Абонентское обслуживание",
   "Прочие доходы"
 ];
 
@@ -92,7 +93,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     lumpSum: '',
     incomeAccount: '',
     expenseAccount: '',
-    organizationName: ''
+    organizationName: '',
+    company: selectedCompany || 'Спасение'
   });
 
   useEffect(() => {
@@ -112,7 +114,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         lumpSum: (transaction as any).lump_sum?.toString() || '',
         incomeAccount: (transaction as any).income_account || '',
         expenseAccount: (transaction as any).expense_account || '',
-        organizationName: (transaction as any).organization_name || ''
+        organizationName: (transaction as any).organization_name || '',
+        company: transaction.company || selectedCompany || 'Спасение'
       });
     } else {
       setFormData({
@@ -130,10 +133,11 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         lumpSum: '',
         incomeAccount: '',
         expenseAccount: '',
-        organizationName: ''
+        organizationName: '',
+        company: selectedCompany || 'Спасение'
       });
     }
-  }, [transaction, open]);
+  }, [transaction, open, selectedCompany]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = async (clientName: string) => {
@@ -203,7 +207,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       amount: parseFloat(formData.amount),
       description: formData.description,
       date: formData.date,
-      company: transaction?.company || selectedCompany || 'Спасение',
+      company: formData.company,
       ...(formData.type === 'income' && formData.clientName && { client_name: formData.clientName }),
       ...(formData.type === 'income' && formData.incomeAccount && { income_account: formData.incomeAccount }),
       ...(formData.type === 'expense' && formData.expenseAccount && { expense_account: formData.expenseAccount }),
@@ -248,7 +252,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         amount: taxAmount,
         description: taxDescription,
         date: formData.date,
-        company: transaction?.company || selectedCompany || 'Спасение'
+        company: formData.company
       };
     }
 
@@ -326,6 +330,23 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
                 placeholder="Введите подкатегорию..."
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company">Проект</Label>
+              <Select 
+                value={formData.company} 
+                onValueChange={(value) => setFormData({ ...formData, company: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите проект" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Спасение">Спасение</SelectItem>
+                  <SelectItem value="Дело Бизнеса">Дело Бизнеса</SelectItem>
+                  <SelectItem value="Кебаб Босс">Кебаб Босс</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {formData.type === 'income' && (
