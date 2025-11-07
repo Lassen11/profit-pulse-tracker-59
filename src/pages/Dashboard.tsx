@@ -11,7 +11,7 @@ import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3 } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -934,6 +934,11 @@ export default function Dashboard() {
                 <span className="xs:hidden">Сотрудники</span>
               </Button>
             )}
+            <Button variant="outline" onClick={() => navigate("/payroll")}>
+              <BanknoteIcon className="w-4 h-4 mr-2" />
+              <span className="hidden xs:inline">ФОТ</span>
+              <span className="xs:hidden">ФОТ</span>
+            </Button>
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Выйти</span>

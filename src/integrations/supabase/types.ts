@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      department_employees: {
+        Row: {
+          advance: number | null
+          bonus: number | null
+          contributions: number | null
+          cost: number | null
+          created_at: string
+          department_id: string
+          employee_id: string
+          gray_salary: number | null
+          id: string
+          ndfl: number | null
+          net_salary: number | null
+          next_month_bonus: number | null
+          total_amount: number | null
+          updated_at: string
+          user_id: string
+          white_salary: number | null
+        }
+        Insert: {
+          advance?: number | null
+          bonus?: number | null
+          contributions?: number | null
+          cost?: number | null
+          created_at?: string
+          department_id: string
+          employee_id: string
+          gray_salary?: number | null
+          id?: string
+          ndfl?: number | null
+          net_salary?: number | null
+          next_month_bonus?: number | null
+          total_amount?: number | null
+          updated_at?: string
+          user_id: string
+          white_salary?: number | null
+        }
+        Update: {
+          advance?: number | null
+          bonus?: number | null
+          contributions?: number | null
+          cost?: number | null
+          created_at?: string
+          department_id?: string
+          employee_id?: string
+          gray_salary?: number | null
+          id?: string
+          ndfl?: number | null
+          net_salary?: number | null
+          next_month_bonus?: number | null
+          total_amount?: number | null
+          updated_at?: string
+          user_id?: string
+          white_salary?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_employees_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          project_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          project_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          project_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lead_generation: {
         Row: {
           company: string
@@ -58,6 +157,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payroll_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          department_employee_id: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_type: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          department_employee_id: string
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_type: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          department_employee_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_type?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_payments_department_employee_id_fkey"
+            columns: ["department_employee_id"]
+            isOneToOne: false
+            referencedRelation: "department_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
