@@ -427,7 +427,7 @@ export default function Dashboard() {
             income_account: (transactionData as any).income_account,
             expense_account: (transactionData as any).expense_account,
             organization_name: (transactionData as any).organization_name,
-            company: selectedCompany
+            company: transactionData.company
           })
           .eq('id', transactionData.id);
 
@@ -467,7 +467,7 @@ export default function Dashboard() {
             income_account: (transactionData as any).income_account,
             expense_account: (transactionData as any).expense_account,
             organization_name: (transactionData as any).organization_name,
-            company: selectedCompany
+            company: transactionData.company
           })
           .select()
           .single();
@@ -493,7 +493,7 @@ export default function Dashboard() {
               subcategory: taxTransaction.subcategory,
               amount: taxTransaction.amount,
               description: taxTransaction.description,
-              company: selectedCompany
+              company: taxTransaction.company
             })
             .select()
             .single();
