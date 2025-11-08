@@ -427,8 +427,7 @@ export default function Dashboard() {
             organization_name: (transactionData as any).organization_name,
             company: selectedCompany
           })
-          .eq('id', transactionData.id)
-          .eq('user_id', user.id);
+          .eq('id', transactionData.id);
 
         if (error) throw error;
 
@@ -553,8 +552,7 @@ export default function Dashboard() {
         const { error } = await supabase
           .from('transactions')
           .delete()
-          .eq('id', id)
-          .eq('user_id', user.id);
+          .eq('id', id);
 
         if (error) throw error;
 
