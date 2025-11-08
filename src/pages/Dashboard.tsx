@@ -432,13 +432,8 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        setTransactions(prev => 
-          prev.map(t => t.id === transactionData.id ? { ...transactionData, id: transactionData.id } as Transaction : t)
-        );
-        // Also update allTransactions
-        setAllTransactions(prev =>
-          prev.map(t => t.id === transactionData.id ? { ...transactionData, id: transactionData.id } as Transaction : t)
-        );
+        // Refetch to ensure consistency
+        await fetchTransactions();
         toast({
           title: "Операция обновлена",
           description: "Данные успешно сохранены",
@@ -563,12 +558,11 @@ export default function Dashboard() {
 
         if (error) throw error;
 
-        setTransactions(prev => prev.filter(t => t.id !== id));
-        setAllTransactions(prev => prev.filter(t => t.id !== id));
+        // Refetch to ensure consistency
+        await fetchTransactions();
         toast({
           title: "Операция удалена",
           description: "Транзакция была успешно удалена",
-          variant: "destructive"
         });
       } catch (error) {
         toast({

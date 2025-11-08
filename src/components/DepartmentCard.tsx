@@ -38,6 +38,7 @@ export interface DepartmentEmployee {
   cost: number;
   net_salary: number;
   total_amount: number;
+  company: string;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -156,7 +157,7 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
             <PayrollTable
               employees={employees}
               departmentId={department.id}
-              projectName={department.project_name}
+              defaultCompany={department.project_name || "Спасение"}
               onRefresh={fetchEmployees}
             />
           )}
@@ -171,6 +172,7 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
         }}
         departmentId={department.id}
         employee={editEmployee}
+        defaultCompany={department.project_name || "Спасение"}
         onSave={() => {
           fetchEmployees();
           setEmployeeDialogOpen(false);

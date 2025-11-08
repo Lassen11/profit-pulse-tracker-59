@@ -15,6 +15,7 @@ interface EmployeeDialogProps {
   departmentId: string;
   employee: DepartmentEmployee | null;
   onSave: () => void;
+  defaultCompany?: string;
 }
 
 interface Profile {
@@ -24,9 +25,12 @@ interface Profile {
   position: string | null;
 }
 
-export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onSave }: EmployeeDialogProps) {
+const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
+
+export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onSave, defaultCompany = "Спасение" }: EmployeeDialogProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState(defaultCompany);
   const [whiteSalary, setWhiteSalary] = useState("0");
   const [graySalary, setGraySalary] = useState("0");
   const [advance, setAdvance] = useState("0");
@@ -45,6 +49,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
       fetchProfiles();
       if (employee) {
         setSelectedEmployeeId(employee.employee_id);
+        setSelectedCompany((employee as any).company || defaultCompany);
         setWhiteSalary(employee.white_salary.toString());
         setGraySalary(employee.gray_salary.toString());
         setAdvance(employee.advance.toString());
@@ -59,10 +64,11 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         resetForm();
       }
     }
-  }, [open, employee]);
+  }, [open, employee, defaultCompany]);
 
   const resetForm = () => {
     setSelectedEmployeeId("");
+    setSelectedCompany(defaultCompany);
     setWhiteSalary("0");
     setGraySalary("0");
     setAdvance("0");
@@ -103,6 +109,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
       const employeeData = {
         department_id: departmentId,
         employee_id: selectedEmployeeId,
+        company: selectedCompany,
         white_salary: parseFloat(whiteSalary) || 0,
         gray_salary: parseFloat(graySalary) || 0,
         advance: parseFloat(advance) || 0,
@@ -176,6 +183,26 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
                     <SelectItem key={profile.id} value={profile.id}>
                       {profile.first_name} {profile.last_name}
                       {profile.position && ` - ${profile.position}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company">Компания</Label>
+              <Select
+                value={selectedCompany}
+                onValueChange={setSelectedCompany}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите компанию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company} value={company}>
+                      {company}
                     </SelectItem>
                   ))}
                 </SelectContent>

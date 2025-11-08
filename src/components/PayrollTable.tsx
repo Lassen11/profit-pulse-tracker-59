@@ -28,11 +28,11 @@ import {
 interface PayrollTableProps {
   employees: DepartmentEmployee[];
   departmentId: string;
-  projectName: string | null;
   onRefresh: () => void;
+  defaultCompany?: string;
 }
 
-export function PayrollTable({ employees, departmentId, projectName, onRefresh }: PayrollTableProps) {
+export function PayrollTable({ employees, departmentId, onRefresh, defaultCompany = "Спасение" }: PayrollTableProps) {
   const [editEmployee, setEditEmployee] = useState<DepartmentEmployee | null>(null);
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -174,6 +174,7 @@ export function PayrollTable({ employees, departmentId, projectName, onRefresh }
         }}
         departmentId={departmentId}
         employee={editEmployee}
+        defaultCompany={defaultCompany}
         onSave={() => {
           onRefresh();
           setEmployeeDialogOpen(false);
@@ -185,7 +186,6 @@ export function PayrollTable({ employees, departmentId, projectName, onRefresh }
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         employee={selectedEmployeeForPayment}
-        projectName={projectName}
         onSuccess={onRefresh}
       />
 

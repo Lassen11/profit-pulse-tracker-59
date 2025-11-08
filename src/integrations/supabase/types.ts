@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           advance: number | null
           bonus: number | null
+          company: string
           contributions: number | null
           cost: number | null
           created_at: string
@@ -36,6 +37,7 @@ export type Database = {
         Insert: {
           advance?: number | null
           bonus?: number | null
+          company?: string
           contributions?: number | null
           cost?: number | null
           created_at?: string
@@ -54,6 +56,7 @@ export type Database = {
         Update: {
           advance?: number | null
           bonus?: number | null
+          company?: string
           contributions?: number | null
           cost?: number | null
           created_at?: string

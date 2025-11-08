@@ -37,11 +37,10 @@ interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employee: DepartmentEmployee | null;
-  projectName: string | null;
   onSuccess: () => void;
 }
 
-export function PaymentDialog({ open, onOpenChange, employee, projectName, onSuccess }: PaymentDialogProps) {
+export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: PaymentDialogProps) {
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentType, setPaymentType] = useState("white");
@@ -80,6 +79,7 @@ export function PaymentDialog({ open, onOpenChange, employee, projectName, onSuc
 
     try {
       // Create transaction in transactions table
+      const employeeCompany = (employee as any).company || 'Спасение';
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
         .insert({
@@ -91,7 +91,7 @@ export function PaymentDialog({ open, onOpenChange, employee, projectName, onSuc
           amount: paymentAmount,
           description: notes || `Выплата зарплаты: ${paymentTypes.find(t => t.value === paymentType)?.label}`,
           expense_account: expenseAccount,
-          company: projectName || 'Спасение'
+          company: employeeCompany
         })
         .select()
         .single();
