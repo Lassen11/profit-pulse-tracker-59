@@ -14,11 +14,11 @@ export const calculateKPIs = (transactions: Transaction[]) => {
     .reduce((sum, t) => sum + t.amount, 0);
   
   const taxUSN = transactions
-    .filter(t => t.type === 'expense' && t.category === 'Налоги УСН')
+    .filter(t => t.type === 'expense' && t.category === 'Налог УСН')
     .reduce((sum, t) => sum + t.amount, 0);
   
   const taxNDFL = transactions
-    .filter(t => t.type === 'expense' && (t.category === 'Налоги НДФЛ' || t.category === 'Взносы'))
+    .filter(t => t.type === 'expense' && t.category === 'Налог НДФЛ и Взносы')
     .reduce((sum, t) => sum + t.amount, 0);
   
   const profit = income - expenses;
