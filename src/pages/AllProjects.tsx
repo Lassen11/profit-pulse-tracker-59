@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, ArrowLeft, Building2, CalendarIcon, Filter } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, ArrowLeft, Building2, CalendarIcon, Filter, BanknoteIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -151,7 +151,9 @@ export default function AllProjects() {
     profit: 420000,
     margin: 49.4,
     withdrawals: 180000,
-    moneyInProject: 240000
+    moneyInProject: 240000,
+    taxUSN: 0,
+    taxNDFL: 0
   };
 
   if (authLoading || loading) {
@@ -300,7 +302,7 @@ export default function AllProjects() {
 
           <TabsContent value="overview" className="space-y-6">
             {/* Overall KPIs */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
               <KPICard
                 title="Общий доход"
                 value={formatCurrency(allKpis.income)}
@@ -343,6 +345,16 @@ export default function AllProjects() {
                 deltaType={getDeltaType(allKpis.moneyInProject, previousAllKpis.moneyInProject)}
                 icon={<Wallet className="w-4 h-4" />}
               />
+              <KPICard
+                title="Налоги УСН"
+                value={formatCurrency(allKpis.taxUSN)}
+                icon={<BanknoteIcon className="w-4 h-4" />}
+              />
+              <KPICard
+                title="Налоги НДФЛ"
+                value={formatCurrency(allKpis.taxNDFL)}
+                icon={<BanknoteIcon className="w-4 h-4" />}
+              />
             </div>
 
             {/* Analytics Chart */}
@@ -379,7 +391,7 @@ export default function AllProjects() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-muted-foreground">Доход</p>
                         <p className="text-xl font-semibold">{formatCurrency(kpis.income)}</p>
@@ -403,6 +415,14 @@ export default function AllProjects() {
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-muted-foreground">В проекте</p>
                         <p className="text-xl font-semibold">{formatCurrency(kpis.moneyInProject)}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Налоги УСН</p>
+                        <p className="text-xl font-semibold">{formatCurrency(kpis.taxUSN)}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Налоги НДФЛ</p>
+                        <p className="text-xl font-semibold">{formatCurrency(kpis.taxNDFL)}</p>
                       </div>
                     </div>
                   </CardContent>

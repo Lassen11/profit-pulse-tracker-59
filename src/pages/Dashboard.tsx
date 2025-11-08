@@ -399,7 +399,9 @@ export default function Dashboard() {
     profit: 170000,
     margin: 48.6,
     withdrawals: 75000,
-    moneyInProject: 95000
+    moneyInProject: 95000,
+    taxUSN: 0,
+    taxNDFL: 0
   };
 
   const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => {
@@ -1137,6 +1139,22 @@ export default function Dashboard() {
                 className="shadow-kpi"
               />
             ))}
+        </div>
+
+        {/* Tax KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <KPICard
+            title="Налоги УСН"
+            value={formatCurrency(kpis.taxUSN)}
+            icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />}
+            className="shadow-kpi"
+          />
+          <KPICard
+            title="Налоги НДФЛ"
+            value={formatCurrency(kpis.taxNDFL)}
+            icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />}
+            className="shadow-kpi"
+          />
         </div>
 
         {/* Account Balances */}
