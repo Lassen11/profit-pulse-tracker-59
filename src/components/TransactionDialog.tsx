@@ -23,7 +23,7 @@ interface TransactionDialogProps {
 
 const incomeCategories = [
   "Продажи",
-  "Услуги", 
+  "Дебиторка", 
   "Инвестиции",
   "Возврат депозита",
   "Абонентское обслуживание",
@@ -361,7 +361,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               </div>
             )}
 
-            {(transaction?.company === 'Дело Бизнеса' || selectedCompany === 'Дело Бизнеса') && (
+            {formData.company === 'Дело Бизнеса' && (
               <div className="space-y-2">
                 <Label htmlFor="organizationName">Наименование организации</Label>
                 <Input
