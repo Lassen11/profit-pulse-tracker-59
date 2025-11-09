@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_balance_adjustments: {
+        Row: {
+          adjusted_balance: number
+          company: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          adjusted_balance?: number
+          company: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          adjusted_balance?: number
+          company?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       department_employees: {
         Row: {
           advance: number | null

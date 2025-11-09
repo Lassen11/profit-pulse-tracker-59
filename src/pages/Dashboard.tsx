@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { KPICard } from "@/components/KPICard";
+import { EditableKPICard } from "@/components/EditableKPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { AccountTransferDialog, AccountTransfer } from "@/components/AccountTransferDialog";
@@ -52,6 +53,7 @@ export default function Dashboard() {
   const [accountActionsDialogOpen, setAccountActionsDialogOpen] = useState(false);
   const [accountTransactionsDialogOpen, setAccountTransactionsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [balanceAdjustments, setBalanceAdjustments] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -86,6 +88,35 @@ export default function Dashboard() {
     
     checkAdminStatus();
   }, [user]);
+
+  // Fetch balance adjustments
+  const fetchBalanceAdjustments = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('company_balance_adjustments')
+        .select('company, adjusted_balance');
+
+      if (error) throw error;
+
+      const adjustments: Record<string, number> = {};
+      data?.forEach((adj) => {
+        adjustments[adj.company] = adj.adjusted_balance;
+      });
+
+      setBalanceAdjustments(adjustments);
+    } catch (error) {
+      console.error('Error fetching balance adjustments:', error);
+    }
+  }, [user]);
+
+  // Load balance adjustments on mount
+  useEffect(() => {
+    if (user) {
+      fetchBalanceAdjustments();
+    }
+  }, [user, fetchBalanceAdjustments]);
 
   // Optimized fetch with caching and debouncing
   const fetchTransactions = useCallback(async () => {
@@ -353,12 +384,15 @@ export default function Dashboard() {
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       
+      const calculatedBalance = income - expense;
+      
       return {
         company,
-        balance: income - expense
+        calculatedBalance,
+        balance: balanceAdjustments[company] ?? calculatedBalance
       };
     });
-  }, [allTransactions, periodFilter, selectedMonth, customDateTo]);
+  }, [allTransactions, periodFilter, selectedMonth, customDateTo, balanceAdjustments]);
 
   const kpis = useMemo(() => {
     const baseKpis = calculateKPIs(filteredTransactions);
@@ -1130,14 +1164,18 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {moneyInProjectByCompany
             .filter(({ company }) => company === selectedCompany)
-            .map(({ company, balance }) => (
-              <KPICard
-                key={company}
-                title={`Деньги в ${company}`}
-                value={formatCurrency(balance)}
-                icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
-                className="shadow-kpi"
-              />
+            .map(({ company, balance, calculatedBalance }) => (
+              <div key={company} className="group">
+                <EditableKPICard
+                  title={`Деньги в ${company}`}
+                  value={formatCurrency(balance)}
+                  calculatedValue={calculatedBalance}
+                  company={company}
+                  icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  className="shadow-kpi"
+                  onUpdate={fetchBalanceAdjustments}
+                />
+              </div>
             ))}
         </div>
 
