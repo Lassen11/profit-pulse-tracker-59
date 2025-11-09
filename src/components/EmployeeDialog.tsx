@@ -49,7 +49,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
       fetchProfiles();
       if (employee) {
         setSelectedEmployeeId(employee.employee_id);
-        setSelectedCompany((employee as any).company || defaultCompany);
+        setSelectedCompany(employee.company || defaultCompany);
         setWhiteSalary(employee.white_salary.toString());
         setGraySalary(employee.gray_salary.toString());
         setAdvance(employee.advance.toString());

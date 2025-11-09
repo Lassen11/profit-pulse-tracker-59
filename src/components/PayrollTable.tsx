@@ -97,6 +97,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[150px]">Сотрудник</TableHead>
+              <TableHead className="min-w-[120px]">Проект</TableHead>
               <TableHead className="text-right min-w-[100px]">Белая</TableHead>
               <TableHead className="text-right min-w-[100px]">Серая</TableHead>
               <TableHead className="text-right min-w-[100px]">Аванс</TableHead>
@@ -121,6 +122,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                     )}
                   </div>
                 </TableCell>
+                <TableCell>{employee.company}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.white_salary)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.gray_salary)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.advance)}</TableCell>
