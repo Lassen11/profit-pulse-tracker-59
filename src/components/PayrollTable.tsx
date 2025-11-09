@@ -8,10 +8,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Wallet } from "lucide-react";
+import { Edit, Trash2, Wallet, History } from "lucide-react";
 import { DepartmentEmployee } from "@/components/DepartmentCard";
 import { EmployeeDialog } from "@/components/EmployeeDialog";
 import { PaymentDialog } from "@/components/PaymentDialog";
+import { PaymentHistoryDialog } from "@/components/PaymentHistoryDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -37,6 +38,8 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedEmployeeForPayment, setSelectedEmployeeForPayment] = useState<DepartmentEmployee | null>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedEmployeeForHistory, setSelectedEmployeeForHistory] = useState<DepartmentEmployee | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
   const { toast } = useToast();
@@ -88,6 +91,11 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const handlePayment = (employee: DepartmentEmployee) => {
     setSelectedEmployeeForPayment(employee);
     setPaymentDialogOpen(true);
+  };
+
+  const handleViewHistory = (employee: DepartmentEmployee) => {
+    setSelectedEmployeeForHistory(employee);
+    setHistoryDialogOpen(true);
   };
 
   return (
@@ -145,6 +153,14 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                     </Button>
                     <Button
                       variant="outline"
+                      size="sm"
+                      onClick={() => handleViewHistory(employee)}
+                      title="История выплат"
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
                       size="icon"
                       onClick={() => handleEdit(employee)}
                     >
@@ -189,6 +205,12 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
         onOpenChange={setPaymentDialogOpen}
         employee={selectedEmployeeForPayment}
         onSuccess={onRefresh}
+      />
+
+      <PaymentHistoryDialog
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        employee={selectedEmployeeForHistory}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
