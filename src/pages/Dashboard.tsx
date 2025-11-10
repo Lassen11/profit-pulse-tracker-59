@@ -283,7 +283,7 @@ export default function Dashboard() {
     });
   }, [transactions, periodFilter, customDateFrom, customDateTo, selectedMonth]);
 
-  // Calculate account balances for SELECTED company - balance is ALWAYS current within company, income/expense for selected period
+  // Calculate account balances across ALL companies and up to current period
   const accountBalances = useMemo(() => {
     const accounts = [
       "Зайнаб карта",
@@ -294,7 +294,7 @@ export default function Dashboard() {
       "Расчетный счет"
     ];
 
-    // Get start and end date of current filter period for income/expense
+    // Get start and end date of current filter period
     let startDate: Date;
     let endDate: Date;
     const now = new Date();
@@ -325,22 +325,24 @@ export default function Dashboard() {
         endDate = now;
     }
 
-    // Use only transactions of the selected company
-    const companyTransactions = allTransactions.filter(t => t.company === selectedCompany);
-
-    // Calculate balance from ALL transactions of selected company up to current date
+    // Calculate balance from ALL transactions (all companies) up to the end date
     return accounts.map(account => {
-      // For balance calculation - ALL transactions up to NOW within selected company
-      const totalIncome = companyTransactions
+      // For balance calculation - all transactions up to end date
+      const allRelevantTransactions = allTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return transactionDate <= endDate;
+      });
+
+      const totalIncome = allRelevantTransactions
         .filter(t => t.type === 'income' && (t as any).income_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      const totalExpense = companyTransactions
+      const totalExpense = allRelevantTransactions
         .filter(t => t.type === 'expense' && (t as any).expense_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      // For income/expense display - only transactions within the selected period and company
-      const periodTransactions = companyTransactions.filter(t => {
+      // For income/expense display - only transactions within the selected period
+      const periodTransactions = allTransactions.filter(t => {
         const transactionDate = new Date(t.date);
         return transactionDate >= startDate && transactionDate <= endDate;
       });
@@ -360,7 +362,7 @@ export default function Dashboard() {
         expense: periodExpense
       };
     });
-  }, [allTransactions, periodFilter, selectedMonth, customDateFrom, customDateTo, selectedCompany]);
+  }, [allTransactions, periodFilter, selectedMonth, customDateFrom, customDateTo]);
 
   // Calculate money in project for each company separately
   const moneyInProjectByCompany = useMemo(() => {
@@ -1328,7 +1330,7 @@ export default function Dashboard() {
           open={accountTransactionsDialogOpen}
           onOpenChange={setAccountTransactionsDialogOpen}
           account={selectedAccount}
-          transactions={transactions}
+          transactions={allTransactions}
         />
         </div>
       </div>
