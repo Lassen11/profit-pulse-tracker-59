@@ -64,19 +64,28 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
     }
   }, [editData]);
 
+  const formatDateForDB = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     setLoading(true);
     try {
+      const formattedDate = formatDateForDB(formData.date);
+      
       if (editData) {
         // Update existing record
         const { error } = await supabase
           .from('lead_generation')
           .update({
             company: formData.company,
-            date: format(formData.date, 'yyyy-MM-dd'),
+            date: formattedDate,
             total_leads: formData.total_leads,
             qualified_leads: formData.qualified_leads,
             debt_above_300k: formData.debt_above_300k,
@@ -99,7 +108,7 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
           .insert({
             user_id: user.id,
             company: formData.company,
-            date: format(formData.date, 'yyyy-MM-dd'),
+            date: formattedDate,
             total_leads: formData.total_leads,
             qualified_leads: formData.qualified_leads,
             debt_above_300k: formData.debt_above_300k,
