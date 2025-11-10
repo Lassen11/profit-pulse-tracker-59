@@ -283,7 +283,7 @@ export default function Dashboard() {
     });
   }, [transactions, periodFilter, customDateFrom, customDateTo, selectedMonth]);
 
-  // Calculate account balances across ALL companies and up to current period
+  // Calculate account balances across ALL companies - balance is ALWAYS current, income/expense for selected period
   const accountBalances = useMemo(() => {
     const accounts = [
       "Зайнаб карта",
@@ -294,7 +294,7 @@ export default function Dashboard() {
       "Расчетный счет"
     ];
 
-    // Get start and end date of current filter period
+    // Get start and end date of current filter period for income/expense
     let startDate: Date;
     let endDate: Date;
     const now = new Date();
@@ -325,19 +325,14 @@ export default function Dashboard() {
         endDate = now;
     }
 
-    // Calculate balance from ALL transactions (all companies) up to the end date
+    // Calculate balance from ALL transactions (all companies) up to current date
     return accounts.map(account => {
-      // For balance calculation - all transactions up to end date
-      const allRelevantTransactions = allTransactions.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate <= endDate;
-      });
-
-      const totalIncome = allRelevantTransactions
+      // For balance calculation - ALL transactions up to NOW (not filtered by period)
+      const totalIncome = allTransactions
         .filter(t => t.type === 'income' && (t as any).income_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      const totalExpense = allRelevantTransactions
+      const totalExpense = allTransactions
         .filter(t => t.type === 'expense' && (t as any).expense_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
