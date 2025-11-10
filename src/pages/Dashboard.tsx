@@ -294,53 +294,75 @@ export default function Dashboard() {
       "Расчетный счет"
     ];
 
-    // Get end date of current filter period
+    // Get start and end date of current filter period
+    let startDate: Date;
     let endDate: Date;
     const now = new Date();
     
     switch (periodFilter) {
       case "month":
+        startDate = startOfMonth(now);
         endDate = endOfMonth(now);
         break;
       case "specific-month":
+        startDate = startOfMonth(selectedMonth);
         endDate = endOfMonth(selectedMonth);
         break;
       case "quarter":
+        startDate = startOfQuarter(now);
         endDate = endOfQuarter(now);
         break;
       case "year":
+        startDate = startOfYear(now);
         endDate = endOfYear(now);
         break;
       case "custom":
+        startDate = customDateFrom || now;
         endDate = customDateTo || now;
         break;
       default:
+        startDate = startOfMonth(now);
         endDate = now;
     }
 
     // Calculate balance from ALL transactions (all companies) up to the end date
     return accounts.map(account => {
-      const relevantTransactions = allTransactions.filter(t => {
+      // For balance calculation - all transactions up to end date
+      const allRelevantTransactions = allTransactions.filter(t => {
         const transactionDate = new Date(t.date);
         return transactionDate <= endDate;
       });
 
-      const income = relevantTransactions
+      const totalIncome = allRelevantTransactions
         .filter(t => t.type === 'income' && (t as any).income_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      const expense = relevantTransactions
+      const totalExpense = allRelevantTransactions
+        .filter(t => t.type === 'expense' && (t as any).expense_account === account)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      // For income/expense display - only transactions within the selected period
+      const periodTransactions = allTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return transactionDate >= startDate && transactionDate <= endDate;
+      });
+
+      const periodIncome = periodTransactions
+        .filter(t => t.type === 'income' && (t as any).income_account === account)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const periodExpense = periodTransactions
         .filter(t => t.type === 'expense' && (t as any).expense_account === account)
         .reduce((sum, t) => sum + t.amount, 0);
       
       return {
         account,
-        balance: income - expense,
-        income,
-        expense
+        balance: totalIncome - totalExpense,
+        income: periodIncome,
+        expense: periodExpense
       };
     });
-  }, [allTransactions, periodFilter, selectedMonth, customDateTo]);
+  }, [allTransactions, periodFilter, selectedMonth, customDateFrom, customDateTo]);
 
   // Calculate money in project for each company separately
   const moneyInProjectByCompany = useMemo(() => {
