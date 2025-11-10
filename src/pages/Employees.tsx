@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { UserPlus, Users, Shield, User, Trash2 } from "lucide-react";
+import { UserPlus, Users, Shield, User, Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Profile {
@@ -45,6 +45,15 @@ export default function Employees() {
   const [submitting, setSubmitting] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
+  
+  // Edit employee state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Profile | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editPosition, setEditPosition] = useState("");
+  const [editDepartment, setEditDepartment] = useState("");
+  const [updatingProfile, setUpdatingProfile] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -286,6 +295,53 @@ export default function Employees() {
     }
   };
 
+  const handleEditEmployee = (employee: Profile) => {
+    setEditingEmployee(employee);
+    setEditFirstName(employee.first_name);
+    setEditLastName(employee.last_name);
+    setEditPosition(employee.position || "");
+    setEditDepartment(employee.department || "");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEmployee) return;
+
+    setUpdatingProfile(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: editFirstName,
+          last_name: editLastName,
+          position: editPosition || null,
+          department: editDepartment || null,
+        })
+        .eq('id', editingEmployee.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Успешно",
+        description: `Данные сотрудника ${editFirstName} ${editLastName} обновлены`,
+      });
+
+      setIsEditDialogOpen(false);
+      fetchEmployees();
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось обновить данные сотрудника",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -509,24 +565,34 @@ export default function Employees() {
                         {new Date(employee.created_at).toLocaleDateString('ru-RU')}
                       </TableCell>
                       <TableCell>
-                        {employee.user_id !== user?.id && (
+                        <div className="flex gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteEmployee(employee.user_id, employee.first_name, employee.last_name)}
-                            disabled={deletingUserId === employee.user_id}
-                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleEditEmployee(employee)}
                           >
-                            {deletingUserId === employee.user_id ? (
-                              "Удаление..."
-                            ) : (
-                              <>
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Удалить
-                              </>
-                            )}
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Редактировать
                           </Button>
-                        )}
+                          {employee.user_id !== user?.id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteEmployee(employee.user_id, employee.first_name, employee.last_name)}
+                              disabled={deletingUserId === employee.user_id}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              {deletingUserId === employee.user_id ? (
+                                "Удаление..."
+                              ) : (
+                                <>
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Удалить
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -535,6 +601,78 @@ export default function Employees() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit Employee Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Редактировать сотрудника</DialogTitle>
+              <DialogDescription>
+                Изменение информации о сотруднике
+              </DialogDescription>
+            </DialogHeader>
+            
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-first-name">Имя</Label>
+                  <Input
+                    id="edit-first-name"
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    required
+                    placeholder="Иван"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-last-name">Фамилия</Label>
+                  <Input
+                    id="edit-last-name"
+                    value={editLastName}
+                    onChange={(e) => setEditLastName(e.target.value)}
+                    required
+                    placeholder="Иванов"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-position">Должность</Label>
+                  <Input
+                    id="edit-position"
+                    value={editPosition}
+                    onChange={(e) => setEditPosition(e.target.value)}
+                    placeholder="Менеджер"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-department">Отдел</Label>
+                  <Input
+                    id="edit-department"
+                    value={editDepartment}
+                    onChange={(e) => setEditDepartment(e.target.value)}
+                    placeholder="Продажи"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="flex-1"
+                >
+                  Отмена
+                </Button>
+                <Button type="submit" disabled={updatingProfile} className="flex-1">
+                  {updatingProfile ? "Сохранение..." : "Сохранить"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
