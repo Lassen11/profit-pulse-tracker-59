@@ -105,6 +105,15 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     e.preventDefault();
     if (!user) return;
 
+    if (!selectedEmployeeId) {
+      toast({
+        title: "Ошибка",
+        description: "Выберите сотрудника",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const employeeData = {
         department_id: departmentId,
@@ -172,7 +181,6 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
               <Select
                 value={selectedEmployeeId}
                 onValueChange={setSelectedEmployeeId}
-                disabled={!!employee}
                 required
               >
                 <SelectTrigger>
