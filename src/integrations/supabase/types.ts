@@ -281,6 +281,51 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          city: string
+          client_name: string
+          contract_amount: number
+          created_at: string
+          employee_id: string
+          id: string
+          lead_source: string
+          manager_bonus: number
+          payment_amount: number
+          payment_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city: string
+          client_name: string
+          contract_amount?: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          lead_source: string
+          manager_bonus?: number
+          payment_amount?: number
+          payment_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          client_name?: string
+          contract_amount?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          lead_source?: string
+          manager_bonus?: number
+          payment_amount?: number
+          payment_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number

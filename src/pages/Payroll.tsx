@@ -8,6 +8,9 @@ import { useNavigate } from "react-router-dom";
 import { Plus, ArrowLeft } from "lucide-react";
 import { DepartmentDialog } from "@/components/DepartmentDialog";
 import { DepartmentCard } from "@/components/DepartmentCard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PayrollAnalytics } from "@/components/PayrollAnalytics";
+import { PayrollSales } from "@/components/PayrollSales";
 
 export interface Department {
   id: string;
@@ -154,46 +157,65 @@ export default function Payroll() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 max-w-7xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-4xl font-bold">ФОТ (Фонд оплаты труда)</h1>
-          </div>
-          <Button onClick={() => {
-            setEditDepartment(null);
-            setDialogOpen(true);
-          }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить отдел
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          <h1 className="text-4xl font-bold">ФОТ (Фонд оплаты труда)</h1>
         </div>
 
-        {departments.length === 0 ? (
-          <Card className="p-12 text-center">
-            <p className="text-muted-foreground mb-4">Нет добавленных отделов</p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Создать первый отдел
-            </Button>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {departments.map((department) => (
-              <DepartmentCard
-                key={department.id}
-                department={department}
-                onEdit={handleEditDepartment}
-                onDelete={handleDeleteDepartment}
-              />
-            ))}
-          </div>
-        )}
+        <Tabs defaultValue="departments" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="departments">ФОТ</TabsTrigger>
+            <TabsTrigger value="analytics">Аналитика</TabsTrigger>
+            <TabsTrigger value="sales">Продажи</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="departments">
+            <div className="flex justify-end mb-6">
+              <Button onClick={() => {
+                setEditDepartment(null);
+                setDialogOpen(true);
+              }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить отдел
+              </Button>
+            </div>
+
+            {departments.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground mb-4">Нет добавленных отделов</p>
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Создать первый отдел
+                </Button>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {departments.map((department) => (
+                  <DepartmentCard
+                    key={department.id}
+                    department={department}
+                    onEdit={handleEditDepartment}
+                    onDelete={handleDeleteDepartment}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <PayrollAnalytics />
+          </TabsContent>
+
+          <TabsContent value="sales">
+            <PayrollSales />
+          </TabsContent>
+        </Tabs>
 
         <DepartmentDialog
           open={dialogOpen}
