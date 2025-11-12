@@ -330,9 +330,11 @@ export type Database = {
         Row: {
           amount: number
           category: string
+          city: string | null
           client_name: string | null
           company: string
           contract_amount: number | null
+          contract_date: string | null
           contract_status: string | null
           created_at: string
           date: string
@@ -342,8 +344,11 @@ export type Database = {
           id: string
           income_account: string | null
           installment_period: number | null
+          lead_source: string | null
           lump_sum: number | null
+          manager: string | null
           organization_name: string | null
+          payment_day: number | null
           subcategory: string | null
           termination_date: string | null
           type: string
@@ -353,9 +358,11 @@ export type Database = {
         Insert: {
           amount: number
           category: string
+          city?: string | null
           client_name?: string | null
           company?: string
           contract_amount?: number | null
+          contract_date?: string | null
           contract_status?: string | null
           created_at?: string
           date: string
@@ -365,8 +372,11 @@ export type Database = {
           id?: string
           income_account?: string | null
           installment_period?: number | null
+          lead_source?: string | null
           lump_sum?: number | null
+          manager?: string | null
           organization_name?: string | null
+          payment_day?: number | null
           subcategory?: string | null
           termination_date?: string | null
           type: string
@@ -376,9 +386,11 @@ export type Database = {
         Update: {
           amount?: number
           category?: string
+          city?: string | null
           client_name?: string | null
           company?: string
           contract_amount?: number | null
+          contract_date?: string | null
           contract_status?: string | null
           created_at?: string
           date?: string
@@ -388,8 +400,11 @@ export type Database = {
           id?: string
           income_account?: string | null
           installment_period?: number | null
+          lead_source?: string | null
           lump_sum?: number | null
+          manager?: string | null
           organization_name?: string | null
+          payment_day?: number | null
           subcategory?: string | null
           termination_date?: string | null
           type?: string
