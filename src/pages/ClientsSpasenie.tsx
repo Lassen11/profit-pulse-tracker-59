@@ -87,7 +87,7 @@ export default function ClientsSpasenie() {
             t.client_name === clientName && 
             t.category === 'Продажа' &&
             t.contract_amount
-          );
+          ) as any;
 
           const installmentPeriod = contractTransaction?.installment_period || 0;
           const firstPayment = contractTransaction?.first_payment || 0;
