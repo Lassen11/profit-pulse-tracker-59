@@ -60,6 +60,7 @@ export default function Clients() {
         .eq('user_id', user.id)
         .eq('type', 'income')
         .eq('category', 'Продажи')
+        .eq('company', 'Дело бизнеса')
         .not('client_name', 'is', null)
         .order('date', { ascending: false });
 
@@ -310,10 +311,10 @@ export default function Clients() {
                 <span className="hidden xs:inline">Назад к панели</span>
                 <span className="xs:hidden">Назад</span>
               </Button>
-              <Button variant="outline" onClick={() => navigate("/all-projects")} size="sm">
+              <Button variant="outline" onClick={() => navigate("/clients-spasenie")} size="sm">
                 <Building2 className="w-4 h-4 mr-2" />
-                <span className="hidden xs:inline">Все проекты</span>
-                <span className="xs:hidden">Проекты</span>
+                <span className="hidden xs:inline">Спасение</span>
+                <span className="xs:hidden">Спасение</span>
               </Button>
             </div>
             <div>

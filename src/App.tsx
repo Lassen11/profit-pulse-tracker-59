@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
+import ClientsSpasenie from "./pages/ClientsSpasenie";
 import Auth from "./pages/Auth";
 import AllProjects from "./pages/AllProjects";
 import LeadGeneration from "./pages/LeadGeneration";
@@ -25,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/clients" element={<Clients />} />
+            <Route path="/clients-spasenie" element={<ClientsSpasenie />} />
             <Route path="/all-projects" element={<AllProjects />} />
             <Route path="/lead-generation" element={<LeadGeneration />} />
             <Route path="/employees" element={<Employees />} />
