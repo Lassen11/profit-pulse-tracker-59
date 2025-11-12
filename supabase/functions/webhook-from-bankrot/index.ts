@@ -19,7 +19,7 @@ interface NewClientPayload {
   installment_period?: number;
   manager?: string;
   city?: string;
-  lead_source?: string;
+  source?: string;
   contract_date?: string;
   payment_day?: number;
 }
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
           description: payload.description || `Новый клиент из bankrot-helper: ${payload.client_name}`,
           manager: payload.manager || null,
           city: payload.city || null,
-          lead_source: payload.lead_source || null,
+          lead_source: payload.source || null,
           contract_date: payload.contract_date || payload.date,
           payment_day: payload.payment_day || null,
         })

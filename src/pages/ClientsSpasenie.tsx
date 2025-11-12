@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowLeft, User, DollarSign, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Building2 } from "lucide-react";
+import { Search, ArrowLeft, User, DollarSign, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Building2, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +46,33 @@ export default function ClientsSpasenie() {
       setLoading(false);
     }
   }, [user]);
+
+  const handleDeleteSyncTransactions = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .like('description', '%Синхронизация существующего клиента%');
+
+      if (error) throw error;
+
+      toast({
+        title: "Успешно",
+        description: "Операции синхронизации удалены",
+      });
+
+      fetchClientsData();
+    } catch (error) {
+      console.error('Error deleting sync transactions:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить операции синхронизации",
+        variant: "destructive"
+      });
+    }
+  };
 
   const fetchClientsData = async () => {
     if (!user) {
@@ -237,6 +264,14 @@ export default function ClientsSpasenie() {
               </p>
             </div>
           </div>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={handleDeleteSyncTransactions}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Удалить операции синхронизации
+          </Button>
         </div>
 
         {/* Summary Cards */}

@@ -2,3 +2,6 @@ project_id = "rdpxbbddqxwbufzqozqz"
 
 [functions.webhook-from-bankrot]
 verify_jwt = false
+
+[functions.delete-sync-transactions]
+verify_jwt = false
