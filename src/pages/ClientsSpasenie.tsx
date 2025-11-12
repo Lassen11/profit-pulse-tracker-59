@@ -19,6 +19,14 @@ interface ClientData {
   lastPaymentDate: string;
   paymentsCount: number;
   transactions: any[];
+  installmentPeriod?: number;
+  firstPayment?: number;
+  monthlyPayment: number;
+  manager?: string;
+  city?: string;
+  leadSource?: string;
+  contractDate?: string;
+  paymentDay?: number;
 }
 
 export default function ClientsSpasenie() {
@@ -81,15 +89,32 @@ export default function ClientsSpasenie() {
             t.contract_amount
           );
 
+          const installmentPeriod = contractTransaction?.installment_period || 0;
+          const firstPayment = contractTransaction?.first_payment || 0;
+          const contractAmount = contractTransaction?.contract_amount || 0;
+          
+          // Рассчитываем ежемесячный платеж
+          const monthlyPayment = installmentPeriod > 0 
+            ? (contractAmount - firstPayment) / installmentPeriod 
+            : 0;
+
           clientsMap.set(clientName, {
             clientName,
             organizationName: contractTransaction?.organization_name,
-            contractAmount: contractTransaction?.contract_amount || 0,
+            contractAmount: contractAmount,
             totalPaid: 0,
             remainingAmount: 0,
             lastPaymentDate: transaction.date,
             paymentsCount: 0,
-            transactions: []
+            transactions: [],
+            installmentPeriod: installmentPeriod,
+            firstPayment: firstPayment,
+            monthlyPayment: monthlyPayment,
+            manager: contractTransaction?.manager,
+            city: contractTransaction?.city,
+            leadSource: contractTransaction?.lead_source,
+            contractDate: contractTransaction?.contract_date,
+            paymentDay: contractTransaction?.payment_day
           });
         }
 
@@ -306,7 +331,6 @@ export default function ClientsSpasenie() {
                         {getSortIcon('clientName')}
                       </Button>
                     </TableHead>
-                    <TableHead>Организация</TableHead>
                     <TableHead className="text-right">
                       <Button
                         variant="ghost"
@@ -317,52 +341,20 @@ export default function ClientsSpasenie() {
                         {getSortIcon('contractAmount')}
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('totalPaid')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Оплачено
-                        {getSortIcon('totalPaid')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('remainingAmount')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Остаток
-                        {getSortIcon('remainingAmount')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('paymentsCount')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Платежей
-                        {getSortIcon('paymentsCount')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('lastPaymentDate')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Последний платеж
-                        {getSortIcon('lastPaymentDate')}
-                      </Button>
-                    </TableHead>
+                    <TableHead className="text-right">Срок рассрочки</TableHead>
+                    <TableHead className="text-right">Первый платеж</TableHead>
+                    <TableHead className="text-right">Ежемес. платеж</TableHead>
+                    <TableHead>Менеджер</TableHead>
+                    <TableHead>Город</TableHead>
+                    <TableHead>Источник</TableHead>
+                    <TableHead>Дата договора</TableHead>
+                    <TableHead className="text-center">День платежа</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAndSortedClients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         {searchTerm ? "Клиенты не найдены" : "Нет клиентов"}
                       </TableCell>
                     </TableRow>
@@ -370,16 +362,15 @@ export default function ClientsSpasenie() {
                     filteredAndSortedClients.map((client, index) => (
                       <TableRow key={index}>
                         <TableCell className="font-medium">{client.clientName}</TableCell>
-                        <TableCell>{client.organizationName || '-'}</TableCell>
                         <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
-                        <TableCell className="text-right text-green-600 font-medium">
-                          {formatCurrency(client.totalPaid)}
-                        </TableCell>
-                        <TableCell className="text-right text-orange-600 font-medium">
-                          {formatCurrency(client.remainingAmount)}
-                        </TableCell>
-                        <TableCell className="text-right">{client.paymentsCount}</TableCell>
-                        <TableCell>{formatDate(client.lastPaymentDate)}</TableCell>
+                        <TableCell className="text-right">{client.installmentPeriod ? `${client.installmentPeriod} мес.` : '-'}</TableCell>
+                        <TableCell className="text-right">{client.firstPayment ? formatCurrency(client.firstPayment) : '-'}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(client.monthlyPayment)}</TableCell>
+                        <TableCell>{client.manager || '-'}</TableCell>
+                        <TableCell>{client.city || '-'}</TableCell>
+                        <TableCell>{client.leadSource || '-'}</TableCell>
+                        <TableCell>{client.contractDate ? formatDate(client.contractDate) : '-'}</TableCell>
+                        <TableCell className="text-center">{client.paymentDay || '-'}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -407,14 +398,52 @@ export default function ClientsSpasenie() {
                         <span className="text-muted-foreground">Сумма договора:</span>
                         <span className="font-medium">{formatCurrency(client.contractAmount)}</span>
                       </div>
+                      {client.installmentPeriod && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Срок рассрочки:</span>
+                          <span className="font-medium">{client.installmentPeriod} мес.</span>
+                        </div>
+                      )}
+                      {client.firstPayment && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Первый платеж:</span>
+                          <span className="font-medium">{formatCurrency(client.firstPayment)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Оплачено:</span>
-                        <span className="font-medium text-green-600">{formatCurrency(client.totalPaid)}</span>
+                        <span className="text-muted-foreground">Ежемесячный платеж:</span>
+                        <span className="font-medium">{formatCurrency(client.monthlyPayment)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Остаток:</span>
-                        <span className="font-medium text-orange-600">{formatCurrency(client.remainingAmount)}</span>
-                      </div>
+                      {client.manager && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Менеджер:</span>
+                          <span className="font-medium">{client.manager}</span>
+                        </div>
+                      )}
+                      {client.city && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Город:</span>
+                          <span className="font-medium">{client.city}</span>
+                        </div>
+                      )}
+                      {client.leadSource && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Источник:</span>
+                          <span className="font-medium">{client.leadSource}</span>
+                        </div>
+                      )}
+                      {client.contractDate && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Дата договора:</span>
+                          <span className="font-medium">{formatDate(client.contractDate)}</span>
+                        </div>
+                      )}
+                      {client.paymentDay && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">День платежа:</span>
+                          <span className="font-medium">{client.paymentDay}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Платежей:</span>
                         <span className="font-medium">{client.paymentsCount}</span>
