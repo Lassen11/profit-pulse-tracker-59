@@ -16,6 +16,12 @@ interface NewClientPayload {
   company: string;
   user_id: string;
   description?: string;
+  installment_period?: number;
+  manager?: string;
+  city?: string;
+  lead_source?: string;
+  contract_date?: string;
+  payment_day?: number;
 }
 
 interface NewPaymentPayload {
@@ -61,12 +67,19 @@ Deno.serve(async (req) => {
           subcategory: 'БФЛ',
           amount: payload.first_payment,
           contract_amount: payload.contract_amount,
+          first_payment: payload.first_payment,
+          installment_period: payload.installment_period || null,
           date: payload.date,
           company: payload.company,
           income_account: payload.income_account,
           client_name: payload.client_name,
           organization_name: payload.organization_name || null,
           description: payload.description || `Новый клиент из bankrot-helper: ${payload.client_name}`,
+          manager: payload.manager || null,
+          city: payload.city || null,
+          lead_source: payload.lead_source || null,
+          contract_date: payload.contract_date || payload.date,
+          payment_day: payload.payment_day || null,
         })
         .select()
         .single();
