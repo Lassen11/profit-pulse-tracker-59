@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const { data, error } = await supabaseClient
       .from('transactions')
       .delete()
-      .eq('description', 'Синхронизация существующего клиента')
+      .like('description', '%Синхронизация существующего клиента%')
       .select()
 
     if (error) throw error
