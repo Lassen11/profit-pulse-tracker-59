@@ -75,26 +75,15 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
 
   const fetchSalesEmployees = async () => {
     try {
-      const { data: employeesData } = await supabase
-        .from('department_employees')
-        .select(`
-          id,
-          employee_id,
-          departments!inner(name)
-        `)
-        .eq('departments.name', 'Отдел Продаж');
-
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name');
+        .select('id, first_name, last_name, department')
+        .eq('department', 'Отдел продаж')
+        .eq('is_active', true);
 
-      const profileMap = new Map(
-        profilesData?.map(p => [p.user_id, `${p.first_name} ${p.last_name}`]) || []
-      );
-
-      const employees: SalesEmployee[] = employeesData?.map(e => ({
-        id: e.id,
-        name: profileMap.get(e.employee_id) || 'Неизвестный'
+      const employees: SalesEmployee[] = profilesData?.map(p => ({
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`
       })) || [];
 
       setSalesEmployees(employees);
@@ -181,13 +170,23 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
             </div>
 
             <div>
-              <Label htmlFor="lead_source">Источник лида</Label>
-              <Input
-                id="lead_source"
+              <Label htmlFor="lead_source">Источник</Label>
+              <Select
                 value={formData.lead_source}
-                onChange={(e) => setFormData({ ...formData, lead_source: e.target.value })}
-                required
-              />
+                onValueChange={(value) => setFormData({ ...formData, lead_source: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите источник" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Авито">Авито</SelectItem>
+                  <SelectItem value="Сайт">Сайт</SelectItem>
+                  <SelectItem value="Квиз">Квиз</SelectItem>
+                  <SelectItem value="Рекомендация Руководителя">Рекомендация Руководителя</SelectItem>
+                  <SelectItem value="Рекомендация ОЗ">Рекомендация ОЗ</SelectItem>
+                  <SelectItem value="Рекомендация менеджера">Рекомендация менеджера</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

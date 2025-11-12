@@ -78,6 +78,7 @@ const accountOptions = [
 export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false, selectedCompany }: TransactionDialogProps) {
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
+  const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
     category: '',
@@ -94,7 +95,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     incomeAccount: '',
     expenseAccount: '',
     organizationName: '',
-    company: selectedCompany || 'Спасение'
+    company: selectedCompany || 'Спасение',
+    salesEmployeeId: '',
+    leadSource: '',
+    city: ''
   });
 
   useEffect(() => {
@@ -115,7 +119,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         incomeAccount: (transaction as any).income_account || '',
         expenseAccount: (transaction as any).expense_account || '',
         organizationName: (transaction as any).organization_name || '',
-        company: transaction.company || selectedCompany || 'Спасение'
+        company: transaction.company || selectedCompany || 'Спасение',
+        salesEmployeeId: '',
+        leadSource: '',
+        city: ''
       });
     } else {
       setFormData({
@@ -134,10 +141,40 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         incomeAccount: '',
         expenseAccount: '',
         organizationName: '',
-        company: selectedCompany || 'Спасение'
+        company: selectedCompany || 'Спасение',
+        salesEmployeeId: '',
+        leadSource: '',
+        city: ''
       });
     }
   }, [transaction, open, selectedCompany]);
+
+  useEffect(() => {
+    if (open && formData.type === 'income' && formData.category === 'Продажи') {
+      fetchSalesEmployees();
+    }
+  }, [open, formData.type, formData.category]);
+
+  const fetchSalesEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('department', 'Отдел продаж')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      setSalesEmployees(
+        data?.map(emp => ({
+          id: emp.id,
+          name: `${emp.first_name} ${emp.last_name}`
+        })) || []
+      );
+    } catch (error) {
+      console.error('Error fetching sales employees:', error);
+    }
+  };
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = async (clientName: string) => {
@@ -197,6 +234,31 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     
     if (!formData.category || !formData.amount || !formData.date) {
       return;
+    }
+
+    // Создаем запись в таблице sales если это продажа
+    if (formData.type === 'income' && formData.category === 'Продажи' && formData.salesEmployeeId && user) {
+      try {
+        const { error: salesError } = await supabase
+          .from('sales')
+          .insert({
+            user_id: user.id,
+            employee_id: formData.salesEmployeeId,
+            client_name: formData.clientName,
+            payment_amount: parseFloat(formData.amount),
+            contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : 0,
+            city: formData.city,
+            lead_source: formData.leadSource,
+            payment_date: formData.date,
+            manager_bonus: 0
+          });
+
+        if (salesError) {
+          console.error('Error creating sales record:', salesError);
+        }
+      } catch (error) {
+        console.error('Error creating sales record:', error);
+      }
     }
 
     const mainTransaction = {
@@ -359,6 +421,59 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   placeholder="Введите ФИО клиента..."
                 />
               </div>
+            )}
+
+            {formData.type === 'income' && formData.category === 'Продажи' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="salesEmployee">Сотрудник</Label>
+                  <Select 
+                    value={formData.salesEmployeeId} 
+                    onValueChange={(value) => setFormData({ ...formData, salesEmployeeId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите сотрудника" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salesEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="leadSource">Источник</Label>
+                  <Select 
+                    value={formData.leadSource} 
+                    onValueChange={(value) => setFormData({ ...formData, leadSource: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите источник" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Авито">Авито</SelectItem>
+                      <SelectItem value="Сайт">Сайт</SelectItem>
+                      <SelectItem value="Квиз">Квиз</SelectItem>
+                      <SelectItem value="Рекомендация Руководителя">Рекомендация Руководителя</SelectItem>
+                      <SelectItem value="Рекомендация ОЗ">Рекомендация ОЗ</SelectItem>
+                      <SelectItem value="Рекомендация менеджера">Рекомендация менеджера</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">Город</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="Введите город..."
+                  />
+                </div>
+              </>
             )}
 
             {formData.company === 'Дело Бизнеса' && (

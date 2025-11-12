@@ -51,30 +51,20 @@ export function PayrollSales() {
 
       if (error) throw error;
 
-      const { data: employeesData } = await supabase
-        .from('department_employees')
-        .select(`
-          id,
-          employee_id,
-          departments!inner(name)
-        `)
-        .eq('departments.name', 'Отдел Продаж');
-
+      // Получаем только сотрудников с отделом "Отдел продаж"
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name');
+        .select('id, user_id, first_name, last_name, department')
+        .eq('department', 'Отдел продаж')
+        .eq('is_active', true);
 
       const profileMap = new Map(
-        profilesData?.map(p => [p.user_id, `${p.first_name} ${p.last_name}`]) || []
-      );
-
-      const employeeMap = new Map(
-        employeesData?.map(e => [e.id, profileMap.get(e.employee_id) || 'Неизвестный']) || []
+        profilesData?.map(p => [p.id, `${p.first_name} ${p.last_name}`]) || []
       );
 
       const formattedSales: Sale[] = salesData?.map(sale => ({
         ...sale,
-        employee_name: employeeMap.get(sale.employee_id) || 'Неизвестный'
+        employee_name: profileMap.get(sale.employee_id) || 'Неизвестный'
       })) || [];
 
       setSales(formattedSales);
