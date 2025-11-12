@@ -87,7 +87,7 @@ export default function ClientsSpasenie() {
             t.client_name === clientName && 
             t.category === 'Продажа' &&
             t.contract_amount
-          );
+          ) as any;
 
           const installmentPeriod = contractTransaction?.installment_period || 0;
           const firstPayment = contractTransaction?.first_payment || 0;
@@ -341,6 +341,16 @@ export default function ClientsSpasenie() {
                         {getSortIcon('contractAmount')}
                       </Button>
                     </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('totalPaid')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Оплачено
+                        {getSortIcon('totalPaid')}
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Срок рассрочки</TableHead>
                     <TableHead className="text-right">Первый платеж</TableHead>
                     <TableHead className="text-right">Ежемес. платеж</TableHead>
@@ -354,7 +364,7 @@ export default function ClientsSpasenie() {
                 <TableBody>
                   {filteredAndSortedClients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                         {searchTerm ? "Клиенты не найдены" : "Нет клиентов"}
                       </TableCell>
                     </TableRow>
@@ -363,6 +373,7 @@ export default function ClientsSpasenie() {
                       <TableRow key={index}>
                         <TableCell className="font-medium">{client.clientName}</TableCell>
                         <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
+                        <TableCell className="text-right text-green-600 font-medium">{formatCurrency(client.totalPaid)}</TableCell>
                         <TableCell className="text-right">{client.installmentPeriod ? `${client.installmentPeriod} мес.` : '-'}</TableCell>
                         <TableCell className="text-right">{client.firstPayment ? formatCurrency(client.firstPayment) : '-'}</TableCell>
                         <TableCell className="text-right">{formatCurrency(client.monthlyPayment)}</TableCell>
@@ -397,6 +408,10 @@ export default function ClientsSpasenie() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Сумма договора:</span>
                         <span className="font-medium">{formatCurrency(client.contractAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Оплачено:</span>
+                        <span className="font-medium text-green-600">{formatCurrency(client.totalPaid)}</span>
                       </div>
                       {client.installmentPeriod && (
                         <div className="flex justify-between">
