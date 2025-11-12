@@ -86,7 +86,6 @@ export default function ClientsSpasenie() {
       const { data: transactions, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user.id)
         .eq('type', 'income')
         .eq('company', 'Спасение')
         .not('client_name', 'is', null)
