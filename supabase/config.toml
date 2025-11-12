@@ -1,1 +1,4 @@
 project_id = "rdpxbbddqxwbufzqozqz"
+
+[functions.webhook-from-bankrot]
+verify_jwt = false
