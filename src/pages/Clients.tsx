@@ -3,28 +3,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, ArrowLeft, User, DollarSign, Calendar, Clock, XCircle, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Activity, Building2 } from "lucide-react";
+import { Search, ArrowLeft, User, DollarSign, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { Transaction } from "@/components/TransactionTable";
 
 interface ClientData {
   clientName: string;
+  organizationName?: string;
   contractAmount: number;
-  firstPayment: number;
-  lumpSum: number;
-  installmentPeriod: number;
   totalPaid: number;
   remainingAmount: number;
   lastPaymentDate: string;
-  status: 'active' | 'completed' | 'overdue' | 'terminated';
-  contractStatus: 'active' | 'terminated';
-  terminationDate?: string;
-  transactions: Transaction[];
+  paymentsCount: number;
+  transactions: any[];
+  installmentPeriod?: number;
+  firstPayment?: number;
+  monthlyPayment: number;
+  manager?: string;
+  city?: string;
+  leadSource?: string;
+  contractDate?: string;
+  paymentDay?: number;
 }
 
 export default function Clients() {
@@ -41,7 +42,6 @@ export default function Clients() {
     if (user) {
       fetchClientsData();
     } else {
-      // If there's no user, we don't need to keep loading
       setLoading(false);
     }
   }, [user]);
@@ -54,13 +54,12 @@ export default function Clients() {
 
     try {
       setLoading(true);
+      // Получаем все транзакции для клиентов Спасение
       const { data: transactions, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user.id)
         .eq('type', 'income')
-        .eq('category', 'Продажи')
-        .eq('company', 'Дело бизнеса')
+        .eq('company', 'Спасение')
         .not('client_name', 'is', null)
         .order('date', { ascending: false });
 
@@ -81,36 +80,47 @@ export default function Clients() {
         const clientName = transaction.client_name!;
         
         if (!clientsMap.has(clientName)) {
-          // Ищем первую транзакцию с данными договора для этого клиента
+          // Ищем первую транзакцию с данными договора (категория "Продажа")
           const contractTransaction = transactions?.find(t => 
             t.client_name === clientName && 
-            t.contract_amount && 
-            t.first_payment !== undefined && 
-            t.installment_period
-          );
+            t.category === 'Продажа' &&
+            t.contract_amount
+          ) as any;
 
-          if (contractTransaction) {
-            clientsMap.set(clientName, {
-              clientName,
-              contractAmount: contractTransaction.contract_amount || 0,
-              firstPayment: contractTransaction.first_payment || 0,
-              lumpSum: (contractTransaction as any).lump_sum || 0,
-              installmentPeriod: contractTransaction.installment_period || 0,
-              totalPaid: 0,
-              remainingAmount: 0,
-              lastPaymentDate: transaction.date,
-              status: 'active',
-              contractStatus: (contractTransaction.contract_status as 'active' | 'terminated') || 'active',
-              terminationDate: contractTransaction.termination_date || undefined,
-              transactions: []
-            });
-          }
+          const installmentPeriod = contractTransaction?.installment_period || 0;
+          const firstPayment = contractTransaction?.first_payment || 0;
+          const contractAmount = contractTransaction?.contract_amount || 0;
+          
+          // Рассчитываем ежемесячный платеж
+          const monthlyPayment = installmentPeriod > 0 
+            ? (contractAmount - firstPayment) / installmentPeriod 
+            : 0;
+
+          clientsMap.set(clientName, {
+            clientName,
+            organizationName: contractTransaction?.organization_name,
+            contractAmount: contractAmount,
+            totalPaid: 0,
+            remainingAmount: 0,
+            lastPaymentDate: transaction.date,
+            paymentsCount: 0,
+            transactions: [],
+            installmentPeriod: installmentPeriod,
+            firstPayment: firstPayment,
+            monthlyPayment: monthlyPayment,
+            manager: contractTransaction?.manager,
+            city: contractTransaction?.city,
+            leadSource: contractTransaction?.lead_source,
+            contractDate: contractTransaction?.contract_date,
+            paymentDay: contractTransaction?.payment_day
+          });
         }
 
         const clientData = clientsMap.get(clientName);
         if (clientData) {
-          clientData.transactions.push(transaction as Transaction);
+          clientData.transactions.push(transaction);
           clientData.totalPaid += transaction.amount;
+          clientData.paymentsCount++;
           
           // Обновляем дату последнего платежа
           if (new Date(transaction.date) > new Date(clientData.lastPaymentDate)) {
@@ -119,27 +129,9 @@ export default function Clients() {
         }
       });
 
-      // Рассчитываем остатки и статусы для каждого клиента
+      // Рассчитываем остатки для каждого клиента
       const clientsArray = Array.from(clientsMap.values()).map(client => {
         client.remainingAmount = client.contractAmount - client.totalPaid;
-        
-        // Определяем статус
-        if (client.contractStatus === 'terminated') {
-          client.status = 'terminated';
-        } else if (client.remainingAmount <= 0) {
-          client.status = 'completed';
-        } else {
-          // Проверяем, не просрочена ли рассрочка
-          const lastPayment = new Date(client.lastPaymentDate);
-          const monthsSinceLastPayment = Math.floor((Date.now() - lastPayment.getTime()) / (1000 * 60 * 60 * 24 * 30));
-          
-          if (monthsSinceLastPayment > client.installmentPeriod) {
-            client.status = 'overdue';
-          } else {
-            client.status = 'active';
-          }
-        }
-
         return client;
       });
 
@@ -169,7 +161,8 @@ export default function Clients() {
 
   const filteredAndSortedClients = clients
     .filter(client =>
-      client.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+      client.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.organizationName?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       if (!sortField) return 0;
@@ -177,7 +170,6 @@ export default function Clients() {
       let aValue = a[sortField];
       let bValue = b[sortField];
 
-      // Handle different data types
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
@@ -197,96 +189,15 @@ export default function Clients() {
     }).format(amount);
   };
 
-  const getStatusBadge = (status: ClientData['status']) => {
-    switch (status) {
-      case 'completed':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Оплачен</Badge>;
-      case 'overdue':
-        return <Badge variant="destructive">Просрочен</Badge>;
-      case 'terminated':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Расторгнут</Badge>;
-      case 'active':
-      default:
-        return <Badge variant="secondary">Активен</Badge>;
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ru-RU');
   };
 
-  const handleTerminateContract = async (clientName: string) => {
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ 
-          contract_status: 'terminated',
-          termination_date: new Date().toISOString().split('T')[0]
-        })
-        .eq('user_id', user?.id)
-        .eq('client_name', clientName);
-
-      if (error) {
-        toast({
-          title: "Ошибка",
-          description: "Не удалось расторгнуть договор",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      toast({
-        title: "Договор расторгнут",
-        description: `Договор с ${clientName} успешно расторгнут`,
-      });
-
-      // Обновляем данные
-      fetchClientsData();
-    } catch (error) {
-      console.error('Error terminating contract:', error);
-    }
-  };
-
-  const handleReactivateContract = async (clientName: string) => {
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({ 
-          contract_status: 'active',
-          termination_date: null
-        })
-        .eq('user_id', user?.id)
-        .eq('client_name', clientName);
-
-      if (error) {
-        toast({
-          title: "Ошибка",
-          description: "Не удалось восстановить договор",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      toast({
-        title: "Договор восстановлен",
-        description: `Договор с ${clientName} успешно восстановлен`,
-      });
-
-      // Обновляем данные
-      fetchClientsData();
-    } catch (error) {
-      console.error('Error reactivating contract:', error);
-    }
-  };
-
-  const totalContracts = clients.length;
+  const totalClients = clients.length;
   const totalContractAmount = clients.reduce((sum, client) => sum + client.contractAmount, 0);
   const totalPaid = clients.reduce((sum, client) => sum + client.totalPaid, 0);
-  // Исключаем расторгнутые договоры из расчета суммы к доплате
-  const totalRemaining = clients
-    .filter(client => client.contractStatus !== 'terminated')
-    .reduce((sum, client) => sum + client.remainingAmount, 0);
-  
-  // Новые показатели
-  const totalTerminated = clients.filter(client => client.contractStatus === 'terminated').length;
-  const totalCompleted = clients.filter(client => client.status === 'completed').length;
-  const totalInProgress = clients.filter(client => client.contractStatus !== 'terminated' && client.status !== 'completed').length;
+  const totalRemaining = clients.reduce((sum, client) => sum + client.remainingAmount, 0);
+  const totalPayments = clients.reduce((sum, client) => sum + client.paymentsCount, 0);
 
   if (loading) {
     return (
@@ -318,23 +229,23 @@ export default function Clients() {
               </Button>
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Клиенты и рассрочки</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Клиенты</h1>
               <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                Управление клиентскими договорами и отслеживание платежей
+                Клиенты из приложения bankrot-helper
               </p>
             </div>
           </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Всего договоров</CardTitle>
+              <CardTitle className="text-sm font-medium">Всего клиентов</CardTitle>
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalContracts}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalClients}</div>
             </CardContent>
           </Card>
 
@@ -344,57 +255,43 @@ export default function Clients() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xs sm:text-sm lg:text-base font-bold break-words" title={formatCurrency(totalContractAmount)}>{formatCurrency(totalContractAmount)}</div>
+              <div className="text-xs sm:text-sm lg:text-base font-bold break-words" title={formatCurrency(totalContractAmount)}>
+                {formatCurrency(totalContractAmount)}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Уже оплачено</CardTitle>
+              <CardTitle className="text-sm font-medium">Оплачено</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xs sm:text-sm lg:text-base font-bold text-green-600 break-words" title={formatCurrency(totalPaid)}>{formatCurrency(totalPaid)}</div>
+              <div className="text-xs sm:text-sm lg:text-base font-bold text-green-600 break-words" title={formatCurrency(totalPaid)}>
+                {formatCurrency(totalPaid)}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">К доплате</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Остаток</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xs sm:text-sm lg:text-base font-bold text-orange-600 break-words" title={formatCurrency(totalRemaining)}>{formatCurrency(totalRemaining)}</div>
+              <div className="text-xs sm:text-sm lg:text-base font-bold text-orange-600 break-words" title={formatCurrency(totalRemaining)}>
+                {formatCurrency(totalRemaining)}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">В Работе</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Всего платежей</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{totalInProgress}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Расторги</CardTitle>
-              <XCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">{totalTerminated}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Завершенные</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{totalCompleted}</div>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalPayments}</div>
             </CardContent>
           </Card>
         </div>
@@ -404,12 +301,12 @@ export default function Clients() {
           <CardHeader>
             <CardTitle>Список клиентов</CardTitle>
             <CardDescription>
-              Подробная информация по всем клиентам и их рассрочкам
+              Подробная информация по клиентам из приложения bankrot-helper
             </CardDescription>
             <div className="flex items-center space-x-2">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Поиск по имени клиента..."
+                placeholder="Поиск по имени клиента или организации..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -445,27 +342,6 @@ export default function Clients() {
                     <TableHead className="text-right">
                       <Button
                         variant="ghost"
-                        onClick={() => handleSort('firstPayment')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Первый платеж
-                        {getSortIcon('firstPayment')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-right">ЕП</TableHead>
-                    <TableHead className="text-center">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('installmentPeriod')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Срок (мес.)
-                        {getSortIcon('installmentPeriod')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <Button
-                        variant="ghost"
                         onClick={() => handleSort('totalPaid')}
                         className="h-auto p-0 font-medium hover:bg-transparent"
                       >
@@ -473,242 +349,127 @@ export default function Clients() {
                         {getSortIcon('totalPaid')}
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('remainingAmount')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Остаток
-                        {getSortIcon('remainingAmount')}
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('lastPaymentDate')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Последний платеж
-                        {getSortIcon('lastPaymentDate')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleSort('status')}
-                        className="h-auto p-0 font-medium hover:bg-transparent"
-                      >
-                        Статус
-                        {getSortIcon('status')}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="text-center">Действия</TableHead>
+                    <TableHead className="text-right">Срок рассрочки</TableHead>
+                    <TableHead className="text-right">Первый платеж</TableHead>
+                    <TableHead className="text-right">Ежемес. платеж</TableHead>
+                    <TableHead>Менеджер</TableHead>
+                    <TableHead>Город</TableHead>
+                    <TableHead>Источник</TableHead>
+                    <TableHead>Дата договора</TableHead>
+                    <TableHead className="text-center">День платежа</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAndSortedClients.map((client, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{client.clientName}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(client.firstPayment)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(client.lumpSum)}</TableCell>
-                      <TableCell className="text-center">{client.installmentPeriod}</TableCell>
-                      <TableCell className="text-right text-green-600 font-semibold">
-                        {formatCurrency(client.totalPaid)}
-                      </TableCell>
-                      <TableCell className="text-right text-orange-600 font-semibold">
-                        {formatCurrency(client.remainingAmount)}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(client.lastPaymentDate).toLocaleDateString('ru-RU')}
-                        {client.terminationDate && (
-                          <div className="text-xs text-red-600">
-                            Расторгнут: {new Date(client.terminationDate).toLocaleDateString('ru-RU')}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getStatusBadge(client.status)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {client.contractStatus === 'active' ? (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                                <XCircle className="w-4 h-4 mr-1" />
-                                Расторгнуть
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Расторжение договора</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Вы уверены, что хотите расторгнуть договор с {client.clientName}? 
-                                  Это действие можно будет отменить позже.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Отмена</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleTerminateContract(client.clientName)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Расторгнуть договор
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        ) : (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Восстановить
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Восстановление договора</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Вы уверены, что хотите восстановить договор с {client.clientName}?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Отмена</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleReactivateContract(client.clientName)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  Восстановить договор
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
+                  {filteredAndSortedClients.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                        {searchTerm ? "Клиенты не найдены" : "Нет клиентов"}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredAndSortedClients.map((client, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{client.clientName}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(client.contractAmount)}</TableCell>
+                        <TableCell className="text-right text-green-600 font-medium">{formatCurrency(client.totalPaid)}</TableCell>
+                        <TableCell className="text-right">{client.installmentPeriod ? `${client.installmentPeriod} мес.` : '-'}</TableCell>
+                        <TableCell className="text-right">{client.firstPayment ? formatCurrency(client.firstPayment) : '-'}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(client.monthlyPayment)}</TableCell>
+                        <TableCell>{client.manager || '-'}</TableCell>
+                        <TableCell>{client.city || '-'}</TableCell>
+                        <TableCell>{client.leadSource || '-'}</TableCell>
+                        <TableCell>{client.contractDate ? formatDate(client.contractDate) : '-'}</TableCell>
+                        <TableCell className="text-center">{client.paymentDay || '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
 
             {/* Mobile Cards */}
-            <div className="block lg:hidden space-y-4">
-              {filteredAndSortedClients.map((client, index) => (
-                <div key={index} className="rounded-lg border bg-card p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg">{client.clientName}</h3>
-                    {getStatusBadge(client.status)}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="space-y-2">
+            <div className="lg:hidden space-y-4">
+              {filteredAndSortedClients.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? "Клиенты не найдены" : "Нет клиентов"}
+                </div>
+              ) : (
+                filteredAndSortedClients.map((client, index) => (
+                  <Card key={index}>
+                    <CardHeader>
+                      <CardTitle className="text-base">{client.clientName}</CardTitle>
+                      {client.organizationName && (
+                        <CardDescription>{client.organizationName}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Сумма договора:</span>
                         <span className="font-medium">{formatCurrency(client.contractAmount)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Первый платеж:</span>
-                        <span className="font-medium">{formatCurrency(client.firstPayment)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">ЕП:</span>
-                        <span className="font-medium">{formatCurrency(client.lumpSum)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Срок:</span>
-                        <span className="font-medium">{client.installmentPeriod} мес.</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Оплачено:</span>
-                        <span className="font-semibold text-green-600">{formatCurrency(client.totalPaid)}</span>
+                        <span className="font-medium text-green-600">{formatCurrency(client.totalPaid)}</span>
                       </div>
+                      {client.installmentPeriod && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Срок рассрочки:</span>
+                          <span className="font-medium">{client.installmentPeriod} мес.</span>
+                        </div>
+                      )}
+                      {client.firstPayment && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Первый платеж:</span>
+                          <span className="font-medium">{formatCurrency(client.firstPayment)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Остаток:</span>
-                        <span className="font-semibold text-orange-600">{formatCurrency(client.remainingAmount)}</span>
+                        <span className="text-muted-foreground">Ежемесячный платеж:</span>
+                        <span className="font-medium">{formatCurrency(client.monthlyPayment)}</span>
+                      </div>
+                      {client.manager && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Менеджер:</span>
+                          <span className="font-medium">{client.manager}</span>
+                        </div>
+                      )}
+                      {client.city && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Город:</span>
+                          <span className="font-medium">{client.city}</span>
+                        </div>
+                      )}
+                      {client.leadSource && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Источник:</span>
+                          <span className="font-medium">{client.leadSource}</span>
+                        </div>
+                      )}
+                      {client.contractDate && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Дата договора:</span>
+                          <span className="font-medium">{formatDate(client.contractDate)}</span>
+                        </div>
+                      )}
+                      {client.paymentDay && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">День платежа:</span>
+                          <span className="font-medium">{client.paymentDay}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Платежей:</span>
+                        <span className="font-medium">{client.paymentsCount}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Последний платеж:</span>
-                        <span className="font-medium text-xs">{new Date(client.lastPaymentDate).toLocaleDateString('ru-RU')}</span>
+                        <span className="font-medium">{formatDate(client.lastPaymentDate)}</span>
                       </div>
-                    </div>
-                  </div>
-                  
-                  {client.terminationDate && (
-                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
-                      Расторгнут: {new Date(client.terminationDate).toLocaleDateString('ru-RU')}
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-end pt-2 border-t">
-                    {client.contractStatus === 'active' ? (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Расторгнуть
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Расторжение договора</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Вы уверены, что хотите расторгнуть договор с {client.clientName}? 
-                              Это действие можно будет отменить позже.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Отмена</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleTerminateContract(client.clientName)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Расторгнуть договор
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    ) : (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Восстановить
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Восстановление договора</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Вы уверены, что хотите восстановить договор с {client.clientName}?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Отмена</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleReactivateContract(client.clientName)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Восстановить договор
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
-
-            {filteredAndSortedClients.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? "Клиенты не найдены" : "Нет данных о клиентах с рассрочкой"}
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
