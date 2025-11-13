@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
-import Clients from "./pages/Clients";
 import ClientsSpasenie from "./pages/ClientsSpasenie";
 import Auth from "./pages/Auth";
 import AllProjects from "./pages/AllProjects";
@@ -25,7 +24,6 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/clients" element={<Clients />} />
             <Route path="/clients-spasenie" element={<ClientsSpasenie />} />
             <Route path="/all-projects" element={<AllProjects />} />
             <Route path="/lead-generation" element={<LeadGeneration />} />
