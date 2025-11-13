@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      bankrot_clients: {
+        Row: {
+          city: string | null
+          contract_amount: number
+          contract_date: string | null
+          created_at: string | null
+          deposit_paid: number | null
+          deposit_target: number | null
+          employee_id: string | null
+          first_payment: number
+          full_name: string
+          id: string
+          installment_period: number
+          manager: string | null
+          monthly_payment: number
+          payment_day: number | null
+          remaining_amount: number | null
+          source: string | null
+          total_paid: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          contract_amount: number
+          contract_date?: string | null
+          created_at?: string | null
+          deposit_paid?: number | null
+          deposit_target?: number | null
+          employee_id?: string | null
+          first_payment: number
+          full_name: string
+          id?: string
+          installment_period: number
+          manager?: string | null
+          monthly_payment: number
+          payment_day?: number | null
+          remaining_amount?: number | null
+          source?: string | null
+          total_paid?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          contract_amount?: number
+          contract_date?: string | null
+          created_at?: string | null
+          deposit_paid?: number | null
+          deposit_target?: number | null
+          employee_id?: string | null
+          first_payment?: number
+          full_name?: string
+          id?: string
+          installment_period?: number
+          manager?: string | null
+          monthly_payment?: number
+          payment_day?: number | null
+          remaining_amount?: number | null
+          source?: string | null
+          total_paid?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       company_balance_adjustments: {
         Row: {
           adjusted_balance: number
@@ -330,9 +396,11 @@ export type Database = {
         Row: {
           amount: number
           category: string
+          city: string | null
           client_name: string | null
           company: string
           contract_amount: number | null
+          contract_date: string | null
           contract_status: string | null
           created_at: string
           date: string
@@ -342,8 +410,11 @@ export type Database = {
           id: string
           income_account: string | null
           installment_period: number | null
+          lead_source: string | null
           lump_sum: number | null
+          manager: string | null
           organization_name: string | null
+          payment_day: number | null
           subcategory: string | null
           termination_date: string | null
           type: string
@@ -353,9 +424,11 @@ export type Database = {
         Insert: {
           amount: number
           category: string
+          city?: string | null
           client_name?: string | null
           company?: string
           contract_amount?: number | null
+          contract_date?: string | null
           contract_status?: string | null
           created_at?: string
           date: string
@@ -365,8 +438,11 @@ export type Database = {
           id?: string
           income_account?: string | null
           installment_period?: number | null
+          lead_source?: string | null
           lump_sum?: number | null
+          manager?: string | null
           organization_name?: string | null
+          payment_day?: number | null
           subcategory?: string | null
           termination_date?: string | null
           type: string
@@ -376,9 +452,11 @@ export type Database = {
         Update: {
           amount?: number
           category?: string
+          city?: string | null
           client_name?: string | null
           company?: string
           contract_amount?: number | null
+          contract_date?: string | null
           contract_status?: string | null
           created_at?: string
           date?: string
@@ -388,8 +466,11 @@ export type Database = {
           id?: string
           income_account?: string | null
           installment_period?: number | null
+          lead_source?: string | null
           lump_sum?: number | null
+          manager?: string | null
           organization_name?: string | null
+          payment_day?: number | null
           subcategory?: string | null
           termination_date?: string | null
           type?: string

@@ -22,6 +22,8 @@ interface NewClientPayload {
   source?: string;
   contract_date?: string;
   payment_day?: number;
+  total_paid?: number;
+  monthly_payment?: number;
 }
 
 interface NewPaymentPayload {
@@ -58,6 +60,38 @@ Deno.serve(async (req) => {
       // Создаем транзакцию для нового клиента
       console.log('Processing new client:', payload.client_name);
 
+      // Сохраняем клиента в таблицу bankrot_clients
+      const monthlyPayment = payload.monthly_payment || 
+        (payload.installment_period ? (payload.contract_amount - payload.first_payment) / payload.installment_period : 0);
+      
+      const { error: clientError } = await supabase
+        .from('bankrot_clients')
+        .insert({
+          full_name: payload.client_name,
+          contract_amount: payload.contract_amount,
+          installment_period: payload.installment_period || 0,
+          first_payment: payload.first_payment,
+          monthly_payment: monthlyPayment,
+          remaining_amount: payload.contract_amount - (payload.total_paid || payload.first_payment),
+          total_paid: payload.total_paid || payload.first_payment,
+          deposit_paid: 0,
+          deposit_target: 70000,
+          payment_day: payload.payment_day || 1,
+          employee_id: payload.user_id,
+          contract_date: payload.contract_date || payload.date,
+          city: payload.city,
+          source: payload.source,
+          manager: payload.manager,
+          user_id: payload.user_id
+        });
+
+      if (clientError) {
+        console.error('Error saving client to bankrot_clients:', clientError);
+      } else {
+        console.log('Client saved to bankrot_clients successfully');
+      }
+
+      // Создаем транзакцию для нового клиента
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert({
@@ -106,6 +140,30 @@ Deno.serve(async (req) => {
       // Создаем транзакцию для нового платежа
       console.log('Processing new payment for client:', payload.client_name);
 
+      // Обновляем данные клиента в bankrot_clients
+      const { data: existingClient } = await supabase
+        .from('bankrot_clients')
+        .select('*')
+        .eq('full_name', payload.client_name)
+        .eq('user_id', payload.user_id)
+        .single();
+
+      if (existingClient) {
+        const newTotalPaid = existingClient.total_paid + payload.amount;
+        const newRemaining = existingClient.contract_amount - newTotalPaid;
+
+        await supabase
+          .from('bankrot_clients')
+          .update({
+            total_paid: newTotalPaid,
+            remaining_amount: newRemaining
+          })
+          .eq('id', existingClient.id);
+
+        console.log('Client payment updated in bankrot_clients');
+      }
+
+      // Создаем транзакцию для нового платежа
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert({

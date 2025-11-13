@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowLeft, User, DollarSign, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Building2, Trash2 } from "lucide-react";
+import { Search, ArrowLeft, User, DollarSign, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Building2, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -244,11 +244,18 @@ export default function ClientsSpasenie() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <Button variant="ghost" onClick={() => navigate("/")} size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Назад к панели</span>
-              <span className="xs:hidden">Назад</span>
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" onClick={() => navigate("/")} size="sm">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Назад к панели</span>
+                <span className="xs:hidden">Назад</span>
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/clients")} size="sm">
+                <Users className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Клиенты Bankrot</span>
+                <span className="xs:hidden">Клиенты</span>
+              </Button>
+            </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Клиенты Спасение</h1>
               <p className="text-muted-foreground mt-1 text-sm sm:text-base">
