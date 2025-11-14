@@ -170,7 +170,7 @@ export default function Dashboard() {
       const now = new Date();
       const currentMonth = startOfMonth(now);
 
-      const { data: targetData, error: targetError } = await supabase
+      const { data: targetData, error: targetError } = await (supabase as any)
         .from('kpi_targets')
         .select('target_value')
         .eq('company', 'Спасение')
@@ -182,7 +182,7 @@ export default function Dashboard() {
 
       // If no target exists, create default one
       if (!targetData) {
-        const { error: insertError } = await supabase
+        const { error: insertError } = await (supabase as any)
           .from('kpi_targets')
           .insert({
             user_id: user.id,

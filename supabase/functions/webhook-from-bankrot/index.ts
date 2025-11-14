@@ -38,7 +38,30 @@ interface NewPaymentPayload {
   description?: string;
 }
 
-type WebhookPayload = NewClientPayload | NewPaymentPayload;
+interface UpdateClientPayload {
+  event_type: 'update_client';
+  client_name: string;
+  contract_amount: number;
+  total_paid: number;
+  remaining_amount: number;
+  deposit_paid: number;
+  deposit_target: number;
+  monthly_payment?: number;
+  company: string;
+  user_id: string;
+  is_suspended?: boolean;
+  is_terminated?: boolean;
+  suspension_reason?: string;
+  termination_reason?: string;
+  date: string;
+  changes?: Array<{
+    field: string;
+    old_value: any;
+    new_value: any;
+  }>;
+}
+
+type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload;
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -197,6 +220,84 @@ Deno.serve(async (req) => {
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
+        }
+      );
+    } else if (payload.event_type === 'update_client') {
+      // Обработка обновления данных клиента
+      console.log('Processing client update:', payload.client_name);
+
+      // Находим клиента по имени и обновляем данные
+      const { data: existingClient, error: findError } = await supabase
+        .from('bankrot_clients')
+        .select('id')
+        .eq('full_name', payload.client_name)
+        .maybeSingle();
+
+      if (findError) {
+        console.error('Error finding client:', findError);
+        return new Response(
+          JSON.stringify({ error: 'Error finding client', details: findError }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        );
+      }
+
+      if (!existingClient) {
+        console.log('Client not found, cannot update:', payload.client_name);
+        return new Response(
+          JSON.stringify({ error: 'Client not found', client_name: payload.client_name }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 404 
+          }
+        );
+      }
+
+      // Обновляем данные клиента
+      const updateData: any = {
+        total_paid: payload.total_paid,
+        remaining_amount: payload.remaining_amount,
+        deposit_paid: payload.deposit_paid,
+        deposit_target: payload.deposit_target,
+        contract_amount: payload.contract_amount,
+        updated_at: new Date().toISOString()
+      };
+
+      // Добавляем monthly_payment если он есть
+      if (payload.monthly_payment !== undefined) {
+        updateData.monthly_payment = payload.monthly_payment;
+      }
+
+      const { error: updateError } = await supabase
+        .from('bankrot_clients')
+        .update(updateData)
+        .eq('id', existingClient.id);
+
+      if (updateError) {
+        console.error('Error updating client in bankrot_clients:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Error updating client', details: updateError }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        );
+      }
+
+      console.log('Client updated successfully in bankrot_clients');
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          client_id: existingClient.id,
+          updated_fields: Object.keys(updateData),
+          message: 'Данные клиента обновлены успешно'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
         }
       );
     } else {

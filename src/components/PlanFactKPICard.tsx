@@ -64,7 +64,7 @@ export function PlanFactKPICard({
       month.setDate(1);
       month.setHours(0, 0, 0, 0);
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('kpi_targets')
         .upsert({
           user_id: user.id,
