@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { KPICard } from "@/components/KPICard";
 import { EditableKPICard } from "@/components/EditableKPICard";
+import { PlanFactKPICard } from "@/components/PlanFactKPICard";
 import { TransactionTable, Transaction } from "@/components/TransactionTable";
 import { TransactionDialog } from "@/components/TransactionDialog";
 import { AccountTransferDialog, AccountTransfer } from "@/components/AccountTransferDialog";
@@ -54,6 +55,10 @@ export default function Dashboard() {
   const [accountTransactionsDialogOpen, setAccountTransactionsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [balanceAdjustments, setBalanceAdjustments] = useState<Record<string, number>>({});
+  const [receivablesPlan, setReceivablesPlan] = useState<number>(0);
+  const [receivablesFact, setReceivablesFact] = useState<number>(0);
+  const [salesPlan, setSalesPlan] = useState<number>(350000);
+  const [salesFact, setSalesFact] = useState<number>(0);
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -111,12 +116,116 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Fetch receivables data (Дебиторка)
+  const fetchReceivablesData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      // Plan: Get sum of monthly_payment from bankrot_clients for current month
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('bankrot_clients')
+        .select('monthly_payment, remaining_amount');
+
+      if (clientsError) throw clientsError;
+
+      // Calculate plan as sum of monthly payments for active clients
+      const plan = clientsData?.reduce((sum, client) => {
+        // Only include clients with remaining amount > 0
+        if (client.remaining_amount > 0) {
+          return sum + (client.monthly_payment || 0);
+        }
+        return sum;
+      }, 0) || 0;
+
+      setReceivablesPlan(plan);
+
+      // Fact: Get sum of transactions with category "Дебиторка" for current month
+      const now = new Date();
+      const startOfCurrentMonth = startOfMonth(now);
+      const endOfCurrentMonth = endOfMonth(now);
+
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('company', 'Спасение')
+        .eq('category', 'Дебиторка')
+        .gte('date', startOfCurrentMonth.toISOString().split('T')[0])
+        .lte('date', endOfCurrentMonth.toISOString().split('T')[0]);
+
+      if (transactionsError) throw transactionsError;
+
+      const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+      setReceivablesFact(fact);
+    } catch (error) {
+      console.error('Error fetching receivables data:', error);
+    }
+  }, [user]);
+
+  // Fetch sales data (Новые продажи)
+  const fetchSalesData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      // Plan: Get from kpi_targets table
+      const now = new Date();
+      const currentMonth = startOfMonth(now);
+
+      const { data: targetData, error: targetError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'new_sales')
+        .eq('month', currentMonth.toISOString().split('T')[0])
+        .maybeSingle();
+
+      if (targetError && targetError.code !== 'PGRST116') throw targetError;
+
+      // If no target exists, create default one
+      if (!targetData) {
+        const { error: insertError } = await supabase
+          .from('kpi_targets')
+          .insert({
+            user_id: user.id,
+            company: 'Спасение',
+            kpi_name: 'new_sales',
+            target_value: 350000,
+            month: currentMonth.toISOString().split('T')[0]
+          });
+
+        if (insertError) throw insertError;
+        setSalesPlan(350000);
+      } else {
+        setSalesPlan(targetData.target_value);
+      }
+
+      // Fact: Get sum of transactions with category "Продажи" for current month
+      const endOfCurrentMonth = endOfMonth(now);
+
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('company', 'Спасение')
+        .eq('category', 'Продажи')
+        .gte('date', currentMonth.toISOString().split('T')[0])
+        .lte('date', endOfCurrentMonth.toISOString().split('T')[0]);
+
+      if (transactionsError) throw transactionsError;
+
+      const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+      setSalesFact(fact);
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+    }
+  }, [user]);
+
   // Load balance adjustments on mount
   useEffect(() => {
     if (user) {
       fetchBalanceAdjustments();
+      fetchReceivablesData();
+      fetchSalesData();
     }
-  }, [user, fetchBalanceAdjustments]);
+  }, [user, fetchBalanceAdjustments, fetchReceivablesData, fetchSalesData]);
 
   // Optimized fetch with caching and debouncing
   const fetchTransactions = useCallback(async () => {
@@ -491,6 +600,8 @@ export default function Dashboard() {
 
         // Refetch to ensure consistency
         await fetchTransactions();
+        fetchReceivablesData();
+        fetchSalesData();
         toast({
           title: "Операция обновлена",
           description: "Данные успешно сохранены",
@@ -565,6 +676,8 @@ export default function Dashboard() {
 
         setTransactions(prev => [...newTransactions, ...prev]);
         setAllTransactions(prev => [...newTransactions, ...prev]);
+        fetchReceivablesData();
+        fetchSalesData();
         toast({
           title: taxTransaction ? "Операции добавлены" : "Операция добавлена",
           description: taxTransaction ? "Основная операция и налог успешно созданы" : "Новая транзакция успешно создана",
@@ -616,6 +729,8 @@ export default function Dashboard() {
 
         // Refetch to ensure consistency
         await fetchTransactions();
+        fetchReceivablesData();
+        fetchSalesData();
         toast({
           title: "Операция удалена",
           description: "Транзакция была успешно удалена",
@@ -698,6 +813,8 @@ export default function Dashboard() {
 
       // Обновляем данные
       await fetchTransactions();
+      fetchReceivablesData();
+      fetchSalesData();
       
       toast({
         title: "Перевод выполнен",
@@ -849,6 +966,8 @@ export default function Dashboard() {
 
         // Обновляем список транзакций
         await fetchTransactions();
+        fetchReceivablesData();
+        fetchSalesData();
 
         // Автоматически переключаемся на просмотр импортированного месяца
         setPeriodFilter("specific-month");
@@ -1200,6 +1319,42 @@ export default function Dashboard() {
               </div>
             ))}
         </div>
+
+        {/* Receivables and New Sales KPIs for Спасение only */}
+        {selectedCompany === "Спасение" && (
+          <>
+            {/* Receivables (Дебиторка) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="group">
+                <PlanFactKPICard
+                  title="Дебиторка"
+                  planValue={receivablesPlan}
+                  factValue={receivablesFact}
+                  icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  className="shadow-kpi"
+                  isEditable={false}
+                />
+              </div>
+
+              {/* New Sales (Новые продажи) */}
+              <div className="group">
+                <PlanFactKPICard
+                  title="Новые продажи"
+                  planValue={salesPlan}
+                  factValue={salesFact}
+                  icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  className="shadow-kpi"
+                  isEditable={isAdmin}
+                  kpiName="new_sales"
+                  company="Спасение"
+                  onUpdate={() => {
+                    fetchSalesData();
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Tax KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
