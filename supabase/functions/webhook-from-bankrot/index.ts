@@ -61,7 +61,15 @@ interface UpdateClientPayload {
   }>;
 }
 
-type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload;
+interface SyncSummaryPayload {
+  event_type: 'sync_summary';
+  company: string;
+  total_payments: number; // сумма платежей с главной страницы администратора
+  date?: string; // дата, чтобы определить месяц (необязательно)
+  user_id?: string; // необязательно, если хотим привязать к пользователю
+}
+
+type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload;
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -300,6 +308,105 @@ Deno.serve(async (req) => {
           status: 200 
         }
       );
+    } else if (payload.event_type === 'sync_summary') {
+      // Принимаем сумму платежей с главной страницы bankrot-helper и сохраняем её как План для Дебиторки
+      try {
+        const p = payload as SyncSummaryPayload;
+        const baseDate = p.date ? new Date(p.date) : new Date();
+        const endOfMonthDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+        const monthStr = endOfMonthDate.toISOString().split('T')[0];
+        const company = p.company || 'Спасение';
+
+        // Ищем существующую запись KPI
+        const { data: existingTarget, error: findTargetError } = await supabase
+          .from('kpi_targets')
+          .select('id, user_id')
+          .eq('company', company)
+          .eq('kpi_name', 'debitorka_plan')
+          .eq('month', monthStr)
+          .maybeSingle();
+
+        if (findTargetError) {
+          console.error('Error finding debitorka_plan in kpi_targets:', findTargetError);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Error finding KPI', details: findTargetError }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          );
+        }
+
+        if (existingTarget) {
+          const { error: updateKpiError } = await supabase
+            .from('kpi_targets')
+            .update({ target_value: p.total_payments, updated_at: new Date().toISOString() })
+            .eq('id', existingTarget.id);
+
+          if (updateKpiError) {
+            console.error('Error updating debitorka_plan KPI:', updateKpiError);
+            return new Response(
+              JSON.stringify({ success: false, error: 'Error updating KPI', details: updateKpiError }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            );
+          }
+        } else {
+          // Определяем user_id для вставки
+          let userId: string | undefined = p.user_id as string | undefined;
+
+          if (!userId) {
+            const { data: adminUser } = await supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('role', 'admin')
+              .limit(1)
+              .maybeSingle();
+            userId = adminUser?.user_id;
+          }
+
+          if (!userId) {
+            const { data: anyProfile } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .limit(1)
+              .maybeSingle();
+            userId = anyProfile?.user_id as string | undefined;
+          }
+
+          if (!userId) {
+            return new Response(
+              JSON.stringify({ success: false, error: 'No user_id available to insert KPI' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            );
+          }
+
+          const { error: insertKpiError } = await supabase
+            .from('kpi_targets')
+            .insert({
+              user_id: userId,
+              company,
+              kpi_name: 'debitorka_plan',
+              target_value: p.total_payments,
+              month: monthStr
+            });
+
+          if (insertKpiError) {
+            console.error('Error inserting debitorka_plan KPI:', insertKpiError);
+            return new Response(
+              JSON.stringify({ success: false, error: 'Error inserting KPI', details: insertKpiError }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            );
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'План по дебиторке обновлён', company, month: monthStr, value: p.total_payments }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      } catch (e) {
+        console.error('sync_summary handler error:', e);
+        return new Response(
+          JSON.stringify({ success: false, error: 'sync_summary failed', details: (e as Error).message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
     } else {
       console.error('Unknown event type:', (payload as any).event_type);
       return new Response(

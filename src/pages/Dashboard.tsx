@@ -121,23 +121,44 @@ export default function Dashboard() {
     if (!user) return;
 
     try {
-      // Plan: Get sum of monthly_payment from bankrot_clients for current month
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('bankrot_clients')
-        .select('monthly_payment, remaining_amount');
+      // План: пробуем взять из kpi_targets (синхронизируемого из bankrot-helper), иначе fallback на сумму monthly_payment
+      const nowReceivables = new Date();
+      const endOfCurrentMonthReceivables = endOfMonth(nowReceivables);
+      const monthStrReceivables = endOfCurrentMonthReceivables.toISOString().split('T')[0];
 
-      if (clientsError) throw clientsError;
+      const { data: kpiData, error: kpiError } = await (supabase as any)
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'debitorka_plan')
+        .eq('month', monthStrReceivables)
+        .maybeSingle();
 
-      // Calculate plan as sum of monthly payments for active clients
-      const plan = clientsData?.reduce((sum, client) => {
-        // Only include clients with remaining amount > 0
-        if (client.remaining_amount > 0) {
-          return sum + (client.monthly_payment || 0);
-        }
-        return sum;
-      }, 0) || 0;
+      if (kpiError) {
+        console.error('Error fetching debitorka_plan KPI:', kpiError);
+      }
 
-      setReceivablesPlan(plan);
+      if (kpiData?.target_value != null) {
+        setReceivablesPlan(kpiData.target_value);
+      } else {
+        // Fallback: Get sum of monthly_payment from bankrot_clients for current month
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('bankrot_clients')
+          .select('monthly_payment, remaining_amount');
+
+        if (clientsError) throw clientsError;
+
+        // Calculate plan as sum of monthly payments for active clients
+        const plan = clientsData?.reduce((sum, client) => {
+          // Only include clients with remaining amount > 0
+          if (client.remaining_amount > 0) {
+            return sum + (client.monthly_payment || 0);
+          }
+          return sum;
+        }, 0) || 0;
+
+        setReceivablesPlan(plan);
+      }
 
       // Fact: Get sum of transactions with category "Дебиторка" for current month
       const now = new Date();
