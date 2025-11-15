@@ -209,6 +209,39 @@ export type Database = {
         }
         Relationships: []
       }
+      kpi_targets: {
+        Row: {
+          company: string
+          created_at: string
+          id: string
+          kpi_name: string
+          month: string
+          target_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string
+          created_at?: string
+          id?: string
+          kpi_name: string
+          month?: string
+          target_value?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          id?: string
+          kpi_name?: string
+          month?: string
+          target_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lead_generation: {
         Row: {
           company: string
