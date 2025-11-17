@@ -122,9 +122,8 @@ export default function Dashboard() {
 
     try {
       // План: пробуем взять из kpi_targets (синхронизируемого из bankrot-helper), иначе fallback на сумму monthly_payment
-      const nowReceivables = new Date();
-      const endOfCurrentMonthReceivables = endOfMonth(nowReceivables);
-      const monthStrReceivables = endOfCurrentMonthReceivables.toISOString().split('T')[0];
+      const endOfSelectedMonthReceivables = endOfMonth(selectedMonth);
+      const monthStrReceivables = endOfSelectedMonthReceivables.toISOString().split('T')[0];
 
       const { data: kpiData, error: kpiError } = await (supabase as any)
         .from('kpi_targets')
@@ -160,18 +159,17 @@ export default function Dashboard() {
         setReceivablesPlan(plan);
       }
 
-      // Fact: Get sum of transactions with category "Дебиторка" for current month
-      const now = new Date();
-      const startOfCurrentMonth = startOfMonth(now);
-      const endOfCurrentMonth = endOfMonth(now);
+      // Fact: Get sum of transactions with category "Дебиторка" for selected month
+      const startOfSelectedMonth = startOfMonth(selectedMonth);
+      const endOfSelectedMonth = endOfMonth(selectedMonth);
 
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
         .select('amount')
         .eq('company', 'Спасение')
         .eq('category', 'Дебиторка')
-        .gte('date', startOfCurrentMonth.toISOString().split('T')[0])
-        .lte('date', endOfCurrentMonth.toISOString().split('T')[0]);
+        .gte('date', startOfSelectedMonth.toISOString().split('T')[0])
+        .lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
 
       if (transactionsError) throw transactionsError;
 
@@ -180,7 +178,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching receivables data:', error);
     }
-  }, [user]);
+  }, [user, selectedMonth]);
 
   // Fetch sales data (Новые продажи)
   const fetchSalesData = useCallback(async () => {
