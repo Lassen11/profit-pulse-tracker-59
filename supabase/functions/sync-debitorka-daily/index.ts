@@ -18,6 +18,13 @@ Deno.serve(async (req) => {
 
     console.log('Starting daily debitorka sync...');
 
+    // Get current month (last day of current month for kpi_targets format)
+    const now = new Date();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthString = `${lastDayOfMonth.getFullYear()}-${String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth.getDate()).padStart(2, '0')}`; // YYYY-MM-DD format (last day)
+
+    console.log(`Syncing debitorka for month: ${monthString}`);
+
     // Get all clients from bankrot_clients
     const { data: clients, error: clientsError } = await supabase
       .from('bankrot_clients')
@@ -38,7 +45,7 @@ Deno.serve(async (req) => {
       throw new Error('No user_id found in bankrot_clients');
     }
 
-    console.log(`Calculated total payments: ${totalPayments}, user_id: ${userId}`);
+    console.log(`Calculated total payments: ${totalPayments}, user_id: ${userId}, month: ${monthString}`);
 
     // Call webhook-from-bankrot with sync_summary event
     const { data, error } = await supabase.functions.invoke('webhook-from-bankrot', {
@@ -47,7 +54,8 @@ Deno.serve(async (req) => {
         total_payments: totalPayments,
         company: 'Спасение',
         user_id: userId,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        month: monthString
       }
     });
 
