@@ -66,6 +66,7 @@ interface SyncSummaryPayload {
   company: string;
   total_payments: number; // сумма платежей с главной страницы администратора
   date?: string; // дата, чтобы определить месяц (необязательно)
+  month?: string; // месяц в формате YYYY-MM-DD (первый день месяца)
   user_id?: string; // необязательно, если хотим привязать к пользователю
 }
 
@@ -312,10 +313,20 @@ Deno.serve(async (req) => {
       // Принимаем сумму платежей с главной страницы bankrot-helper и сохраняем её как План для Дебиторки
       try {
         const p = payload as SyncSummaryPayload;
-        const baseDate = p.date ? new Date(p.date) : new Date();
-        const endOfMonthDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
-        const monthStr = endOfMonthDate.toISOString().split('T')[0];
+        
+        // Используем месяц из payload или вычисляем из date
+        let monthStr: string;
+        if (p.month) {
+          monthStr = p.month;
+        } else {
+          const baseDate = p.date ? new Date(p.date) : new Date();
+          // Используем последний день месяца для соответствия формату kpi_targets
+          const endOfMonthDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+          monthStr = endOfMonthDate.toISOString().split('T')[0];
+        }
+        
         const company = p.company || 'Спасение';
+        console.log(`Updating debitorka_plan for company: ${company}, month: ${monthStr}, value: ${p.total_payments}`);
 
         // Ищем существующую запись KPI
         const { data: existingTarget, error: findTargetError } = await supabase
