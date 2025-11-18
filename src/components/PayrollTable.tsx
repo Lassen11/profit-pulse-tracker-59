@@ -131,12 +131,12 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                   </div>
                 </TableCell>
                 <TableCell>{employee.company}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.white_salary)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.gray_salary)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.advance)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.paid_white || 0)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.paid_gray || 0)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.paid_advance || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.ndfl)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.contributions)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.bonus)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.paid_bonus || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.next_month_bonus)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.cost)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.net_salary)}</TableCell>
