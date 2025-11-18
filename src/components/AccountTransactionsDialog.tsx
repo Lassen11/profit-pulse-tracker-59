@@ -6,9 +6,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Transaction } from "./TransactionTable";
+import { TransactionDialog } from "./TransactionDialog";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AccountTransactionsDialogProps {
@@ -16,6 +17,8 @@ interface AccountTransactionsDialogProps {
   onOpenChange: (open: boolean) => void;
   account: string;
   transactions: Transaction[];
+  onTransactionUpdate?: (transaction: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => void;
+  selectedCompany?: string;
 }
 
 export function AccountTransactionsDialog({
@@ -23,11 +26,15 @@ export function AccountTransactionsDialog({
   onOpenChange,
   account,
   transactions,
+  onTransactionUpdate,
+  selectedCompany,
 }: AccountTransactionsDialogProps) {
   const [filterType, setFilterType] = useState<"range" | "month">("month");
   const [dateFrom, setDateFrom] = useState<Date>(new Date());
   const [dateTo, setDateTo] = useState<Date>(new Date());
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
 
   // Reset filters when dialog opens
   useEffect(() => {
@@ -85,6 +92,18 @@ export function AccountTransactionsDialog({
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const handleEditClick = (transaction: Transaction) => {
+    setEditTransaction(transaction);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => {
+    if (onTransactionUpdate) {
+      await onTransactionUpdate(transactionData, taxTransaction);
+    }
+    setEditDialogOpen(false);
   };
 
   return (
@@ -215,12 +234,13 @@ export function AccountTransactionsDialog({
                   <TableHead>Категория</TableHead>
                   <TableHead>Описание</TableHead>
                   <TableHead className="text-right">Сумма</TableHead>
+                  {onTransactionUpdate && <TableHead className="w-[50px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTransactions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={onTransactionUpdate ? 6 : 5} className="text-center text-muted-foreground py-8">
                       Операций не найдено
                     </TableCell>
                   </TableRow>
@@ -255,6 +275,18 @@ export function AccountTransactionsDialog({
                         {transaction.type === "income" ? "+" : "-"}
                         {formatCurrency(transaction.amount)}
                       </TableCell>
+                      {onTransactionUpdate && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(transaction)}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
@@ -263,6 +295,15 @@ export function AccountTransactionsDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Transaction Edit Dialog */}
+      <TransactionDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        transaction={editTransaction}
+        onSave={handleSaveTransaction}
+        selectedCompany={selectedCompany}
+      />
     </Dialog>
   );
 }

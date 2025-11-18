@@ -1505,6 +1505,8 @@ export default function Dashboard() {
           onOpenChange={setAccountTransactionsDialogOpen}
           account={selectedAccount}
           transactions={allTransactions}
+          onTransactionUpdate={handleSaveTransaction}
+          selectedCompany={selectedCompany}
         />
         </div>
       </div>
