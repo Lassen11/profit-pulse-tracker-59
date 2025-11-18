@@ -47,6 +47,11 @@ export interface DepartmentEmployee {
     last_name: string;
     position: string | null;
   };
+  // Фактические выплаты
+  paid_white?: number;
+  paid_gray?: number;
+  paid_advance?: number;
+  paid_bonus?: number;
 }
 
 export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardProps) {
@@ -77,6 +82,62 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
         .eq('department_id', department.id);
 
       if (error) throw error;
+
+      // Загружаем выплаты для всех сотрудников
+      const employeeIds = data?.map(emp => emp.id) || [];
+      
+      if (employeeIds.length > 0) {
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from('payroll_payments')
+          .select('department_employee_id, amount, payment_type')
+          .in('department_employee_id', employeeIds);
+
+        if (paymentsError) {
+          console.error('Error fetching payments:', paymentsError);
+        } else {
+          // Агрегируем выплаты по типу для каждого сотрудника
+          const paymentsByEmployee = (paymentsData || []).reduce((acc, payment) => {
+            if (!acc[payment.department_employee_id]) {
+              acc[payment.department_employee_id] = {
+                paid_white: 0,
+                paid_gray: 0,
+                paid_advance: 0,
+                paid_bonus: 0
+              };
+            }
+            
+            switch (payment.payment_type) {
+              case 'white':
+                acc[payment.department_employee_id].paid_white += payment.amount;
+                break;
+              case 'gray':
+                acc[payment.department_employee_id].paid_gray += payment.amount;
+                break;
+              case 'advance':
+                acc[payment.department_employee_id].paid_advance += payment.amount;
+                break;
+              case 'bonus':
+                acc[payment.department_employee_id].paid_bonus += payment.amount;
+                break;
+            }
+            
+            return acc;
+          }, {} as Record<string, { paid_white: number; paid_gray: number; paid_advance: number; paid_bonus: number }>);
+
+          // Объединяем данные сотрудников с выплатами
+          const employeesWithPayments = (data || []).map(emp => ({
+            ...emp,
+            paid_white: paymentsByEmployee[emp.id]?.paid_white || 0,
+            paid_gray: paymentsByEmployee[emp.id]?.paid_gray || 0,
+            paid_advance: paymentsByEmployee[emp.id]?.paid_advance || 0,
+            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0
+          }));
+
+          setEmployees(employeesWithPayments);
+          return;
+        }
+      }
+
       setEmployees(data || []);
     } catch (error) {
       console.error('Error fetching employees:', error);
