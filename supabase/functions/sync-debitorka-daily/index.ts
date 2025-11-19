@@ -25,17 +25,18 @@ Deno.serve(async (req) => {
 
     console.log(`Syncing debitorka for month: ${monthString}`);
 
-    // Get all clients from bankrot_clients
+    // Get only active clients with remaining debt from bankrot_clients
     const { data: clients, error: clientsError } = await supabase
       .from('bankrot_clients')
-      .select('monthly_payment, user_id');
+      .select('monthly_payment, user_id, remaining_amount')
+      .gt('remaining_amount', 0);
 
     if (clientsError) {
       console.error('Error fetching clients:', clientsError);
       throw clientsError;
     }
 
-    // Calculate total payments (sum of monthly_payment)
+    // Calculate total payments (sum of monthly_payment for active clients only)
     const totalPayments = clients?.reduce((sum, client) => sum + (Number(client.monthly_payment) || 0), 0) || 0;
     
     // Get user_id (use first client's user_id)
