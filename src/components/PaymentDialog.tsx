@@ -53,11 +53,52 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
   const [expenseAccount, setExpenseAccount] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
   const formKey = `payment-dialog-${employee?.id || 'new'}`;
-  const { restoreValues, clearStoredValues } = useFormPersistence({
+  
+  // Восстанавливаем значения при открытии диалога ДО того как начнется сохранение
+  useEffect(() => {
+    if (open && employee) {
+      const formKey = `payment-dialog-${employee.id}`;
+      try {
+        const stored = localStorage.getItem(formKey);
+        if (stored) {
+          const restored = JSON.parse(stored);
+          setAmount(restored.amount || "");
+          setPaymentDate(restored.paymentDate ? new Date(restored.paymentDate) : new Date());
+          setPaymentType(restored.paymentType || "salary");
+          setSalaryType(restored.salaryType || "white");
+          setExpenseAccount(restored.expenseAccount || "");
+          setNotes(restored.notes || "");
+        } else {
+          // Сброс только если нет сохраненных значений
+          setAmount("");
+          setPaymentDate(new Date());
+          setPaymentType("salary");
+          setSalaryType("white");
+          setExpenseAccount("");
+          setNotes("");
+        }
+      } catch (error) {
+        console.error('Error restoring payment form:', error);
+        // Сброс при ошибке
+        setAmount("");
+        setPaymentDate(new Date());
+        setPaymentType("salary");
+        setSalaryType("white");
+        setExpenseAccount("");
+        setNotes("");
+      }
+      setIsRestored(true);
+    } else if (!open) {
+      setIsRestored(false);
+    }
+  }, [open, employee]);
+
+  const { clearStoredValues } = useFormPersistence({
     key: formKey,
     values: {
       amount,
@@ -67,31 +108,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       expenseAccount,
       notes
     },
-    enabled: open
+    enabled: open && isRestored && (amount !== "" || notes !== "")
   });
-
-  useEffect(() => {
-    if (open && employee) {
-      // Пытаемся восстановить сохраненные значения
-      const restored = restoreValues();
-      if (restored) {
-        setAmount(restored.amount || "");
-        setPaymentDate(restored.paymentDate || new Date());
-        setPaymentType(restored.paymentType || "salary");
-        setSalaryType(restored.salaryType || "white");
-        setExpenseAccount(restored.expenseAccount || "");
-        setNotes(restored.notes || "");
-      } else {
-        // Сброс только если нет сохраненных значений
-        setAmount("");
-        setPaymentDate(new Date());
-        setPaymentType("salary");
-        setSalaryType("white");
-        setExpenseAccount("");
-        setNotes("");
-      }
-    }
-  }, [open, employee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
