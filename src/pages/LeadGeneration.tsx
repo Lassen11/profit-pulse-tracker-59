@@ -52,6 +52,25 @@ export default function LeadGeneration() {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
+
+  // Restore dialog state from localStorage
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      const leadDialogState = localStorage.getItem('lead-dialog-state');
+      if (leadDialogState) {
+        const parsed = JSON.parse(leadDialogState);
+        if (parsed.editingLead) {
+          setEditingLead(parsed.editingLead);
+          setEditDialogOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring lead dialog state:', error);
+      localStorage.removeItem('lead-dialog-state');
+    }
+  }, [user]);
   const fetchLeadData = useCallback(async () => {
     if (!user) {
       setLoading(false);
@@ -494,6 +513,13 @@ export default function LeadGeneration() {
                             <Button variant="ghost" size="icon" onClick={() => {
                         setEditingLead(lead);
                         setEditDialogOpen(true);
+                        try {
+                          localStorage.setItem('lead-dialog-state', JSON.stringify({
+                            editingLead: lead
+                          }));
+                        } catch (error) {
+                          console.error('Error saving lead dialog state:', error);
+                        }
                       }}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -515,6 +541,7 @@ export default function LeadGeneration() {
         fetchLeadData();
         setEditDialogOpen(false);
         setEditingLead(undefined);
+        localStorage.removeItem('lead-dialog-state');
       }} />}
       </div>
     </div>;

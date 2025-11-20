@@ -64,6 +64,48 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
     }
   }, [employees]);
 
+  // Restore employee dialog state
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("payroll-employee-dialog");
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored) as { employeeId: string };
+      const employee = employees.find(e => e.id === parsed.employeeId);
+
+      if (employee) {
+        setEditEmployee(employee);
+        setEmployeeDialogOpen(true);
+      } else {
+        localStorage.removeItem("payroll-employee-dialog");
+      }
+    } catch (error) {
+      console.error("Error restoring employee dialog state", error);
+      localStorage.removeItem("payroll-employee-dialog");
+    }
+  }, [employees]);
+
+  // Restore history dialog state
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("payroll-history-dialog");
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored) as { employeeId: string };
+      const employee = employees.find(e => e.id === parsed.employeeId);
+
+      if (employee) {
+        setSelectedEmployeeForHistory(employee);
+        setHistoryDialogOpen(true);
+      } else {
+        localStorage.removeItem("payroll-history-dialog");
+      }
+    } catch (error) {
+      console.error("Error restoring history dialog state", error);
+      localStorage.removeItem("payroll-history-dialog");
+    }
+  }, [employees]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -76,6 +118,11 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const handleEdit = (employee: DepartmentEmployee) => {
     setEditEmployee(employee);
     setEmployeeDialogOpen(true);
+    try {
+      localStorage.setItem("payroll-employee-dialog", JSON.stringify({ employeeId: employee.id }));
+    } catch (error) {
+      console.error("Error saving employee dialog state", error);
+    }
   };
 
   const handleDelete = async () => {
@@ -121,6 +168,11 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const handleViewHistory = (employee: DepartmentEmployee) => {
     setSelectedEmployeeForHistory(employee);
     setHistoryDialogOpen(true);
+    try {
+      localStorage.setItem("payroll-history-dialog", JSON.stringify({ employeeId: employee.id }));
+    } catch (error) {
+      console.error("Error saving history dialog state", error);
+    }
   };
 
   return (
@@ -247,7 +299,14 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
         open={employeeDialogOpen}
         onOpenChange={(open) => {
           setEmployeeDialogOpen(open);
-          if (!open) setEditEmployee(null);
+          if (!open) {
+            setEditEmployee(null);
+            try {
+              localStorage.removeItem("payroll-employee-dialog");
+            } catch (error) {
+              console.error("Error clearing employee dialog state", error);
+            }
+          }
         }}
         departmentId={departmentId}
         employee={editEmployee}
@@ -256,6 +315,11 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
           onRefresh();
           setEmployeeDialogOpen(false);
           setEditEmployee(null);
+          try {
+            localStorage.removeItem("payroll-employee-dialog");
+          } catch (error) {
+            console.error("Error clearing employee dialog state", error);
+          }
         }}
       />
 
@@ -277,7 +341,16 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
 
       <PaymentHistoryDialog
         open={historyDialogOpen}
-        onOpenChange={setHistoryDialogOpen}
+        onOpenChange={(open) => {
+          setHistoryDialogOpen(open);
+          if (!open) {
+            try {
+              localStorage.removeItem("payroll-history-dialog");
+            } catch (error) {
+              console.error("Error clearing history dialog state", error);
+            }
+          }
+        }}
         employee={selectedEmployeeForHistory}
       />
 

@@ -69,6 +69,32 @@ export default function Employees() {
     fetchEmployees();
   }, [user, navigate]);
 
+  // Restore dialog states from localStorage
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      const employeesDialogState = localStorage.getItem('employees-dialog-state');
+      if (employeesDialogState) {
+        const parsed = JSON.parse(employeesDialogState);
+        
+        if (parsed.addDialog) {
+          setIsAddDialogOpen(true);
+        } else if (parsed.editDialog && parsed.employee) {
+          setEditingEmployee(parsed.employee);
+          setEditFirstName(parsed.employee.first_name || "");
+          setEditLastName(parsed.employee.last_name || "");
+          setEditPosition(parsed.employee.position || "");
+          setEditDepartment(parsed.employee.department || "");
+          setIsEditDialogOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring employees dialog state:', error);
+      localStorage.removeItem('employees-dialog-state');
+    }
+  }, [user]);
+
   const checkAdminStatus = async () => {
     if (!user) return;
     
@@ -183,6 +209,7 @@ export default function Employees() {
       setDepartment("");
       setRole('user');
       setIsAddDialogOpen(false);
+      localStorage.removeItem('employees-dialog-state');
 
       // Обновляем список
       fetchEmployees();
@@ -302,6 +329,14 @@ export default function Employees() {
     setEditPosition(employee.position || "");
     setEditDepartment(employee.department || "");
     setIsEditDialogOpen(true);
+    try {
+      localStorage.setItem('employees-dialog-state', JSON.stringify({
+        editDialog: true,
+        employee
+      }));
+    } catch (error) {
+      console.error('Error saving employees dialog state:', error);
+    }
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -329,6 +364,7 @@ export default function Employees() {
       });
 
       setIsEditDialogOpen(false);
+      localStorage.removeItem('employees-dialog-state');
       fetchEmployees();
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -364,7 +400,18 @@ export default function Employees() {
             <h1 className="text-3xl font-bold">Управление сотрудниками</h1>
           </div>
           
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (open) {
+              try {
+                localStorage.setItem('employees-dialog-state', JSON.stringify({
+                  addDialog: true
+                }));
+              } catch (error) {
+                console.error('Error saving employees dialog state:', error);
+              }
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2">
                 <UserPlus className="h-4 w-4" />
