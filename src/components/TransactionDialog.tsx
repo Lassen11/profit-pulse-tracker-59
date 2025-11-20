@@ -11,6 +11,7 @@ import { Transaction } from "./TransactionTable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Info } from "lucide-react";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface TransactionDialogProps {
   open: boolean;
@@ -101,6 +102,13 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     city: ''
   });
 
+  const formKey = `transaction-dialog-${transaction?.id || 'new'}`;
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: formData,
+    enabled: open && !transaction
+  });
+
   useEffect(() => {
     if (transaction) {
       setFormData({
@@ -124,28 +132,35 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         leadSource: '',
         city: ''
       });
-    } else {
-      setFormData({
-        type: 'income',
-        category: '',
-        subcategory: '',
-        amount: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-        taxPercent: '',
-        clientName: '',
-        contractAmount: '',
-        firstPayment: '',
-        installmentPeriod: '',
-        lumpSum: '',
-        incomeAccount: '',
-        expenseAccount: '',
-        organizationName: '',
-        company: selectedCompany || 'Спасение',
-        salesEmployeeId: '',
-        leadSource: '',
-        city: ''
-      });
+    } else if (open) {
+      // Пытаемся восстановить сохраненные значения
+      const restored = restoreValues();
+      if (restored) {
+        setFormData(restored);
+      } else {
+        // Сброс только если нет сохраненных значений
+        setFormData({
+          type: 'income',
+          category: '',
+          subcategory: '',
+          amount: '',
+          description: '',
+          date: new Date().toISOString().split('T')[0],
+          taxPercent: '',
+          clientName: '',
+          contractAmount: '',
+          firstPayment: '',
+          installmentPeriod: '',
+          lumpSum: '',
+          incomeAccount: '',
+          expenseAccount: '',
+          organizationName: '',
+          company: selectedCompany || 'Спасение',
+          salesEmployeeId: '',
+          leadSource: '',
+          city: ''
+        });
+      }
     }
   }, [transaction, open, selectedCompany]);
 
@@ -319,6 +334,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     }
 
     onSave(mainTransaction, taxTransaction);
+    clearStoredValues();
     onOpenChange(false);
   };
 
