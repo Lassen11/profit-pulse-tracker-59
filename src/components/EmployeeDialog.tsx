@@ -163,7 +163,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
       // Автоматические расчеты
       const calculatedTotal = white + gray;
       const calculatedCost = white + gray + ndflVal + contrib + bon;
-      const calculatedNetSalary = calculatedTotal - adv - ndflVal + bon;
+      const calculatedNetSalary = calculatedTotal + bon - adv - ndflVal;
       
       const employeeData = {
         department_id: departmentId,
