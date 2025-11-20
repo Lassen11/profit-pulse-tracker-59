@@ -26,11 +26,15 @@ const accountOptions = [
 ];
 
 const paymentTypes = [
-  { value: "white", label: "Белая зарплата" },
-  { value: "gray", label: "Серая зарплата" },
+  { value: "salary", label: "Зарплата" },
   { value: "advance", label: "Аванс" },
   { value: "bonus", label: "Премия" },
   { value: "other", label: "Другое" }
+];
+
+const salaryTypes = [
+  { value: "white", label: "Белая" },
+  { value: "gray", label: "Серая" }
 ];
 
 interface PaymentDialogProps {
@@ -43,7 +47,8 @@ interface PaymentDialogProps {
 export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: PaymentDialogProps) {
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
-  const [paymentType, setPaymentType] = useState("white");
+  const [paymentType, setPaymentType] = useState("salary");
+  const [salaryType, setSalaryType] = useState("white");
   const [expenseAccount, setExpenseAccount] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +60,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       // Auto-fill amount based on payment type
       setAmount("");
       setPaymentDate(new Date());
-      setPaymentType("white");
+      setPaymentType("salary");
+      setSalaryType("white");
       setExpenseAccount("");
       setNotes("");
     }
@@ -99,6 +105,9 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       if (transactionError) throw transactionError;
 
       // Create payroll payment record
+      // Use salaryType if payment type is salary, otherwise use paymentType
+      const finalPaymentType = paymentType === 'salary' ? salaryType : paymentType;
+      
       const { error: paymentError } = await supabase
         .from('payroll_payments')
         .insert({
@@ -106,7 +115,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           department_employee_id: employee.id,
           amount: paymentAmount,
           payment_date: format(paymentDate, 'yyyy-MM-dd'),
-          payment_type: paymentType,
+          payment_type: finalPaymentType,
           notes: notes,
           transaction_id: transactionData.id
         });
@@ -163,6 +172,24 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
                 </SelectContent>
               </Select>
             </div>
+
+            {paymentType === "salary" && (
+              <div className="space-y-2">
+                <Label htmlFor="salary_type">Вид зарплаты</Label>
+                <Select value={salaryType} onValueChange={setSalaryType} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите вид зарплаты" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salaryTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="amount">Сумма</Label>
