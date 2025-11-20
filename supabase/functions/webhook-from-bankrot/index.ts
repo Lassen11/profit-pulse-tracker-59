@@ -327,24 +327,10 @@ Deno.serve(async (req) => {
         
         const company = p.company || 'Спасение';
         
-        // Получаем только активных клиентов с оставшимся долгом из bankrot_clients
-        const { data: clients, error: clientsError } = await supabase
-          .from('bankrot_clients')
-          .select('monthly_payment, user_id, remaining_amount')
-          .gt('remaining_amount', 0);
-
-        if (clientsError) {
-          console.error('Error fetching clients:', clientsError);
-          return new Response(
-            JSON.stringify({ success: false, error: 'Error fetching clients', details: clientsError }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-          );
-        }
-
-        // Пересчитываем total_payments на основе активных клиентов
-        const totalPayments = clients?.reduce((sum, client) => sum + (Number(client.monthly_payment) || 0), 0) || 0;
+        // Используем точное значение total_payments из bankrot-helper без пересчета
+        const totalPayments = p.total_payments;
         
-        console.log(`Updating debitorka_plan for company: ${company}, month: ${monthStr}, recalculated value: ${totalPayments} (was ${p.total_payments})`);
+        console.log(`Updating debitorka_plan for company: ${company}, month: ${monthStr}, value from bankrot-helper: ${totalPayments}`);
 
         // Ищем существующую запись KPI
         const { data: existingTarget, error: findTargetError } = await supabase
