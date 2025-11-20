@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DepartmentEmployee } from "@/components/DepartmentCard";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface EmployeeDialogProps {
   open: boolean;
@@ -44,6 +45,26 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const formKey = `employee-dialog-${departmentId}-${employee?.id || 'new'}`;
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: {
+      selectedEmployeeId,
+      selectedCompany,
+      whiteSalary,
+      graySalary,
+      advance,
+      ndfl,
+      contributions,
+      bonus,
+      nextMonthBonus,
+      cost,
+      netSalary,
+      totalAmount
+    },
+    enabled: open && !employee
+  });
+
   useEffect(() => {
     if (open) {
       fetchProfiles();
@@ -61,7 +82,24 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         setNetSalary(employee.net_salary.toString());
         setTotalAmount(employee.total_amount.toString());
       } else {
-        resetForm();
+        // Пытаемся восстановить сохраненные значения
+        const restored = restoreValues();
+        if (restored) {
+          setSelectedEmployeeId(restored.selectedEmployeeId || "");
+          setSelectedCompany(restored.selectedCompany || defaultCompany);
+          setWhiteSalary(restored.whiteSalary || "0");
+          setGraySalary(restored.graySalary || "0");
+          setAdvance(restored.advance || "0");
+          setNdfl(restored.ndfl || "0");
+          setContributions(restored.contributions || "0");
+          setBonus(restored.bonus || "0");
+          setNextMonthBonus(restored.nextMonthBonus || "0");
+          setCost(restored.cost || "0");
+          setNetSalary(restored.netSalary || "0");
+          setTotalAmount(restored.totalAmount || "0");
+        } else {
+          resetForm();
+        }
       }
     }
   }, [open, employee, defaultCompany]);
@@ -169,6 +207,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         });
       }
 
+      clearStoredValues();
       onSave();
     } catch (error: any) {
       console.error('Error saving employee:', error);

@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DepartmentEmployee } from "@/components/DepartmentCard";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const accountOptions = [
   "Зайнаб карта",
@@ -55,15 +56,40 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const formKey = `payment-dialog-${employee?.id || 'new'}`;
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: {
+      amount,
+      paymentDate,
+      paymentType,
+      salaryType,
+      expenseAccount,
+      notes
+    },
+    enabled: open
+  });
+
   useEffect(() => {
     if (open && employee) {
-      // Auto-fill amount based on payment type
-      setAmount("");
-      setPaymentDate(new Date());
-      setPaymentType("salary");
-      setSalaryType("white");
-      setExpenseAccount("");
-      setNotes("");
+      // Пытаемся восстановить сохраненные значения
+      const restored = restoreValues();
+      if (restored) {
+        setAmount(restored.amount || "");
+        setPaymentDate(restored.paymentDate || new Date());
+        setPaymentType(restored.paymentType || "salary");
+        setSalaryType(restored.salaryType || "white");
+        setExpenseAccount(restored.expenseAccount || "");
+        setNotes(restored.notes || "");
+      } else {
+        // Сброс только если нет сохраненных значений
+        setAmount("");
+        setPaymentDate(new Date());
+        setPaymentType("salary");
+        setSalaryType("white");
+        setExpenseAccount("");
+        setNotes("");
+      }
     }
   }, [open, employee]);
 
@@ -131,6 +157,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
         }).format(paymentAmount)} успешно проведена`
       });
 
+      clearStoredValues();
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
