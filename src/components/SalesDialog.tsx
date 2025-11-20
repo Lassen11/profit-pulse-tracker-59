@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface Sale {
   id?: string;
@@ -43,6 +44,13 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
   });
   const [salesEmployees, setSalesEmployees] = useState<SalesEmployee[]>([]);
 
+  const formKey = `sales-dialog-${sale?.id || 'new'}`;
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: formData,
+    enabled: open && !sale
+  });
+
   useEffect(() => {
     if (open) {
       fetchSalesEmployees();
@@ -59,19 +67,24 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
           payment_date: sale.payment_date
         });
       } else {
-        setFormData({
-          employee_id: "",
-          client_name: "",
-          payment_amount: 0,
-          contract_amount: 0,
-          city: "",
-          lead_source: "",
-          manager_bonus: 0,
-          payment_date: new Date().toISOString().split('T')[0]
-        });
+        const restored = restoreValues();
+        if (restored) {
+          setFormData(restored);
+        } else {
+          setFormData({
+            employee_id: "",
+            client_name: "",
+            payment_amount: 0,
+            contract_amount: 0,
+            city: "",
+            lead_source: "",
+            manager_bonus: 0,
+            payment_date: new Date().toISOString().split('T')[0]
+          });
+        }
       }
     }
-  }, [open, sale]);
+  }, [open, sale, restoreValues]);
 
   const fetchSalesEmployees = async () => {
     try {
@@ -95,6 +108,7 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
+    clearStoredValues();
   };
 
   return (

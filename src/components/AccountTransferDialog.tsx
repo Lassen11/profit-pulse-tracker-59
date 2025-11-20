@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface AccountTransferDialogProps {
   open: boolean;
@@ -35,19 +36,41 @@ export function AccountTransferDialog({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState("");
 
+  const formKey = 'account-transfer-dialog';
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: {
+      fromAccount,
+      toAccount,
+      amount,
+      date,
+      description
+    },
+    enabled: open
+  });
+
   useEffect(() => {
     if (open) {
-      if (selectedAccount) {
-        setFromAccount(selectedAccount);
+      const restored = restoreValues();
+      if (restored) {
+        setFromAccount(restored.fromAccount || (selectedAccount || ""));
+        setToAccount(restored.toAccount || "");
+        setAmount(restored.amount || "");
+        setDate(restored.date || new Date().toISOString().split('T')[0]);
+        setDescription(restored.description || "");
       } else {
-        setFromAccount("");
+        if (selectedAccount) {
+          setFromAccount(selectedAccount);
+        } else {
+          setFromAccount("");
+        }
+        setToAccount("");
+        setAmount("");
+        setDate(new Date().toISOString().split('T')[0]);
+        setDescription("");
       }
-      setToAccount("");
-      setAmount("");
-      setDate(new Date().toISOString().split('T')[0]);
-      setDescription("");
     }
-  }, [open, selectedAccount]);
+  }, [open, selectedAccount, restoreValues]);
 
   const handleSubmit = () => {
     if (!fromAccount || !toAccount || !amount || fromAccount === toAccount) {
@@ -62,6 +85,7 @@ export function AccountTransferDialog({
       description,
     });
 
+    clearStoredValues();
     onOpenChange(false);
   };
 

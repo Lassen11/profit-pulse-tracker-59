@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Department } from "@/pages/Payroll";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface DepartmentDialogProps {
   open: boolean;
@@ -16,15 +17,31 @@ export function DepartmentDialog({ open, onOpenChange, onSave, department }: Dep
   const [name, setName] = useState("");
   const [projectName, setProjectName] = useState("");
 
+  const formKey = `department-dialog-${department?.id || 'new'}`;
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: {
+      name,
+      projectName
+    },
+    enabled: open && !department
+  });
+
   useEffect(() => {
     if (department) {
       setName(department.name);
       setProjectName(department.project_name || "");
     } else {
-      setName("");
-      setProjectName("");
+      const restored = restoreValues();
+      if (restored) {
+        setName(restored.name || "");
+        setProjectName(restored.projectName || "");
+      } else {
+        setName("");
+        setProjectName("");
+      }
     }
-  }, [department, open]);
+  }, [department, open, restoreValues]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +50,7 @@ export function DepartmentDialog({ open, onOpenChange, onSave, department }: Dep
       name,
       project_name: projectName || null
     });
+    clearStoredValues();
   };
 
   return (
