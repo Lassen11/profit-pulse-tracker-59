@@ -115,20 +115,32 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     }
 
     try {
+      const white = parseFloat(whiteSalary) || 0;
+      const gray = parseFloat(graySalary) || 0;
+      const adv = parseFloat(advance) || 0;
+      const ndflVal = parseFloat(ndfl) || 0;
+      const contrib = parseFloat(contributions) || 0;
+      const bon = parseFloat(bonus) || 0;
+      
+      // Автоматические расчеты
+      const calculatedTotal = white + gray;
+      const calculatedCost = white + gray + ndflVal + contrib + bon;
+      const calculatedNetSalary = calculatedTotal - adv - ndflVal + bon;
+      
       const employeeData = {
         department_id: departmentId,
         employee_id: selectedEmployeeId,
         company: selectedCompany,
-        white_salary: parseFloat(whiteSalary) || 0,
-        gray_salary: parseFloat(graySalary) || 0,
-        advance: parseFloat(advance) || 0,
-        ndfl: parseFloat(ndfl) || 0,
-        contributions: parseFloat(contributions) || 0,
-        bonus: parseFloat(bonus) || 0,
+        white_salary: white,
+        gray_salary: gray,
+        advance: adv,
+        ndfl: ndflVal,
+        contributions: contrib,
+        bonus: bon,
         next_month_bonus: parseFloat(nextMonthBonus) || 0,
-        cost: parseFloat(cost) || 0,
-        net_salary: parseFloat(netSalary) || 0,
-        total_amount: parseFloat(totalAmount) || 0,
+        cost: calculatedCost,
+        net_salary: calculatedNetSalary,
+        total_amount: calculatedTotal,
         user_id: user.id
       };
 

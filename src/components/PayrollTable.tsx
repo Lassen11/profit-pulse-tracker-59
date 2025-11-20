@@ -106,6 +106,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
             <TableRow>
               <TableHead className="min-w-[150px]">Сотрудник</TableHead>
               <TableHead className="min-w-[120px]">Проект</TableHead>
+              <TableHead className="text-right min-w-[120px]">Общая сумма</TableHead>
               <TableHead className="text-right min-w-[100px]">Белая</TableHead>
               <TableHead className="text-right min-w-[100px]">Серая</TableHead>
               <TableHead className="text-right min-w-[100px]">Аванс</TableHead>
@@ -115,13 +116,15 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
               <TableHead className="text-right min-w-[120px]">Премия сл. мес</TableHead>
               <TableHead className="text-right min-w-[100px]">Стоимость</TableHead>
               <TableHead className="text-right min-w-[100px]">На руки</TableHead>
-              <TableHead className="text-right min-w-[120px]">Общая сумма</TableHead>
               <TableHead className="text-right min-w-[150px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow className="bg-muted/50 font-semibold">
               <TableCell colSpan={2}>Итого:</TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.total_amount || 0), 0))}
+              </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_white || 0), 0))}
               </TableCell>
@@ -149,9 +152,6 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
               <TableCell className="text-right">
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.net_salary || 0), 0))}
               </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.total_amount || 0), 0))}
-              </TableCell>
               <TableCell></TableCell>
             </TableRow>
             {employees.map((employee) => (
@@ -165,6 +165,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                   </div>
                 </TableCell>
                 <TableCell>{employee.company}</TableCell>
+                <TableCell className="text-right font-semibold">{formatCurrency(employee.total_amount)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.paid_white || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.paid_gray || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.paid_advance || 0)}</TableCell>
@@ -174,7 +175,6 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 <TableCell className="text-right">{formatCurrency(employee.next_month_bonus)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.cost)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.net_salary)}</TableCell>
-                <TableCell className="text-right font-semibold">{formatCurrency(employee.total_amount)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
