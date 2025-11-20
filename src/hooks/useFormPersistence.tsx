@@ -11,8 +11,7 @@ export function useFormPersistence<T extends Record<string, any>>({
   values,
   enabled
 }: UseFormPersistenceOptions<T>) {
-  
-  // Сохранение в sessionStorage при изменении значений
+  // Сохранение в localStorage при изменении значений
   useEffect(() => {
     if (enabled && Object.keys(values).length > 0) {
       const hasValues = Object.values(values).some(val => {
@@ -22,17 +21,21 @@ export function useFormPersistence<T extends Record<string, any>>({
       });
       
       if (hasValues) {
-        sessionStorage.setItem(key, JSON.stringify(values));
+        try {
+          localStorage.setItem(key, JSON.stringify(values));
+        } catch (error) {
+          console.error('Error saving form values:', error);
+        }
       }
     }
   }, [key, values, enabled]);
 
-  // Восстановление из sessionStorage
+  // Восстановление из localStorage
   const restoreValues = useCallback((): T | null => {
     if (!enabled) return null;
     
     try {
-      const stored = sessionStorage.getItem(key);
+      const stored = localStorage.getItem(key);
       if (stored) {
         const parsed = JSON.parse(stored);
         // Восстанавливаем даты
@@ -53,9 +56,13 @@ export function useFormPersistence<T extends Record<string, any>>({
     return null;
   }, [key, enabled]);
 
-  // Очистка sessionStorage
+  // Очистка localStorage
   const clearStoredValues = useCallback(() => {
-    sessionStorage.removeItem(key);
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error clearing form values:', error);
+    }
   }, [key]);
 
   return {

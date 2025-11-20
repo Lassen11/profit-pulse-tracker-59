@@ -46,7 +46,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
 
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("payroll-last-payment");
+      const stored = localStorage.getItem("payroll-last-payment");
       if (!stored) return;
 
       const parsed = JSON.parse(stored) as { employeeId: string };
@@ -56,11 +56,11 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
         setSelectedEmployeeForPayment(employee);
         setPaymentDialogOpen(true);
       } else {
-        sessionStorage.removeItem("payroll-last-payment");
+        localStorage.removeItem("payroll-last-payment");
       }
     } catch (error) {
       console.error("Error restoring last payment dialog state", error);
-      sessionStorage.removeItem("payroll-last-payment");
+      localStorage.removeItem("payroll-last-payment");
     }
   }, [employees]);
 
@@ -112,7 +112,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
     setSelectedEmployeeForPayment(employee);
     setPaymentDialogOpen(true);
     try {
-      sessionStorage.setItem("payroll-last-payment", JSON.stringify({ employeeId: employee.id }));
+      localStorage.setItem("payroll-last-payment", JSON.stringify({ employeeId: employee.id }));
     } catch (error) {
       console.error("Error saving last payment dialog state", error);
     }
@@ -265,7 +265,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
           setPaymentDialogOpen(open);
           if (!open) {
             try {
-              sessionStorage.removeItem("payroll-last-payment");
+              localStorage.removeItem("payroll-last-payment");
             } catch (error) {
               console.error("Error clearing last payment dialog state", error);
             }
