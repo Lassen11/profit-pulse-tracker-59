@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const apiResponse = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'x-api-key': apiKey!,
         'Content-Type': 'application/json'
       }
     });
@@ -47,11 +47,23 @@ Deno.serve(async (req) => {
     const paymentData = await apiResponse.json();
     console.log('Payment data received from API:', paymentData);
 
-    const totalPayments = paymentData.total_payments || 0;
-    const userId = paymentData.user_id;
+    const totalPayments = paymentData.data?.total_payments_sum || 0;
+
+    // Get user_id from bankrot_clients table
+    const { data: clients, error: clientsError } = await supabase
+      .from('bankrot_clients')
+      .select('user_id')
+      .limit(1);
+
+    if (clientsError) {
+      console.error('Error fetching user_id:', clientsError);
+      throw clientsError;
+    }
+
+    const userId = clients?.[0]?.user_id;
 
     if (!userId) {
-      throw new Error('No user_id found in API response');
+      throw new Error('No user_id found in bankrot_clients');
     }
 
     console.log(`Total payments from API: ${totalPayments}, user_id: ${userId}, month: ${monthString}`);
@@ -79,7 +91,6 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         total_payments: totalPayments,
-        clients_count: clients?.length || 0,
         updated_kpi: true 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
