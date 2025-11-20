@@ -25,28 +25,36 @@ Deno.serve(async (req) => {
 
     console.log(`Syncing debitorka for month: ${monthString}`);
 
-    // Get only active clients with remaining debt from bankrot_clients
-    const { data: clients, error: clientsError } = await supabase
-      .from('bankrot_clients')
-      .select('monthly_payment, user_id, remaining_amount')
-      .gt('remaining_amount', 0);
+    // Call external API to get payment summary
+    const apiKey = Deno.env.get('BANKROT_HELPER_API_KEY');
+    const apiUrl = 'https://gidvpxxfgvivjbzfpxcg.supabase.co/functions/v1/get-payment-summary';
+    
+    console.log('Calling external API for payment summary...');
+    const apiResponse = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-    if (clientsError) {
-      console.error('Error fetching clients:', clientsError);
-      throw clientsError;
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.error('API call failed:', apiResponse.status, errorText);
+      throw new Error(`API call failed: ${apiResponse.status} - ${errorText}`);
     }
 
-    // Calculate total payments (sum of monthly_payment for active clients only)
-    const totalPayments = clients?.reduce((sum, client) => sum + (Number(client.monthly_payment) || 0), 0) || 0;
-    
-    // Get user_id (use first client's user_id)
-    const userId = clients?.[0]?.user_id;
+    const paymentData = await apiResponse.json();
+    console.log('Payment data received from API:', paymentData);
+
+    const totalPayments = paymentData.total_payments || 0;
+    const userId = paymentData.user_id;
 
     if (!userId) {
-      throw new Error('No user_id found in bankrot_clients');
+      throw new Error('No user_id found in API response');
     }
 
-    console.log(`Calculated total payments: ${totalPayments}, user_id: ${userId}, month: ${monthString}`);
+    console.log(`Total payments from API: ${totalPayments}, user_id: ${userId}, month: ${monthString}`);
 
     // Call webhook-from-bankrot with sync_summary event
     const { data, error } = await supabase.functions.invoke('webhook-from-bankrot', {
