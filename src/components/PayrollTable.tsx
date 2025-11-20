@@ -15,6 +15,7 @@ import { PaymentDialog } from "@/components/PaymentDialog";
 import { PaymentHistoryDialog } from "@/components/PaymentHistoryDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,66 +45,45 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("payroll-last-payment");
-      if (!stored) return;
-
-      const parsed = JSON.parse(stored) as { employeeId: string };
-      const employee = employees.find(e => e.id === parsed.employeeId);
-
+  // Dialog persistence hooks
+  const paymentDialogPersistence = usePersistedDialog<{ employeeId: string }>({
+    key: "payroll-last-payment",
+    onRestore: (data) => {
+      const employee = employees.find(e => e.id === data.employeeId);
       if (employee) {
         setSelectedEmployeeForPayment(employee);
         setPaymentDialogOpen(true);
-      } else {
-        localStorage.removeItem("payroll-last-payment");
       }
-    } catch (error) {
-      console.error("Error restoring last payment dialog state", error);
-      localStorage.removeItem("payroll-last-payment");
     }
-  }, [employees]);
+  });
 
-  // Restore employee dialog state
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("payroll-employee-dialog");
-      if (!stored) return;
-
-      const parsed = JSON.parse(stored) as { employeeId: string };
-      const employee = employees.find(e => e.id === parsed.employeeId);
-
+  const employeeDialogPersistence = usePersistedDialog<{ employeeId: string }>({
+    key: "payroll-employee-dialog",
+    onRestore: (data) => {
+      const employee = employees.find(e => e.id === data.employeeId);
       if (employee) {
         setEditEmployee(employee);
         setEmployeeDialogOpen(true);
-      } else {
-        localStorage.removeItem("payroll-employee-dialog");
       }
-    } catch (error) {
-      console.error("Error restoring employee dialog state", error);
-      localStorage.removeItem("payroll-employee-dialog");
     }
-  }, [employees]);
+  });
 
-  // Restore history dialog state
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("payroll-history-dialog");
-      if (!stored) return;
-
-      const parsed = JSON.parse(stored) as { employeeId: string };
-      const employee = employees.find(e => e.id === parsed.employeeId);
-
+  const historyDialogPersistence = usePersistedDialog<{ employeeId: string }>({
+    key: "payroll-history-dialog",
+    onRestore: (data) => {
+      const employee = employees.find(e => e.id === data.employeeId);
       if (employee) {
         setSelectedEmployeeForHistory(employee);
         setHistoryDialogOpen(true);
-      } else {
-        localStorage.removeItem("payroll-history-dialog");
       }
-    } catch (error) {
-      console.error("Error restoring history dialog state", error);
-      localStorage.removeItem("payroll-history-dialog");
     }
+  });
+
+  // Restore dialog states on mount
+  useEffect(() => {
+    paymentDialogPersistence.restoreDialog();
+    employeeDialogPersistence.restoreDialog();
+    historyDialogPersistence.restoreDialog();
   }, [employees]);
 
   const formatCurrency = (amount: number) => {
@@ -118,11 +98,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const handleEdit = (employee: DepartmentEmployee) => {
     setEditEmployee(employee);
     setEmployeeDialogOpen(true);
-    try {
-      localStorage.setItem("payroll-employee-dialog", JSON.stringify({ employeeId: employee.id }));
-    } catch (error) {
-      console.error("Error saving employee dialog state", error);
-    }
+    employeeDialogPersistence.openDialog({ employeeId: employee.id });
   };
 
   const handleDelete = async () => {
@@ -158,21 +134,13 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const handlePayment = (employee: DepartmentEmployee) => {
     setSelectedEmployeeForPayment(employee);
     setPaymentDialogOpen(true);
-    try {
-      localStorage.setItem("payroll-last-payment", JSON.stringify({ employeeId: employee.id }));
-    } catch (error) {
-      console.error("Error saving last payment dialog state", error);
-    }
+    paymentDialogPersistence.openDialog({ employeeId: employee.id });
   };
 
   const handleViewHistory = (employee: DepartmentEmployee) => {
     setSelectedEmployeeForHistory(employee);
     setHistoryDialogOpen(true);
-    try {
-      localStorage.setItem("payroll-history-dialog", JSON.stringify({ employeeId: employee.id }));
-    } catch (error) {
-      console.error("Error saving history dialog state", error);
-    }
+    historyDialogPersistence.openDialog({ employeeId: employee.id });
   };
 
   return (
@@ -301,11 +269,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
           setEmployeeDialogOpen(open);
           if (!open) {
             setEditEmployee(null);
-            try {
-              localStorage.removeItem("payroll-employee-dialog");
-            } catch (error) {
-              console.error("Error clearing employee dialog state", error);
-            }
+            employeeDialogPersistence.closeDialog();
           }
         }}
         departmentId={departmentId}
@@ -315,11 +279,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
           onRefresh();
           setEmployeeDialogOpen(false);
           setEditEmployee(null);
-          try {
-            localStorage.removeItem("payroll-employee-dialog");
-          } catch (error) {
-            console.error("Error clearing employee dialog state", error);
-          }
+          employeeDialogPersistence.closeDialog();
         }}
       />
 
@@ -328,11 +288,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
         onOpenChange={(open) => {
           setPaymentDialogOpen(open);
           if (!open) {
-            try {
-              localStorage.removeItem("payroll-last-payment");
-            } catch (error) {
-              console.error("Error clearing last payment dialog state", error);
-            }
+            paymentDialogPersistence.closeDialog();
           }
         }}
         employee={selectedEmployeeForPayment}
@@ -344,11 +300,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
         onOpenChange={(open) => {
           setHistoryDialogOpen(open);
           if (!open) {
-            try {
-              localStorage.removeItem("payroll-history-dialog");
-            } catch (error) {
-              console.error("Error clearing history dialog state", error);
-            }
+            historyDialogPersistence.closeDialog();
           }
         }}
         employee={selectedEmployeeForHistory}

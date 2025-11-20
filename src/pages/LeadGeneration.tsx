@@ -11,6 +11,7 @@ import { LeadDashboard } from "@/components/LeadDashboard";
 import { CalendarIcon, Upload, Download, LogOut, TrendingUp, BarChart3, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth } from "date-fns";
@@ -46,6 +47,15 @@ export default function LeadGeneration() {
   } = useAuth();
   const navigate = useNavigate();
 
+  // Dialog persistence hook
+  const leadDialogPersistence = usePersistedDialog<{ editingLead: LeadData }>({
+    key: 'lead-dialog-state',
+    onRestore: (data) => {
+      setEditingLead(data.editingLead);
+      setEditDialogOpen(true);
+    }
+  });
+
   // Redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
@@ -56,20 +66,8 @@ export default function LeadGeneration() {
   // Restore dialog state from localStorage
   useEffect(() => {
     if (!user) return;
-
-    try {
-      const leadDialogState = localStorage.getItem('lead-dialog-state');
-      if (leadDialogState) {
-        const parsed = JSON.parse(leadDialogState);
-        if (parsed.editingLead) {
-          setEditingLead(parsed.editingLead);
-          setEditDialogOpen(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error restoring lead dialog state:', error);
-      localStorage.removeItem('lead-dialog-state');
-    }
+    
+    leadDialogPersistence.restoreDialog();
   }, [user]);
   const fetchLeadData = useCallback(async () => {
     if (!user) {
@@ -513,13 +511,7 @@ export default function LeadGeneration() {
                             <Button variant="ghost" size="icon" onClick={() => {
                         setEditingLead(lead);
                         setEditDialogOpen(true);
-                        try {
-                          localStorage.setItem('lead-dialog-state', JSON.stringify({
-                            editingLead: lead
-                          }));
-                        } catch (error) {
-                          console.error('Error saving lead dialog state:', error);
-                        }
+                        leadDialogPersistence.openDialog({ editingLead: lead });
                       }}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -541,7 +533,7 @@ export default function LeadGeneration() {
         fetchLeadData();
         setEditDialogOpen(false);
         setEditingLead(undefined);
-        localStorage.removeItem('lead-dialog-state');
+        leadDialogPersistence.closeDialog();
       }} />}
       </div>
     </div>;

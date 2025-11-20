@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Plus, ArrowLeft } from "lucide-react";
@@ -31,6 +32,17 @@ export default function Payroll() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  // Dialog persistence hook
+  const departmentDialogPersistence = usePersistedDialog<{ editDepartment?: Department }>({
+    key: 'payroll-dialog-state',
+    onRestore: (data) => {
+      if (data.editDepartment) {
+        setEditDepartment(data.editDepartment);
+      }
+      setDialogOpen(true);
+    }
+  });
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
@@ -47,22 +59,8 @@ export default function Payroll() {
   // Restore dialog state from localStorage
   useEffect(() => {
     if (!user) return;
-
-    try {
-      const payrollDialogState = localStorage.getItem('payroll-dialog-state');
-      if (payrollDialogState) {
-        const parsed = JSON.parse(payrollDialogState);
-        if (parsed.editDepartment) {
-          setEditDepartment(parsed.editDepartment);
-          setDialogOpen(true);
-        } else if (parsed.addDepartment) {
-          setDialogOpen(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error restoring payroll dialog state:', error);
-      localStorage.removeItem('payroll-dialog-state');
-    }
+    
+    departmentDialogPersistence.restoreDialog();
   }, [user]);
 
   const fetchAllEmployees = async () => {
@@ -202,7 +200,7 @@ export default function Payroll() {
       fetchAllEmployees();
       setDialogOpen(false);
       setEditDepartment(null);
-      localStorage.removeItem('payroll-dialog-state');
+      departmentDialogPersistence.closeDialog();
     } catch (error) {
       console.error('Error saving department:', error);
       toast({
@@ -241,13 +239,7 @@ export default function Payroll() {
   const handleEditDepartment = (department: Department) => {
     setEditDepartment(department);
     setDialogOpen(true);
-    try {
-      localStorage.setItem('payroll-dialog-state', JSON.stringify({
-        editDepartment: department
-      }));
-    } catch (error) {
-      console.error('Error saving payroll dialog state:', error);
-    }
+    departmentDialogPersistence.openDialog({ editDepartment: department });
   };
 
   if (loading || authLoading) {
@@ -355,13 +347,7 @@ export default function Payroll() {
               <Button onClick={() => {
                 setEditDepartment(null);
                 setDialogOpen(true);
-                try {
-                  localStorage.setItem('payroll-dialog-state', JSON.stringify({
-                    addDepartment: true
-                  }));
-                } catch (error) {
-                  console.error('Error saving payroll dialog state:', error);
-                }
+                departmentDialogPersistence.openDialog({});
               }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Добавить отдел
@@ -373,13 +359,7 @@ export default function Payroll() {
                 <p className="text-muted-foreground mb-4">Нет добавленных отделов</p>
                 <Button onClick={() => {
                   setDialogOpen(true);
-                  try {
-                    localStorage.setItem('payroll-dialog-state', JSON.stringify({
-                      addDepartment: true
-                    }));
-                  } catch (error) {
-                    console.error('Error saving payroll dialog state:', error);
-                  }
+                  departmentDialogPersistence.openDialog({});
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Создать первый отдел
