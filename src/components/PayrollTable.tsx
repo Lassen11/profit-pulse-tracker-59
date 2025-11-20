@@ -186,7 +186,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.contributions || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_bonus || 0), 0))}
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.bonus || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.next_month_bonus || 0), 0))}
@@ -216,7 +216,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 <TableCell className="text-right">{formatCurrency(employee.paid_advance || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.ndfl)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.contributions)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.paid_bonus || 0)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.bonus || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.next_month_bonus)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.cost)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.net_salary)}</TableCell>
