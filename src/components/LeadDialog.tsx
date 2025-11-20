@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
 
@@ -47,6 +48,22 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const formKey = `lead-dialog-${editData?.id || 'new'}`;
+  const { restoreValues, clearStoredValues } = useFormPersistence({
+    key: formKey,
+    values: {
+      company: formData.company,
+      date: formData.date.toISOString(),
+      total_leads: formData.total_leads,
+      qualified_leads: formData.qualified_leads,
+      debt_above_300k: formData.debt_above_300k,
+      contracts: formData.contracts,
+      payments: formData.payments,
+      total_cost: formData.total_cost
+    },
+    enabled: open && !editData
+  });
+
   // Update form data when editData changes
   useEffect(() => {
     if (editData) {
@@ -61,8 +78,22 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
         total_cost: editData.total_cost
       });
       setOpen(true);
+    } else if (open) {
+      const restored = restoreValues();
+      if (restored) {
+        setFormData({
+          company: restored.company || "Спасение",
+          date: restored.date ? new Date(restored.date) : new Date(),
+          total_leads: restored.total_leads || 0,
+          qualified_leads: restored.qualified_leads || 0,
+          debt_above_300k: restored.debt_above_300k || 0,
+          contracts: restored.contracts || 0,
+          payments: restored.payments || 0,
+          total_cost: restored.total_cost || 0
+        });
+      }
     }
-  }, [editData]);
+  }, [editData, open, restoreValues]);
 
   const formatDateForDB = (date: Date) => {
     const year = date.getFullYear();
@@ -125,6 +156,8 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
         });
       }
 
+      onSuccess();
+      clearStoredValues();
       setOpen(false);
       setFormData({
         company: "Спасение",
@@ -136,7 +169,6 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
         payments: 0,
         total_cost: 0
       });
-      onSuccess();
     } catch (error: any) {
       console.error('Error saving lead data:', error);
       toast({
