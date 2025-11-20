@@ -9,11 +9,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DepartmentEmployee } from "@/components/DepartmentCard";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Trash2 } from "lucide-react";
 
 interface PaymentHistoryDialogProps {
   open: boolean;
@@ -28,11 +31,14 @@ interface PaymentRecord {
   payment_type: string;
   notes: string | null;
   created_at: string;
+  transaction_id: string | null;
 }
 
 export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHistoryDialogProps) {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -85,6 +91,56 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
     return types[type] || type;
   };
 
+  const handleDeletePayment = async () => {
+    if (!deletePaymentId) return;
+
+    const payment = payments.find(p => p.id === deletePaymentId);
+    if (!payment) return;
+
+    try {
+      setDeleting(true);
+
+      // Сначала удаляем связанную транзакцию, если она есть
+      if (payment.transaction_id) {
+        const { error: transactionError } = await supabase
+          .from('transactions')
+          .delete()
+          .eq('id', payment.transaction_id);
+
+        if (transactionError) {
+          console.error('Error deleting transaction:', transactionError);
+          throw new Error('Не удалось удалить связанную транзакцию');
+        }
+      }
+
+      // Затем удаляем саму выплату
+      const { error: paymentError } = await supabase
+        .from('payroll_payments')
+        .delete()
+        .eq('id', deletePaymentId);
+
+      if (paymentError) throw paymentError;
+
+      toast({
+        title: "Выплата удалена",
+        description: "Выплата и связанная транзакция успешно удалены"
+      });
+
+      // Обновляем список выплат
+      await fetchPayments();
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось удалить выплату",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleting(false);
+      setDeletePaymentId(null);
+    }
+  };
+
   if (!employee) return null;
 
   return (
@@ -114,6 +170,7 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
                   <TableHead className="text-right">Сумма</TableHead>
                   <TableHead>Примечания</TableHead>
                   <TableHead>Дата создания</TableHead>
+                  <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -132,6 +189,16 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(payment.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletePaymentId(payment.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -148,6 +215,27 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={deletePaymentId !== null} onOpenChange={(open) => !open && setDeletePaymentId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выплату?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Выплата и связанная с ней транзакция будут удалены навсегда.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePayment}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Удаление..." : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
