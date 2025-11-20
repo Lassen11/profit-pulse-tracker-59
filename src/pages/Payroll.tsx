@@ -44,6 +44,27 @@ export default function Payroll() {
     }
   }, [user]);
 
+  // Restore dialog state from localStorage
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      const payrollDialogState = localStorage.getItem('payroll-dialog-state');
+      if (payrollDialogState) {
+        const parsed = JSON.parse(payrollDialogState);
+        if (parsed.editDepartment) {
+          setEditDepartment(parsed.editDepartment);
+          setDialogOpen(true);
+        } else if (parsed.addDepartment) {
+          setDialogOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring payroll dialog state:', error);
+      localStorage.removeItem('payroll-dialog-state');
+    }
+  }, [user]);
+
   const fetchAllEmployees = async () => {
     try {
       const { data, error } = await supabase
@@ -181,6 +202,7 @@ export default function Payroll() {
       fetchAllEmployees();
       setDialogOpen(false);
       setEditDepartment(null);
+      localStorage.removeItem('payroll-dialog-state');
     } catch (error) {
       console.error('Error saving department:', error);
       toast({
@@ -219,6 +241,13 @@ export default function Payroll() {
   const handleEditDepartment = (department: Department) => {
     setEditDepartment(department);
     setDialogOpen(true);
+    try {
+      localStorage.setItem('payroll-dialog-state', JSON.stringify({
+        editDepartment: department
+      }));
+    } catch (error) {
+      console.error('Error saving payroll dialog state:', error);
+    }
   };
 
   if (loading || authLoading) {
@@ -326,6 +355,13 @@ export default function Payroll() {
               <Button onClick={() => {
                 setEditDepartment(null);
                 setDialogOpen(true);
+                try {
+                  localStorage.setItem('payroll-dialog-state', JSON.stringify({
+                    addDepartment: true
+                  }));
+                } catch (error) {
+                  console.error('Error saving payroll dialog state:', error);
+                }
               }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Добавить отдел
@@ -335,7 +371,16 @@ export default function Payroll() {
             {departments.length === 0 ? (
               <Card className="p-12 text-center">
                 <p className="text-muted-foreground mb-4">Нет добавленных отделов</p>
-                <Button onClick={() => setDialogOpen(true)}>
+                <Button onClick={() => {
+                  setDialogOpen(true);
+                  try {
+                    localStorage.setItem('payroll-dialog-state', JSON.stringify({
+                      addDepartment: true
+                    }));
+                  } catch (error) {
+                    console.error('Error saving payroll dialog state:', error);
+                  }
+                }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Создать первый отдел
                 </Button>

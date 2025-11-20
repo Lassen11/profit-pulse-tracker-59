@@ -94,6 +94,36 @@ export default function Dashboard() {
     checkAdminStatus();
   }, [user]);
 
+  // Restore dialog states from localStorage
+  useEffect(() => {
+    if (!user) return;
+
+    try {
+      const dashboardDialogState = localStorage.getItem('dashboard-dialog-state');
+      if (dashboardDialogState) {
+        const parsed = JSON.parse(dashboardDialogState);
+        
+        if (parsed.transactionDialog) {
+          setEditTransaction(parsed.transaction || null);
+          setCopyMode(parsed.copyMode || false);
+          setDialogOpen(true);
+        } else if (parsed.transferDialog) {
+          setSelectedAccountForTransfer(parsed.account);
+          setTransferDialogOpen(true);
+        } else if (parsed.accountActionsDialog) {
+          setSelectedAccount(parsed.account || "");
+          setAccountActionsDialogOpen(true);
+        } else if (parsed.accountTransactionsDialog) {
+          setSelectedAccount(parsed.account || "");
+          setAccountTransactionsDialogOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring dashboard dialog state:', error);
+      localStorage.removeItem('dashboard-dialog-state');
+    }
+  }, [user]);
+
   // Fetch balance adjustments
   const fetchBalanceAdjustments = useCallback(async () => {
     if (!user) return;
@@ -710,18 +740,37 @@ export default function Dashboard() {
       }
     }
     setEditTransaction(null);
+    localStorage.removeItem('dashboard-dialog-state');
   };
 
   const handleEditTransaction = (transaction: Transaction) => {
     setEditTransaction(transaction);
     setCopyMode(false);
     setDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        transactionDialog: true,
+        transaction,
+        copyMode: false
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleCopyTransaction = (transaction: Transaction) => {
     setEditTransaction(transaction);
     setCopyMode(true);
     setDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        transactionDialog: true,
+        transaction,
+        copyMode: true
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleDeleteTransaction = async (id: string) => {
@@ -768,27 +817,69 @@ export default function Dashboard() {
     setEditTransaction(null);
     setCopyMode(false);
     setDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        transactionDialog: true,
+        transaction: null,
+        copyMode: false
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleAccountClick = (account: string) => {
     if (!isAdmin) return;
     setSelectedAccount(account);
     setAccountActionsDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        accountActionsDialog: true,
+        account
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleTransferClick = () => {
     setSelectedAccountForTransfer(selectedAccount);
     setTransferDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        transferDialog: true,
+        account: selectedAccount
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleAddTransactionClick = () => {
     setEditTransaction(null);
     setCopyMode(false);
     setDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        transactionDialog: true,
+        transaction: null,
+        copyMode: false
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleViewTransactionsClick = () => {
     setAccountTransactionsDialogOpen(true);
+    try {
+      localStorage.setItem('dashboard-dialog-state', JSON.stringify({
+        accountTransactionsDialog: true,
+        account: selectedAccount
+      }));
+    } catch (error) {
+      console.error('Error saving dashboard dialog state:', error);
+    }
   };
 
   const handleSaveTransfer = async (transfer: AccountTransfer) => {
@@ -1484,7 +1575,12 @@ export default function Dashboard() {
         {/* Transaction Dialog */}
         <TransactionDialog
           open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              localStorage.removeItem('dashboard-dialog-state');
+            }
+          }}
           transaction={editTransaction}
           onSave={handleSaveTransaction}
           copyMode={copyMode}
@@ -1494,7 +1590,12 @@ export default function Dashboard() {
         {/* Account Transfer Dialog */}
         <AccountTransferDialog
           open={transferDialogOpen}
-          onOpenChange={setTransferDialogOpen}
+          onOpenChange={(open) => {
+            setTransferDialogOpen(open);
+            if (!open) {
+              localStorage.removeItem('dashboard-dialog-state');
+            }
+          }}
           accounts={accountOptions}
           selectedAccount={selectedAccountForTransfer}
           onSave={handleSaveTransfer}
@@ -1503,7 +1604,12 @@ export default function Dashboard() {
         {/* Account Actions Dialog */}
         <AccountActionsDialog
           open={accountActionsDialogOpen}
-          onOpenChange={setAccountActionsDialogOpen}
+          onOpenChange={(open) => {
+            setAccountActionsDialogOpen(open);
+            if (!open) {
+              localStorage.removeItem('dashboard-dialog-state');
+            }
+          }}
           account={selectedAccount}
           onTransferClick={handleTransferClick}
           onAddTransactionClick={handleAddTransactionClick}
@@ -1513,7 +1619,12 @@ export default function Dashboard() {
         {/* Account Transactions Dialog */}
         <AccountTransactionsDialog
           open={accountTransactionsDialogOpen}
-          onOpenChange={setAccountTransactionsDialogOpen}
+          onOpenChange={(open) => {
+            setAccountTransactionsDialogOpen(open);
+            if (!open) {
+              localStorage.removeItem('dashboard-dialog-state');
+            }
+          }}
           account={selectedAccount}
           transactions={allTransactions}
           onTransactionUpdate={handleSaveTransaction}
