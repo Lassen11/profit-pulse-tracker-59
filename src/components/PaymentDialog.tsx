@@ -149,7 +149,9 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       if (transactionError) throw transactionError;
 
       // Create payroll payment record
-      // Use salaryType if payment type is salary, otherwise use paymentType
+      // For advance payments, always save as 'advance' regardless of salary type
+      // For salary payments, use the salary type (white/gray)
+      // For other payments, use the payment type directly
       const finalPaymentType = paymentType === 'salary' ? salaryType : paymentType;
       
       const { error: paymentError } = await supabase
@@ -165,6 +167,30 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
         });
 
       if (paymentError) throw paymentError;
+
+      // If it's a white advance payment, update NDFL in department_employees
+      if (paymentType === 'advance' && salaryType === 'white') {
+        const ndflAmount = paymentAmount * 0.13; // 13% НДФЛ
+        
+        // Get current employee data
+        const { data: currentEmployee, error: fetchError } = await supabase
+          .from('department_employees')
+          .select('ndfl')
+          .eq('id', employee.id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        // Update NDFL by adding 13% of advance
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            ndfl: (currentEmployee.ndfl || 0) + ndflAmount
+          })
+          .eq('id', employee.id);
+
+        if (updateError) throw updateError;
+      }
 
       toast({
         title: "Выплата проведена",
@@ -218,7 +244,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
               </Select>
             </div>
 
-            {paymentType === "salary" && (
+            {(paymentType === "salary" || paymentType === "advance") && (
               <div className="space-y-2">
                 <Label htmlFor="salary_type">Вид зарплаты</Label>
                 <Select value={salaryType} onValueChange={setSalaryType} required>
