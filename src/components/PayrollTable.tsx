@@ -120,6 +120,40 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
             </TableRow>
           </TableHeader>
           <TableBody>
+            <TableRow className="bg-muted/50 font-semibold">
+              <TableCell colSpan={2}>Итого:</TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_white || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_gray || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_advance || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.ndfl || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.contributions || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_bonus || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.next_month_bonus || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.cost || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.net_salary || 0), 0))}
+              </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.total_amount || 0), 0))}
+              </TableCell>
+              <TableCell></TableCell>
+            </TableRow>
             {employees.map((employee) => (
               <TableRow key={employee.id}>
                 <TableCell className="font-medium">
