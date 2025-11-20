@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -43,6 +43,26 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("payroll-last-payment");
+      if (!stored) return;
+
+      const parsed = JSON.parse(stored) as { employeeId: string };
+      const employee = employees.find(e => e.id === parsed.employeeId);
+
+      if (employee) {
+        setSelectedEmployeeForPayment(employee);
+        setPaymentDialogOpen(true);
+      } else {
+        sessionStorage.removeItem("payroll-last-payment");
+      }
+    } catch (error) {
+      console.error("Error restoring last payment dialog state", error);
+      sessionStorage.removeItem("payroll-last-payment");
+    }
+  }, [employees]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -91,6 +111,11 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
   const handlePayment = (employee: DepartmentEmployee) => {
     setSelectedEmployeeForPayment(employee);
     setPaymentDialogOpen(true);
+    try {
+      sessionStorage.setItem("payroll-last-payment", JSON.stringify({ employeeId: employee.id }));
+    } catch (error) {
+      console.error("Error saving last payment dialog state", error);
+    }
   };
 
   const handleViewHistory = (employee: DepartmentEmployee) => {
@@ -236,7 +261,16 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
 
       <PaymentDialog
         open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setPaymentDialogOpen(open);
+          if (!open) {
+            try {
+              sessionStorage.removeItem("payroll-last-payment");
+            } catch (error) {
+              console.error("Error clearing last payment dialog state", error);
+            }
+          }
+        }}
         employee={selectedEmployeeForPayment}
         onSuccess={onRefresh}
       />
