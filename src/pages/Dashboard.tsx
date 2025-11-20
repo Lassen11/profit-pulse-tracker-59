@@ -13,7 +13,7 @@ import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -1095,6 +1095,17 @@ export default function Dashboard() {
                 ))}
               </SelectContent>
             </Select>
+            <Button 
+              variant="outline" 
+              asChild
+              className="w-full sm:w-auto"
+            >
+              <a href="https://bflhelper.delobusiness-it.ru" target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Кабинет дебиторки</span>
+                <span className="xs:hidden">Дебиторка</span>
+              </a>
+            </Button>
             <Button onClick={handleAddNew} className="shadow-kpi">
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Добавить операцию</span>
