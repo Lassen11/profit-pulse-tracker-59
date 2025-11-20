@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import { UserPlus, Users, Shield, User, Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -59,6 +60,26 @@ export default function Employees() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Dialog persistence hooks
+  const addDialogPersistence = usePersistedDialog({
+    key: 'employees-dialog-add',
+    onRestore: () => {
+      setIsAddDialogOpen(true);
+    }
+  });
+
+  const editDialogPersistence = usePersistedDialog<{ employee: Profile }>({
+    key: 'employees-dialog-edit',
+    onRestore: (data) => {
+      setEditingEmployee(data.employee);
+      setEditFirstName(data.employee.first_name || "");
+      setEditLastName(data.employee.last_name || "");
+      setEditPosition(data.employee.position || "");
+      setEditDepartment(data.employee.department || "");
+      setIsEditDialogOpen(true);
+    }
+  });
+
   useEffect(() => {
     if (!user) {
       navigate('/auth');
@@ -73,26 +94,8 @@ export default function Employees() {
   useEffect(() => {
     if (!user) return;
 
-    try {
-      const employeesDialogState = localStorage.getItem('employees-dialog-state');
-      if (employeesDialogState) {
-        const parsed = JSON.parse(employeesDialogState);
-        
-        if (parsed.addDialog) {
-          setIsAddDialogOpen(true);
-        } else if (parsed.editDialog && parsed.employee) {
-          setEditingEmployee(parsed.employee);
-          setEditFirstName(parsed.employee.first_name || "");
-          setEditLastName(parsed.employee.last_name || "");
-          setEditPosition(parsed.employee.position || "");
-          setEditDepartment(parsed.employee.department || "");
-          setIsEditDialogOpen(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error restoring employees dialog state:', error);
-      localStorage.removeItem('employees-dialog-state');
-    }
+    addDialogPersistence.restoreDialog();
+    editDialogPersistence.restoreDialog();
   }, [user]);
 
   const checkAdminStatus = async () => {
@@ -209,7 +212,7 @@ export default function Employees() {
       setDepartment("");
       setRole('user');
       setIsAddDialogOpen(false);
-      localStorage.removeItem('employees-dialog-state');
+      addDialogPersistence.closeDialog();
 
       // Обновляем список
       fetchEmployees();
@@ -329,14 +332,7 @@ export default function Employees() {
     setEditPosition(employee.position || "");
     setEditDepartment(employee.department || "");
     setIsEditDialogOpen(true);
-    try {
-      localStorage.setItem('employees-dialog-state', JSON.stringify({
-        editDialog: true,
-        employee
-      }));
-    } catch (error) {
-      console.error('Error saving employees dialog state:', error);
-    }
+    editDialogPersistence.openDialog({ employee });
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -364,7 +360,7 @@ export default function Employees() {
       });
 
       setIsEditDialogOpen(false);
-      localStorage.removeItem('employees-dialog-state');
+      editDialogPersistence.closeDialog();
       fetchEmployees();
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -403,13 +399,9 @@ export default function Employees() {
           <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
             setIsAddDialogOpen(open);
             if (open) {
-              try {
-                localStorage.setItem('employees-dialog-state', JSON.stringify({
-                  addDialog: true
-                }));
-              } catch (error) {
-                console.error('Error saving employees dialog state:', error);
-              }
+              addDialogPersistence.openDialog({});
+            } else {
+              addDialogPersistence.closeDialog();
             }
           }}>
             <DialogTrigger asChild>
