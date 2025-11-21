@@ -1249,16 +1249,6 @@ export default function Dashboard() {
           <KPICard title="Налоги НДФЛ" value={formatCurrency(kpis.taxNDFL)} icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
         </div>
 
-        {/* Total Account Balance */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KPICard 
-            title="Всего на счетах" 
-            value={formatCurrency(accountBalances.reduce((sum, acc) => sum + acc.balance, 0))} 
-            icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} 
-            className="shadow-kpi" 
-          />
-        </div>
-
         {/* Account Balances */}
         <div className="kpi-card">
           <div className="mb-4">
@@ -1271,6 +1261,38 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* Total Balance Card */}
+            <div className="p-4 rounded-lg border bg-card">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Всего на счетах
+                </p>
+                <p className={cn("text-xl font-bold", 
+                  accountBalances.reduce((sum, acc) => sum + acc.balance, 0) > 0 
+                    ? "text-green-600 dark:text-green-400" 
+                    : accountBalances.reduce((sum, acc) => sum + acc.balance, 0) < 0 
+                    ? "text-red-600 dark:text-red-400" 
+                    : "text-muted-foreground"
+                )}>
+                  {formatCurrency(accountBalances.reduce((sum, acc) => sum + acc.balance, 0))}
+                </p>
+                <div className="pt-2 border-t text-xs space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Всего поступлений:</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">
+                      +{formatCurrency(accountBalances.reduce((sum, acc) => sum + acc.income, 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Всего списаний:</span>
+                    <span className="text-red-600 dark:text-red-400 font-medium">
+                      -{formatCurrency(accountBalances.reduce((sum, acc) => sum + acc.expense, 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {accountBalances.map(({
               account,
               balance,
