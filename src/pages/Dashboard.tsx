@@ -22,18 +22,8 @@ import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
-
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
-
-const accountOptions = [
-  "Зайнаб карта",
-  "Касса офис Диана",
-  "Мариана Карта - депозит",
-  "Карта Visa/Т-Банк (КИ)",
-  "Наличные Сейф (КИ)",
-  "Расчетный счет"
-];
-
+const accountOptions = ["Зайнаб карта", "Касса офис Диана", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]); // All transactions across companies for account balances
@@ -60,8 +50,14 @@ export default function Dashboard() {
   const [receivablesFact, setReceivablesFact] = useState<number>(0);
   const [salesPlan, setSalesPlan] = useState<number>(350000);
   const [salesFact, setSalesFact] = useState<number>(0);
-  const { toast } = useToast();
-  const { user, signOut, loading: authLoading } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user,
+    signOut,
+    loading: authLoading
+  } = useAuth();
   const navigate = useNavigate();
 
   // Dialog persistence hooks
@@ -70,32 +66,35 @@ export default function Dashboard() {
     copyMode?: boolean;
   }>({
     key: 'dashboard-dialog-transaction',
-    onRestore: (data) => {
+    onRestore: data => {
       setEditTransaction(data.transaction || null);
       setCopyMode(data.copyMode || false);
       setDialogOpen(true);
     }
   });
-
-  const transferDialogPersistence = usePersistedDialog<{ account: string }>({
+  const transferDialogPersistence = usePersistedDialog<{
+    account: string;
+  }>({
     key: 'dashboard-dialog-transfer',
-    onRestore: (data) => {
+    onRestore: data => {
       setSelectedAccountForTransfer(data.account);
       setTransferDialogOpen(true);
     }
   });
-
-  const accountActionsDialogPersistence = usePersistedDialog<{ account: string }>({
+  const accountActionsDialogPersistence = usePersistedDialog<{
+    account: string;
+  }>({
     key: 'dashboard-dialog-actions',
-    onRestore: (data) => {
+    onRestore: data => {
       setSelectedAccount(data.account);
       setAccountActionsDialogOpen(true);
     }
   });
-
-  const accountTransactionsDialogPersistence = usePersistedDialog<{ account: string }>({
+  const accountTransactionsDialogPersistence = usePersistedDialog<{
+    account: string;
+  }>({
     key: 'dashboard-dialog-transactions',
-    onRestore: (data) => {
+    onRestore: data => {
       setSelectedAccount(data.account);
       setAccountTransactionsDialogOpen(true);
     }
@@ -112,15 +111,11 @@ export default function Dashboard() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) return;
-      
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .single();
-          
+        const {
+          data,
+          error
+        } = await supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').single();
         if (!error && data) {
           setIsAdmin(true);
         }
@@ -128,14 +123,12 @@ export default function Dashboard() {
         console.error('Error checking admin status:', error);
       }
     };
-    
     checkAdminStatus();
   }, [user]);
 
   // Restore dialog states from localStorage
   useEffect(() => {
     if (!user) return;
-    
     transactionDialogPersistence.restoreDialog();
     transferDialogPersistence.restoreDialog();
     accountActionsDialogPersistence.restoreDialog();
@@ -145,19 +138,16 @@ export default function Dashboard() {
   // Fetch balance adjustments
   const fetchBalanceAdjustments = useCallback(async () => {
     if (!user) return;
-
     try {
-      const { data, error } = await supabase
-        .from('company_balance_adjustments')
-        .select('company, adjusted_balance');
-
+      const {
+        data,
+        error
+      } = await supabase.from('company_balance_adjustments').select('company, adjusted_balance');
       if (error) throw error;
-
       const adjustments: Record<string, number> = {};
-      data?.forEach((adj) => {
+      data?.forEach(adj => {
         adjustments[adj.company] = adj.adjusted_balance;
       });
-
       setBalanceAdjustments(adjustments);
     } catch (error) {
       console.error('Error fetching balance adjustments:', error);
@@ -167,32 +157,25 @@ export default function Dashboard() {
   // Fetch receivables data (Дебиторка)
   const fetchReceivablesData = useCallback(async () => {
     if (!user) return;
-
     try {
       // План: пробуем взять из kpi_targets (синхронизируемого из bankrot-helper), иначе fallback на сумму monthly_payment
       const endOfSelectedMonthReceivables = endOfMonth(selectedMonth);
       const monthStrReceivables = endOfSelectedMonthReceivables.toISOString().split('T')[0];
-
-      const { data: kpiData, error: kpiError } = await (supabase as any)
-        .from('kpi_targets')
-        .select('target_value')
-        .eq('company', 'Спасение')
-        .eq('kpi_name', 'debitorka_plan')
-        .eq('month', monthStrReceivables)
-        .maybeSingle();
-
+      const {
+        data: kpiData,
+        error: kpiError
+      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'debitorka_plan').eq('month', monthStrReceivables).maybeSingle();
       if (kpiError) {
         console.error('Error fetching debitorka_plan KPI:', kpiError);
       }
-
       if (kpiData?.target_value != null) {
         setReceivablesPlan(kpiData.target_value);
       } else {
         // Fallback: Get sum of monthly_payment from bankrot_clients for current month
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('bankrot_clients')
-          .select('monthly_payment, remaining_amount');
-
+        const {
+          data: clientsData,
+          error: clientsError
+        } = await supabase.from('bankrot_clients').select('monthly_payment, remaining_amount');
         if (clientsError) throw clientsError;
 
         // Calculate plan as sum of monthly payments for active clients
@@ -203,24 +186,17 @@ export default function Dashboard() {
           }
           return sum;
         }, 0) || 0;
-
         setReceivablesPlan(plan);
       }
 
       // Fact: Get sum of transactions with category "Дебиторка" for selected month
       const startOfSelectedMonth = startOfMonth(selectedMonth);
       const endOfSelectedMonth = endOfMonth(selectedMonth);
-
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('company', 'Спасение')
-        .eq('category', 'Дебиторка')
-        .gte('date', startOfSelectedMonth.toISOString().split('T')[0])
-        .lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
-
+      const {
+        data: transactionsData,
+        error: transactionsError
+      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Дебиторка').gte('date', startOfSelectedMonth.toISOString().split('T')[0]).lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
       if (transactionsError) throw transactionsError;
-
       const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
       setReceivablesFact(fact);
     } catch (error) {
@@ -231,34 +207,27 @@ export default function Dashboard() {
   // Fetch sales data (Новые продажи)
   const fetchSalesData = useCallback(async () => {
     if (!user) return;
-
     try {
       // Plan: Get from kpi_targets table
       const now = new Date();
       const currentMonth = startOfMonth(now);
-
-      const { data: targetData, error: targetError } = await (supabase as any)
-        .from('kpi_targets')
-        .select('target_value')
-        .eq('company', 'Спасение')
-        .eq('kpi_name', 'new_sales')
-        .eq('month', currentMonth.toISOString().split('T')[0])
-        .maybeSingle();
-
+      const {
+        data: targetData,
+        error: targetError
+      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', currentMonth.toISOString().split('T')[0]).maybeSingle();
       if (targetError && targetError.code !== 'PGRST116') throw targetError;
 
       // If no target exists, create default one
       if (!targetData) {
-        const { error: insertError } = await (supabase as any)
-          .from('kpi_targets')
-          .insert({
-            user_id: user.id,
-            company: 'Спасение',
-            kpi_name: 'new_sales',
-            target_value: 350000,
-            month: currentMonth.toISOString().split('T')[0]
-          });
-
+        const {
+          error: insertError
+        } = await (supabase as any).from('kpi_targets').insert({
+          user_id: user.id,
+          company: 'Спасение',
+          kpi_name: 'new_sales',
+          target_value: 350000,
+          month: currentMonth.toISOString().split('T')[0]
+        });
         if (insertError) throw insertError;
         setSalesPlan(350000);
       } else {
@@ -267,17 +236,11 @@ export default function Dashboard() {
 
       // Fact: Get sum of transactions with category "Продажи" for current month
       const endOfCurrentMonth = endOfMonth(now);
-
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('company', 'Спасение')
-        .eq('category', 'Продажи')
-        .gte('date', currentMonth.toISOString().split('T')[0])
-        .lte('date', endOfCurrentMonth.toISOString().split('T')[0]);
-
+      const {
+        data: transactionsData,
+        error: transactionsError
+      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Продажи').gte('date', currentMonth.toISOString().split('T')[0]).lte('date', endOfCurrentMonth.toISOString().split('T')[0]);
       if (transactionsError) throw transactionsError;
-
       const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
       setSalesFact(fact);
     } catch (error) {
@@ -304,46 +267,42 @@ export default function Dashboard() {
     // Cache check - don't refetch if data is fresh (less than 30 seconds old) AND we have data for current company
     const now = Date.now();
     const hasDataForCompany = transactions.length > 0 && transactions[0]?.company === selectedCompany;
-    if (hasDataForCompany && (now - lastFetchTime) < 30000) {
+    if (hasDataForCompany && now - lastFetchTime < 30000) {
       console.log('Using cached data for company:', selectedCompany);
       setLoading(false);
       return;
     }
-    
     try {
       setLoading(true);
       setError(null);
-      
-      // Load all transactions for the user (all companies) for account balances
-      const { data: allData, error: allError } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('date', { ascending: false });
 
+      // Load all transactions for the user (all companies) for account balances
+      const {
+        data: allData,
+        error: allError
+      } = await supabase.from('transactions').select('*').order('date', {
+        ascending: false
+      });
       if (allError) {
         console.error('Supabase error:', allError);
         throw allError;
       }
-
       const formattedAllData = allData?.map(t => ({
         ...t,
         type: t.type as 'income' | 'expense'
       })) || [];
-
       setAllTransactions(formattedAllData);
-      
+
       // Filter for selected company
       const companyData = formattedAllData.filter(t => t.company === selectedCompany);
       setTransactions(companyData);
       setLastFetchTime(now);
-
     } catch (error: any) {
       console.error('Error fetching transactions:', error);
-      
       if (error.message?.includes('Failed to fetch') || error.code === '') {
         setError("Проблема с подключением к интернету");
         toast({
-          title: "Ошибка подключения", 
+          title: "Ошибка подключения",
           description: "Проверьте интернет-соединение",
           variant: "destructive"
         });
@@ -363,24 +322,19 @@ export default function Dashboard() {
   // Load older transactions in background
   const loadOlderTransactions = useCallback(async () => {
     if (!user) return;
-    
     try {
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      
-       const { data } = await supabase
-         .from('transactions')
-         .select('*')
-         .eq('company', selectedCompany)
-         .lt('date', threeMonthsAgo.toISOString().split('T')[0])
-         .order('date', { ascending: false });
-
+      const {
+        data
+      } = await supabase.from('transactions').select('*').eq('company', selectedCompany).lt('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', {
+        ascending: false
+      });
       if (data && data.length > 0) {
         const olderTransactions = data.map(t => ({
           ...t,
           type: t.type as 'income' | 'expense'
         }));
-        
         setTransactions(prev => [...prev, ...olderTransactions]);
       }
     } catch (error) {
@@ -410,12 +364,10 @@ export default function Dashboard() {
       }
     }
   }, [selectedCompany, user, allTransactions]);
-
   const handleRetry = () => {
     setLastFetchTime(0); // Force refresh
     fetchTransactions();
   };
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -426,7 +378,6 @@ export default function Dashboard() {
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
-
     switch (periodFilter) {
       case "month":
         startDate = startOfMonth(now);
@@ -452,7 +403,6 @@ export default function Dashboard() {
       default:
         return transactions;
     }
-
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
       return transactionDate >= startDate && transactionDate <= endDate;
@@ -461,20 +411,12 @@ export default function Dashboard() {
 
   // Calculate account balances across ALL companies and up to current period
   const accountBalances = useMemo(() => {
-    const accounts = [
-      "Зайнаб карта",
-      "Касса офис Диана",
-      "Мариана Карта - депозит",
-      "Карта Visa/Т-Банк (КИ)",
-      "Наличные Сейф (КИ)",
-      "Расчетный счет"
-    ];
+    const accounts = ["Зайнаб карта", "Касса офис Диана", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
 
     // Get start and end date of current filter period
     let startDate: Date;
     let endDate: Date;
     const now = new Date();
-    
     switch (periodFilter) {
       case "month":
         startDate = startOfMonth(now);
@@ -508,29 +450,16 @@ export default function Dashboard() {
         const transactionDate = new Date(t.date);
         return transactionDate <= endDate;
       });
+      const totalIncome = allRelevantTransactions.filter(t => t.type === 'income' && (t as any).income_account === account).reduce((sum, t) => sum + t.amount, 0);
+      const totalExpense = allRelevantTransactions.filter(t => t.type === 'expense' && (t as any).expense_account === account).reduce((sum, t) => sum + t.amount, 0);
 
-      const totalIncome = allRelevantTransactions
-        .filter(t => t.type === 'income' && (t as any).income_account === account)
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const totalExpense = allRelevantTransactions
-        .filter(t => t.type === 'expense' && (t as any).expense_account === account)
-        .reduce((sum, t) => sum + t.amount, 0);
-      
       // For income/expense display - only transactions within the selected period
       const periodTransactions = allTransactions.filter(t => {
         const transactionDate = new Date(t.date);
         return transactionDate >= startDate && transactionDate <= endDate;
       });
-
-      const periodIncome = periodTransactions
-        .filter(t => t.type === 'income' && (t as any).income_account === account)
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const periodExpense = periodTransactions
-        .filter(t => t.type === 'expense' && (t as any).expense_account === account)
-        .reduce((sum, t) => sum + t.amount, 0);
-      
+      const periodIncome = periodTransactions.filter(t => t.type === 'income' && (t as any).income_account === account).reduce((sum, t) => sum + t.amount, 0);
+      const periodExpense = periodTransactions.filter(t => t.type === 'expense' && (t as any).expense_account === account).reduce((sum, t) => sum + t.amount, 0);
       return {
         account,
         balance: totalIncome - totalExpense,
@@ -546,7 +475,6 @@ export default function Dashboard() {
       // Get end date of current filter period
       let endDate: Date;
       const now = new Date();
-      
       switch (periodFilter) {
         case "month":
           endDate = endOfMonth(now);
@@ -574,16 +502,9 @@ export default function Dashboard() {
       });
 
       // Calculate total income and expenses for this company
-      const income = companyTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const expense = companyTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
+      const income = companyTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const expense = companyTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
       const calculatedBalance = income - expense;
-      
       return {
         company,
         calculatedBalance,
@@ -591,7 +512,6 @@ export default function Dashboard() {
       };
     });
   }, [allTransactions, periodFilter, selectedMonth, customDateTo, balanceAdjustments]);
-
   const kpis = useMemo(() => {
     const baseKpis = calculateKPIs(filteredTransactions);
     // Calculate moneyInProject as sum of all account balances
@@ -601,7 +521,6 @@ export default function Dashboard() {
       moneyInProject: totalAccountBalance
     };
   }, [filteredTransactions, accountBalances]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -610,16 +529,14 @@ export default function Dashboard() {
       maximumFractionDigits: 0
     }).format(amount);
   };
-
   const getDeltaType = (current: number, previous: number): 'positive' | 'negative' | 'neutral' => {
     if (current > previous) return 'positive';
     if (current < previous) return 'negative';
     return 'neutral';
   };
-
   const calculateDelta = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? "▲ ∞%" : "—";
-    const delta = ((current - previous) / Math.abs(previous)) * 100;
+    const delta = (current - previous) / Math.abs(previous) * 100;
     const arrow = delta >= 0 ? "▲" : "▼";
     return `${arrow} ${Math.abs(delta).toFixed(1)}%`;
   };
@@ -635,34 +552,32 @@ export default function Dashboard() {
     taxUSN: 0,
     taxNDFL: 0
   };
-
-  const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & { id?: string }, taxTransaction?: Omit<Transaction, 'id'>) => {
+  const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & {
+    id?: string;
+  }, taxTransaction?: Omit<Transaction, 'id'>) => {
     if (!user) return;
-
     if (transactionData.id) {
       // Update existing transaction
       try {
-        const { error } = await supabase
-          .from('transactions')
-          .update({
-            date: transactionData.date,
-            type: transactionData.type,
-            category: transactionData.category,
-            subcategory: transactionData.subcategory,
-            amount: transactionData.amount,
-            description: transactionData.description,
-            client_name: transactionData.client_name,
-            contract_amount: transactionData.contract_amount,
-            first_payment: transactionData.first_payment,
-            installment_period: transactionData.installment_period,
-            lump_sum: transactionData.lump_sum,
-            income_account: (transactionData as any).income_account,
-            expense_account: (transactionData as any).expense_account,
-            organization_name: (transactionData as any).organization_name,
-            company: transactionData.company
-          })
-          .eq('id', transactionData.id);
-
+        const {
+          error
+        } = await supabase.from('transactions').update({
+          date: transactionData.date,
+          type: transactionData.type,
+          category: transactionData.category,
+          subcategory: transactionData.subcategory,
+          amount: transactionData.amount,
+          description: transactionData.description,
+          client_name: transactionData.client_name,
+          contract_amount: transactionData.contract_amount,
+          first_payment: transactionData.first_payment,
+          installment_period: transactionData.installment_period,
+          lump_sum: transactionData.lump_sum,
+          income_account: (transactionData as any).income_account,
+          expense_account: (transactionData as any).expense_account,
+          organization_name: (transactionData as any).organization_name,
+          company: transactionData.company
+        }).eq('id', transactionData.id);
         if (error) throw error;
 
         // Refetch to ensure consistency
@@ -671,7 +586,7 @@ export default function Dashboard() {
         fetchSalesData();
         toast({
           title: "Операция обновлена",
-          description: "Данные успешно сохранены",
+          description: "Данные успешно сохранены"
         });
       } catch (error) {
         toast({
@@ -683,71 +598,63 @@ export default function Dashboard() {
     } else {
       // Create new transaction
       try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: user.id,
-            date: transactionData.date,
-            type: transactionData.type,
-            category: transactionData.category,
-            subcategory: transactionData.subcategory,
-            amount: transactionData.amount,
-            description: transactionData.description,
-            client_name: transactionData.client_name,
-            contract_amount: transactionData.contract_amount,
-            first_payment: transactionData.first_payment,
-            installment_period: transactionData.installment_period,
-            lump_sum: transactionData.lump_sum,
-            income_account: (transactionData as any).income_account,
-            expense_account: (transactionData as any).expense_account,
-            organization_name: (transactionData as any).organization_name,
-            company: transactionData.company
-          })
-          .select()
-          .single();
-
+        const {
+          data,
+          error
+        } = await supabase.from('transactions').insert({
+          user_id: user.id,
+          date: transactionData.date,
+          type: transactionData.type,
+          category: transactionData.category,
+          subcategory: transactionData.subcategory,
+          amount: transactionData.amount,
+          description: transactionData.description,
+          client_name: transactionData.client_name,
+          contract_amount: transactionData.contract_amount,
+          first_payment: transactionData.first_payment,
+          installment_period: transactionData.installment_period,
+          lump_sum: transactionData.lump_sum,
+          income_account: (transactionData as any).income_account,
+          expense_account: (transactionData as any).expense_account,
+          organization_name: (transactionData as any).organization_name,
+          company: transactionData.company
+        }).select().single();
         if (error) throw error;
-
         const newTransaction: Transaction = {
           ...data,
           type: data.type as 'income' | 'expense'
         };
-        
         const newTransactions = [newTransaction];
 
         // Создаем налоговую операцию если она указана
         if (taxTransaction) {
-          const { data: taxData, error: taxError } = await supabase
-            .from('transactions')
-            .insert({
-              user_id: user.id,
-              date: taxTransaction.date,
-              type: taxTransaction.type,
-              category: taxTransaction.category,
-              subcategory: taxTransaction.subcategory,
-              amount: taxTransaction.amount,
-              description: taxTransaction.description,
-              company: taxTransaction.company
-            })
-            .select()
-            .single();
-
+          const {
+            data: taxData,
+            error: taxError
+          } = await supabase.from('transactions').insert({
+            user_id: user.id,
+            date: taxTransaction.date,
+            type: taxTransaction.type,
+            category: taxTransaction.category,
+            subcategory: taxTransaction.subcategory,
+            amount: taxTransaction.amount,
+            description: taxTransaction.description,
+            company: taxTransaction.company
+          }).select().single();
           if (taxError) throw taxError;
-
           const newTaxTransaction: Transaction = {
             ...taxData,
             type: taxData.type as 'income' | 'expense'
           };
           newTransactions.push(newTaxTransaction);
         }
-
         setTransactions(prev => [...newTransactions, ...prev]);
         setAllTransactions(prev => [...newTransactions, ...prev]);
         fetchReceivablesData();
         fetchSalesData();
         toast({
           title: taxTransaction ? "Операции добавлены" : "Операция добавлена",
-          description: taxTransaction ? "Основная операция и налог успешно созданы" : "Новая транзакция успешно создана",
+          description: taxTransaction ? "Основная операция и налог успешно созданы" : "Новая транзакция успешно создана"
         });
       } catch (error) {
         toast({
@@ -759,41 +666,37 @@ export default function Dashboard() {
     }
     setEditTransaction(null);
   };
-
   const handleEditTransaction = (transaction: Transaction) => {
     setEditTransaction(transaction);
     setCopyMode(false);
     setDialogOpen(true);
-    transactionDialogPersistence.openDialog({ transaction, copyMode: false });
+    transactionDialogPersistence.openDialog({
+      transaction,
+      copyMode: false
+    });
   };
-
   const handleCopyTransaction = (transaction: Transaction) => {
     setEditTransaction(transaction);
     setCopyMode(true);
     setDialogOpen(true);
-    transactionDialogPersistence.openDialog({ transaction, copyMode: true });
+    transactionDialogPersistence.openDialog({
+      transaction,
+      copyMode: true
+    });
   };
-
   const handleDeleteTransaction = async (id: string) => {
     if (!user) return;
-    
     const transaction = transactions.find(t => t.id === id);
     if (!transaction) return;
-
-    const confirmed = window.confirm(
-      `Вы уверены, что хотите удалить операцию "${transaction.description}" на сумму ${new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'RUB'
-      }).format(Math.abs(transaction.amount))}?`
-    );
-
+    const confirmed = window.confirm(`Вы уверены, что хотите удалить операцию "${transaction.description}" на сумму ${new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB'
+    }).format(Math.abs(transaction.amount))}?`);
     if (confirmed) {
       try {
-        const { error } = await supabase
-          .from('transactions')
-          .delete()
-          .eq('id', id);
-
+        const {
+          error
+        } = await supabase.from('transactions').delete().eq('id', id);
         if (error) throw error;
 
         // Refetch to ensure consistency
@@ -802,7 +705,7 @@ export default function Dashboard() {
         fetchSalesData();
         toast({
           title: "Операция удалена",
-          description: "Транзакция была успешно удалена",
+          description: "Транзакция была успешно удалена"
         });
       } catch (error) {
         toast({
@@ -813,42 +716,47 @@ export default function Dashboard() {
       }
     }
   };
-
   const handleAddNew = () => {
     setEditTransaction(null);
     setCopyMode(false);
     setDialogOpen(true);
-    transactionDialogPersistence.openDialog({ transaction: null, copyMode: false });
+    transactionDialogPersistence.openDialog({
+      transaction: null,
+      copyMode: false
+    });
   };
-
   const handleAccountClick = (account: string) => {
     if (!isAdmin) return;
     setSelectedAccount(account);
     setAccountActionsDialogOpen(true);
-    accountActionsDialogPersistence.openDialog({ account });
+    accountActionsDialogPersistence.openDialog({
+      account
+    });
   };
-
   const handleTransferClick = () => {
     setSelectedAccountForTransfer(selectedAccount);
     setTransferDialogOpen(true);
-    transferDialogPersistence.openDialog({ account: selectedAccount });
+    transferDialogPersistence.openDialog({
+      account: selectedAccount
+    });
   };
-
   const handleAddTransactionClick = () => {
     setEditTransaction(null);
     setCopyMode(false);
     setDialogOpen(true);
-    transactionDialogPersistence.openDialog({ transaction: null, copyMode: false });
+    transactionDialogPersistence.openDialog({
+      transaction: null,
+      copyMode: false
+    });
   };
-
   const handleViewTransactionsClick = () => {
     setAccountTransactionsDialogOpen(true);
-    accountTransactionsDialogPersistence.openDialog({ account: selectedAccount });
+    accountTransactionsDialogPersistence.openDialog({
+      account: selectedAccount
+    });
   };
-
   const handleSaveTransfer = async (transfer: AccountTransfer) => {
     if (!user) return;
-
     try {
       // Создаем две транзакции: расход со счета списания и доход на счет зачисления
       const expenseTransaction = {
@@ -859,9 +767,8 @@ export default function Dashboard() {
         amount: transfer.amount,
         date: transfer.date,
         description: transfer.description ? `Перевод на ${transfer.toAccount}. ${transfer.description}` : `Перевод на ${transfer.toAccount}`,
-        expense_account: transfer.fromAccount,
+        expense_account: transfer.fromAccount
       };
-
       const incomeTransaction = {
         user_id: user.id,
         company: selectedCompany,
@@ -870,29 +777,24 @@ export default function Dashboard() {
         amount: transfer.amount,
         date: transfer.date,
         description: transfer.description ? `Перевод с ${transfer.fromAccount}. ${transfer.description}` : `Перевод с ${transfer.fromAccount}`,
-        income_account: transfer.toAccount,
+        income_account: transfer.toAccount
       };
-
-      const { error: expenseError } = await supabase
-        .from('transactions')
-        .insert([expenseTransaction]);
-
+      const {
+        error: expenseError
+      } = await supabase.from('transactions').insert([expenseTransaction]);
       if (expenseError) throw expenseError;
-
-      const { error: incomeError } = await supabase
-        .from('transactions')
-        .insert([incomeTransaction]);
-
+      const {
+        error: incomeError
+      } = await supabase.from('transactions').insert([incomeTransaction]);
       if (incomeError) throw incomeError;
 
       // Обновляем данные
       await fetchTransactions();
       fetchReceivablesData();
       fetchSalesData();
-      
       toast({
         title: "Перевод выполнен",
-        description: `${transfer.amount} ₽ переведено с ${transfer.fromAccount} на ${transfer.toAccount}`,
+        description: `${transfer.amount} ₽ переведено с ${transfer.fromAccount} на ${transfer.toAccount}`
       });
     } catch (error) {
       console.error('Error creating transfer:', error);
@@ -903,9 +805,7 @@ export default function Dashboard() {
       });
     }
   };
-
   const handleExportToExcel = () => {
-    
     // Преобразуем данные для экспорта
     const exportData = filteredTransactions.map(transaction => ({
       'Дата': format(new Date(transaction.date), 'dd.MM.yyyy'),
@@ -928,20 +828,57 @@ export default function Dashboard() {
     const ws = XLSX.utils.json_to_sheet(exportData);
 
     // Настраиваем ширину колонок
-    const colWidths = [
-      { wch: 12 }, // Дата
-      { wch: 8 },  // Тип
-      { wch: 20 }, // Категория
-      { wch: 20 }, // Подкатегория
-      { wch: 25 }, // Клиент
-      { wch: 20 }, // Компания
-      { wch: 30 }, // Наименование организации
-      { wch: 25 }, // Счет
-      { wch: 15 }, // Сумма
-      { wch: 30 }, // Описание
-      { wch: 15 }, // Период рассрочки
-      { wch: 15 }, // Сумма договора
-      { wch: 15 }  // Первый взнос
+    const colWidths = [{
+      wch: 12
+    },
+    // Дата
+    {
+      wch: 8
+    },
+    // Тип
+    {
+      wch: 20
+    },
+    // Категория
+    {
+      wch: 20
+    },
+    // Подкатегория
+    {
+      wch: 25
+    },
+    // Клиент
+    {
+      wch: 20
+    },
+    // Компания
+    {
+      wch: 30
+    },
+    // Наименование организации
+    {
+      wch: 25
+    },
+    // Счет
+    {
+      wch: 15
+    },
+    // Сумма
+    {
+      wch: 30
+    },
+    // Описание
+    {
+      wch: 15
+    },
+    // Период рассрочки
+    {
+      wch: 15
+    },
+    // Сумма договора
+    {
+      wch: 15
+    } // Первый взнос
     ];
     ws['!cols'] = colWidths;
 
@@ -950,35 +887,32 @@ export default function Dashboard() {
 
     // Генерируем имя файла с текущей датой
     const fileName = `transactions_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
-    
+
     // Сохраняем файл
     XLSX.writeFile(wb, fileName);
-    
     toast({
       title: "Экспорт завершен",
-      description: `Файл ${fileName} успешно сохранен`,
+      description: `Файл ${fileName} успешно сохранен`
     });
   };
-
   const handleImportFromExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
-
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = async e => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, {
+          type: 'array'
+        });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
         let successCount = 0;
         let errorCount = 0;
-
         for (const row of jsonData) {
           try {
             const rowData = row as any;
-            
+
             // Парсим данные из Excel
             const date = parseExcelDate(rowData['Дата'] || rowData['date']);
             const type = parseTransactionType(rowData['Тип'] || rowData['type']);
@@ -993,7 +927,6 @@ export default function Dashboard() {
             const contractAmount = parseFloat(rowData['Сумма договора'] || rowData['contract_amount'] || '0') || null;
             const firstPayment = parseFloat(rowData['Первый взнос'] || rowData['first_payment'] || '0') || null;
             const installmentPeriod = parseInt(rowData['Период рассрочки'] || rowData['installment_period'] || '0') || null;
-
             if (!date || !type || !category || amount === 0) {
               errorCount++;
               continue;
@@ -1006,28 +939,31 @@ export default function Dashboard() {
             if (importDate.getMonth() !== importMonth.getMonth()) {
               importDate.setDate(1);
             }
-            
-            // Создаем транзакцию в базе данных
-            const { error } = await supabase
-              .from('transactions')
-              .insert({
-                user_id: user.id,
-                date: format(importDate, 'yyyy-MM-dd'),
-                type,
-                category,
-                subcategory,
-                amount,
-                description,
-                client_name: clientName,
-                company,
-                organization_name: organizationName,
-                ...(type === 'income' && account && { income_account: account }),
-                ...(type === 'expense' && account && { expense_account: account }),
-                contract_amount: contractAmount,
-                first_payment: firstPayment,
-                installment_period: installmentPeriod
-              });
 
+            // Создаем транзакцию в базе данных
+            const {
+              error
+            } = await supabase.from('transactions').insert({
+              user_id: user.id,
+              date: format(importDate, 'yyyy-MM-dd'),
+              type,
+              category,
+              subcategory,
+              amount,
+              description,
+              client_name: clientName,
+              company,
+              organization_name: organizationName,
+              ...(type === 'income' && account && {
+                income_account: account
+              }),
+              ...(type === 'expense' && account && {
+                expense_account: account
+              }),
+              contract_amount: contractAmount,
+              first_payment: firstPayment,
+              installment_period: installmentPeriod
+            });
             if (error) {
               errorCount++;
             } else {
@@ -1046,10 +982,9 @@ export default function Dashboard() {
         // Автоматически переключаемся на просмотр импортированного месяца
         setPeriodFilter("specific-month");
         setSelectedMonth(importMonth);
-
         toast({
           title: "Импорт завершен",
-          description: `Успешно импортировано: ${successCount}, ошибок: ${errorCount}`,
+          description: `Успешно импортировано: ${successCount}, ошибок: ${errorCount}`
         });
 
         // Очищаем input
@@ -1062,19 +997,18 @@ export default function Dashboard() {
         });
       }
     };
-    
     reader.readAsArrayBuffer(file);
   };
 
   // Вспомогательные функции для парсинга данных
   const parseExcelDate = (dateValue: any): Date | null => {
     if (!dateValue) return null;
-    
+
     // Если это Excel серийный номер даты
     if (typeof dateValue === 'number') {
       return new Date((dateValue - 25569) * 86400 * 1000);
     }
-    
+
     // Если это строка в формате DD.MM.YYYY
     if (typeof dateValue === 'string') {
       const parts = dateValue.split('.');
@@ -1085,49 +1019,38 @@ export default function Dashboard() {
         return new Date(year, month, day);
       }
     }
-    
+
     // Пытаемся парсить как обычную дату
     const parsed = new Date(dateValue);
     return isNaN(parsed.getTime()) ? null : parsed;
   };
-
   const parseTransactionType = (typeValue: any): 'income' | 'expense' | null => {
     if (!typeValue) return null;
-    
     const type = typeValue.toString().toLowerCase();
     if (type.includes('доход') || type.includes('income')) return 'income';
     if (type.includes('расход') || type.includes('expense')) return 'expense';
-    
     return null;
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    return <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground text-sm sm:text-base">Загрузка данных...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    return <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <p className="text-destructive mb-4 text-sm sm:text-base">{error}</p>
           <Button onClick={handleRetry} className="w-full sm:w-auto">
             Повторить попытку
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   try {
-    return (
-    <div className="min-h-screen bg-background">
+    return <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1143,18 +1066,12 @@ export default function Dashboard() {
                 <SelectValue placeholder="Выберите компанию" />
               </SelectTrigger>
               <SelectContent>
-                {companies.map((company) => (
-                  <SelectItem key={company} value={company}>
+                {companies.map(company => <SelectItem key={company} value={company}>
                     {company}
-                  </SelectItem>
-                ))}
+                  </SelectItem>)}
               </SelectContent>
             </Select>
-            <Button 
-              variant="outline" 
-              asChild
-              className="w-full sm:w-auto"
-            >
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <a href="https://bflhelper.delobusiness-it.ru" target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Кабинет дебиторки</span>
@@ -1166,11 +1083,7 @@ export default function Dashboard() {
               <span className="hidden xs:inline">Добавить операцию</span>
               <span className="xs:hidden">Добавить</span>
             </Button>
-            <Button variant="outline" onClick={() => navigate("/clients")}>
-              <Users className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Клиенты</span>
-              <span className="xs:hidden">Клиенты</span>
-            </Button>
+            
             <Button variant="outline" onClick={() => navigate("/all-projects")}>
               <Building2 className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Все проекты</span>
@@ -1181,13 +1094,11 @@ export default function Dashboard() {
               <span className="hidden xs:inline">Лидогенерация</span>
               <span className="xs:hidden">Лиды</span>
             </Button>
-            {isAdmin && (
-              <Button variant="outline" onClick={() => navigate("/employees")}>
+            {isAdmin && <Button variant="outline" onClick={() => navigate("/employees")}>
                 <Users className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Сотрудники</span>
                 <span className="xs:hidden">Сотрудники</span>
-              </Button>
-            )}
+              </Button>}
             <Button variant="outline" onClick={() => navigate("/payroll")}>
               <BanknoteIcon className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">ФОТ</span>
@@ -1203,7 +1114,7 @@ export default function Dashboard() {
 
         {/* Period Filter */}
         <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center gap-4">
-          <Select value={periodFilter} onValueChange={(value) => setPeriodFilter(value)}>
+          <Select value={periodFilter} onValueChange={value => setPeriodFilter(value)}>
             <SelectTrigger className="w-full lg:w-48">
               <SelectValue placeholder="Выберите период" />
             </SelectTrigger>
@@ -1216,82 +1127,42 @@ export default function Dashboard() {
             </SelectContent>
           </Select>
 
-          {periodFilter === "specific-month" && (
-            <Popover>
+          {periodFilter === "specific-month" && <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full lg:w-64 justify-start text-left font-normal",
-                    !selectedMonth && "text-muted-foreground"
-                  )}
-                >
+                <Button variant={"outline"} className={cn("w-full lg:w-64 justify-start text-left font-normal", !selectedMonth && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {selectedMonth ? format(selectedMonth, "MMMM yyyy") : <span>Выберите месяц</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedMonth}
-                  onSelect={(date) => date && setSelectedMonth(date)}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
+                <Calendar mode="single" selected={selectedMonth} onSelect={date => date && setSelectedMonth(date)} initialFocus className="pointer-events-auto" />
               </PopoverContent>
-            </Popover>
-          )}
+            </Popover>}
 
-          {periodFilter === "custom" && (
-            <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+          {periodFilter === "custom" && <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full sm:w-40 justify-start text-left font-normal",
-                      !customDateFrom && "text-muted-foreground"
-                    )}
-                  >
+                  <Button variant={"outline"} className={cn("w-full sm:w-40 justify-start text-left font-normal", !customDateFrom && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {customDateFrom ? format(customDateFrom, "dd.MM.yyyy") : "От"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={customDateFrom}
-                    onSelect={setCustomDateFrom}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
+                  <Calendar mode="single" selected={customDateFrom} onSelect={setCustomDateFrom} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full sm:w-40 justify-start text-left font-normal",
-                      !customDateTo && "text-muted-foreground"
-                    )}
-                  >
+                  <Button variant="outline" className={cn("w-full sm:w-40 justify-start text-left font-normal", !customDateTo && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {customDateTo ? format(customDateTo, "dd.MM.yyyy") : "До"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={customDateTo}
-                    onSelect={setCustomDateTo}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
+                  <Calendar mode="single" selected={customDateTo} onSelect={setCustomDateTo} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
-            </div>
-          )}
+            </div>}
 
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <div className="relative flex-1 sm:flex-none">
@@ -1311,23 +1182,12 @@ export default function Dashboard() {
                         Данные будут импортированы в выбранный месяц
                       </p>
                     </div>
-                    <Calendar
-                      mode="single"
-                      selected={importMonth}
-                      onSelect={(date) => date && setImportMonth(date)}
-                      className="rounded-md border"
-                    />
+                    <Calendar mode="single" selected={importMonth} onSelect={date => date && setImportMonth(date)} className="rounded-md border" />
                     <div>
                       <label htmlFor="excel-import" className="text-sm font-medium">
                         Выберите Excel файл
                       </label>
-                      <input
-                        id="excel-import"
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={handleImportFromExcel}
-                        className="mt-2 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                      />
+                      <input id="excel-import" type="file" accept=".xlsx,.xls" onChange={handleImportFromExcel} className="mt-2 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" />
                     </div>
                   </div>
                 </PopoverContent>
@@ -1344,117 +1204,49 @@ export default function Dashboard() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KPICard
-            title="Выручка"
-            value={formatCurrency(kpis.income)}
-            delta={calculateDelta(kpis.income, previousKpis.income)}
-            deltaType={getDeltaType(kpis.income, previousKpis.income)}
-            icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
-          <KPICard
-            title="Расходы"
-            value={formatCurrency(kpis.expenses)}
-            delta={calculateDelta(kpis.expenses, previousKpis.expenses)}
-            deltaType={getDeltaType(previousKpis.expenses, kpis.expenses)} // Reversed for expenses
-            icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
-          <KPICard
-            title="Прибыль"
-            value={formatCurrency(kpis.profit)}
-            delta={calculateDelta(kpis.profit, previousKpis.profit)}
-            deltaType={getDeltaType(kpis.profit, previousKpis.profit)}
-            icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
-          <KPICard
-            title="Маржа"
-            value={`${kpis.margin.toFixed(1)}%`}
-            delta={calculateDelta(kpis.margin, previousKpis.margin)}
-            deltaType={getDeltaType(kpis.margin, previousKpis.margin)}
-            icon={<Target className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
-          <KPICard
-            title="Вывод средств"
-            value={formatCurrency(kpis.withdrawals)}
-            delta={calculateDelta(kpis.withdrawals, previousKpis.withdrawals)}
-            deltaType={getDeltaType(previousKpis.withdrawals, kpis.withdrawals)} // Reversed for withdrawals
-            icon={<ArrowUpFromLine className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
+          <KPICard title="Выручка" value={formatCurrency(kpis.income)} delta={calculateDelta(kpis.income, previousKpis.income)} deltaType={getDeltaType(kpis.income, previousKpis.income)} icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
+          <KPICard title="Расходы" value={formatCurrency(kpis.expenses)} delta={calculateDelta(kpis.expenses, previousKpis.expenses)} deltaType={getDeltaType(previousKpis.expenses, kpis.expenses)} // Reversed for expenses
+          icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
+          <KPICard title="Прибыль" value={formatCurrency(kpis.profit)} delta={calculateDelta(kpis.profit, previousKpis.profit)} deltaType={getDeltaType(kpis.profit, previousKpis.profit)} icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
+          <KPICard title="Маржа" value={`${kpis.margin.toFixed(1)}%`} delta={calculateDelta(kpis.margin, previousKpis.margin)} deltaType={getDeltaType(kpis.margin, previousKpis.margin)} icon={<Target className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
+          <KPICard title="Вывод средств" value={formatCurrency(kpis.withdrawals)} delta={calculateDelta(kpis.withdrawals, previousKpis.withdrawals)} deltaType={getDeltaType(previousKpis.withdrawals, kpis.withdrawals)} // Reversed for withdrawals
+          icon={<ArrowUpFromLine className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
         </div>
 
         {/* Money in Project for Selected Company */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {moneyInProjectByCompany
-            .filter(({ company }) => company === selectedCompany)
-            .map(({ company, balance, calculatedBalance }) => (
-              <div key={company} className="group">
-                <EditableKPICard
-                  title={`Деньги в ${company}`}
-                  value={formatCurrency(balance)}
-                  calculatedValue={calculatedBalance}
-                  company={company}
-                  icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />}
-                  className="shadow-kpi"
-                  onUpdate={fetchBalanceAdjustments}
-                />
-              </div>
-            ))}
+          {moneyInProjectByCompany.filter(({
+            company
+          }) => company === selectedCompany).map(({
+            company,
+            balance,
+            calculatedBalance
+          }) => <div key={company} className="group">
+                <EditableKPICard title={`Деньги в ${company}`} value={formatCurrency(balance)} calculatedValue={calculatedBalance} company={company} icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" onUpdate={fetchBalanceAdjustments} />
+              </div>)}
         </div>
 
         {/* Receivables and New Sales KPIs for Спасение only */}
-        {selectedCompany === "Спасение" && (
-          <>
+        {selectedCompany === "Спасение" && <>
             {/* Receivables (Дебиторка) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="group">
-                <PlanFactKPICard
-                  title="Дебиторка"
-                  planValue={receivablesPlan}
-                  factValue={receivablesFact}
-                  icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />}
-                  className="shadow-kpi"
-                  isEditable={false}
-                />
+                <PlanFactKPICard title="Дебиторка" planValue={receivablesPlan} factValue={receivablesFact} icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" isEditable={false} />
               </div>
 
               {/* New Sales (Новые продажи) */}
               <div className="group">
-                <PlanFactKPICard
-                  title="Новые продажи"
-                  planValue={salesPlan}
-                  factValue={salesFact}
-                  icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />}
-                  className="shadow-kpi"
-                  isEditable={isAdmin}
-                  kpiName="new_sales"
-                  company="Спасение"
-                  onUpdate={() => {
-                    fetchSalesData();
-                  }}
-                />
+                <PlanFactKPICard title="Новые продажи" planValue={salesPlan} factValue={salesFact} icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" isEditable={isAdmin} kpiName="new_sales" company="Спасение" onUpdate={() => {
+                fetchSalesData();
+              }} />
               </div>
             </div>
-          </>
-        )}
+          </>}
 
         {/* Tax KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KPICard
-            title="Налоги УСН"
-            value={formatCurrency(kpis.taxUSN)}
-            icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
-          <KPICard
-            title="Налоги НДФЛ"
-            value={formatCurrency(kpis.taxNDFL)}
-            icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />}
-            className="shadow-kpi"
-          />
+          <KPICard title="Налоги УСН" value={formatCurrency(kpis.taxUSN)} icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
+          <KPICard title="Налоги НДФЛ" value={formatCurrency(kpis.taxNDFL)} icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
         </div>
 
         {/* Account Balances */}
@@ -1469,33 +1261,22 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {accountBalances.map(({ account, balance, income, expense }) => (
-              <div 
-                key={account} 
-                className={cn(
-                  "p-4 rounded-lg border bg-card hover:shadow-md transition-shadow",
-                  isAdmin && "cursor-pointer hover:border-primary/50"
-                )}
-                onClick={() => handleAccountClick(account)}
-                role={isAdmin ? "button" : undefined}
-                tabIndex={isAdmin ? 0 : undefined}
-                onKeyDown={isAdmin ? (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleAccountClick(account);
-                  }
-                } : undefined}
-              >
+            {accountBalances.map(({
+              account,
+              balance,
+              income,
+              expense
+            }) => <div key={account} className={cn("p-4 rounded-lg border bg-card hover:shadow-md transition-shadow", isAdmin && "cursor-pointer hover:border-primary/50")} onClick={() => handleAccountClick(account)} role={isAdmin ? "button" : undefined} tabIndex={isAdmin ? 0 : undefined} onKeyDown={isAdmin ? e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleAccountClick(account);
+              }
+            } : undefined}>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground truncate" title={account}>
                     {account}
                   </p>
-                  <p className={cn(
-                    "text-xl font-bold",
-                    balance > 0 ? "text-green-600 dark:text-green-400" : 
-                    balance < 0 ? "text-red-600 dark:text-red-400" : 
-                    "text-muted-foreground"
-                  )}>
+                  <p className={cn("text-xl font-bold", balance > 0 ? "text-green-600 dark:text-green-400" : balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
                     {formatCurrency(balance)}
                   </p>
                   <div className="pt-2 border-t text-xs space-y-1">
@@ -1513,8 +1294,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
 
@@ -1528,86 +1308,50 @@ export default function Dashboard() {
               Список всех финансовых операций
             </p>
           </div>
-          <TransactionTable
-            transactions={filteredTransactions}
-            onEdit={isAdmin ? handleEditTransaction : undefined}
-            onDelete={isAdmin ? handleDeleteTransaction : undefined}
-            onCopy={isAdmin ? handleCopyTransaction : undefined}
-            showFilters={true}
-          />
+          <TransactionTable transactions={filteredTransactions} onEdit={isAdmin ? handleEditTransaction : undefined} onDelete={isAdmin ? handleDeleteTransaction : undefined} onCopy={isAdmin ? handleCopyTransaction : undefined} showFilters={true} />
         </div>
         {/* Transaction Dialog */}
-        <TransactionDialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              transactionDialogPersistence.closeDialog();
-            }
-          }}
-          transaction={editTransaction}
-          onSave={handleSaveTransaction}
-          copyMode={copyMode}
-          selectedCompany={selectedCompany}
-        />
+        <TransactionDialog open={dialogOpen} onOpenChange={open => {
+          setDialogOpen(open);
+          if (!open) {
+            transactionDialogPersistence.closeDialog();
+          }
+        }} transaction={editTransaction} onSave={handleSaveTransaction} copyMode={copyMode} selectedCompany={selectedCompany} />
 
         {/* Account Transfer Dialog */}
-        <AccountTransferDialog
-          open={transferDialogOpen}
-          onOpenChange={(open) => {
-            setTransferDialogOpen(open);
-            if (!open) {
-              transferDialogPersistence.closeDialog();
-            }
-          }}
-          accounts={accountOptions}
-          selectedAccount={selectedAccountForTransfer}
-          onSave={handleSaveTransfer}
-        />
+        <AccountTransferDialog open={transferDialogOpen} onOpenChange={open => {
+          setTransferDialogOpen(open);
+          if (!open) {
+            transferDialogPersistence.closeDialog();
+          }
+        }} accounts={accountOptions} selectedAccount={selectedAccountForTransfer} onSave={handleSaveTransfer} />
 
         {/* Account Actions Dialog */}
-        <AccountActionsDialog
-          open={accountActionsDialogOpen}
-          onOpenChange={(open) => {
-            setAccountActionsDialogOpen(open);
-            if (!open) {
-              accountActionsDialogPersistence.closeDialog();
-            }
-          }}
-          account={selectedAccount}
-          onTransferClick={handleTransferClick}
-          onAddTransactionClick={handleAddTransactionClick}
-          onViewTransactionsClick={handleViewTransactionsClick}
-        />
+        <AccountActionsDialog open={accountActionsDialogOpen} onOpenChange={open => {
+          setAccountActionsDialogOpen(open);
+          if (!open) {
+            accountActionsDialogPersistence.closeDialog();
+          }
+        }} account={selectedAccount} onTransferClick={handleTransferClick} onAddTransactionClick={handleAddTransactionClick} onViewTransactionsClick={handleViewTransactionsClick} />
 
         {/* Account Transactions Dialog */}
-        <AccountTransactionsDialog
-          open={accountTransactionsDialogOpen}
-          onOpenChange={(open) => {
-            setAccountTransactionsDialogOpen(open);
-            if (!open) {
-              accountTransactionsDialogPersistence.closeDialog();
-            }
-          }}
-          account={selectedAccount}
-          transactions={allTransactions}
-          onTransactionUpdate={handleSaveTransaction}
-          selectedCompany={selectedCompany}
-        />
+        <AccountTransactionsDialog open={accountTransactionsDialogOpen} onOpenChange={open => {
+          setAccountTransactionsDialogOpen(open);
+          if (!open) {
+            accountTransactionsDialogPersistence.closeDialog();
+          }
+        }} account={selectedAccount} transactions={allTransactions} onTransactionUpdate={handleSaveTransaction} selectedCompany={selectedCompany} />
         </div>
-      </div>
-    );
+      </div>;
   } catch (error) {
     console.error('Dashboard render error:', error);
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    return <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-destructive mb-4">Произошла ошибка при отображении данных</p>
           <Button onClick={() => window.location.reload()}>
             Перезагрузить страницу
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
 }
