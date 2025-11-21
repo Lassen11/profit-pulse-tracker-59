@@ -1249,6 +1249,16 @@ export default function Dashboard() {
           <KPICard title="Налоги НДФЛ" value={formatCurrency(kpis.taxNDFL)} icon={<BanknoteIcon className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
         </div>
 
+        {/* Total Account Balance */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <KPICard 
+            title="Всего на счетах" 
+            value={formatCurrency(accountBalances.reduce((sum, acc) => sum + acc.balance, 0))} 
+            icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} 
+            className="shadow-kpi" 
+          />
+        </div>
+
         {/* Account Balances */}
         <div className="kpi-card">
           <div className="mb-4">
