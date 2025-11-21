@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
 import ClientsSpasenie from "./pages/ClientsSpasenie";
-import Clients from "./pages/Clients";
 import Auth from "./pages/Auth";
 import AllProjects from "./pages/AllProjects";
 import LeadGeneration from "./pages/LeadGeneration";
@@ -25,7 +24,6 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/clients" element={<Clients />} />
             <Route path="/clients-spasenie" element={<ClientsSpasenie />} />
             <Route path="/all-projects" element={<AllProjects />} />
             <Route path="/lead-generation" element={<LeadGeneration />} />
