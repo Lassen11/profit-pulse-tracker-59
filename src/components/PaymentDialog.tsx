@@ -115,7 +115,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     e.preventDefault();
     if (!user || !employee) return;
 
-    const paymentAmount = parseFloat(amount);
+    let paymentAmount = parseFloat(amount);
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
       toast({
         title: "Ошибка",
@@ -128,7 +128,16 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     setLoading(true);
 
     try {
-      // Create transaction in transactions table
+      // Calculate actual payment amount and NDFL for white salary
+      let actualPaymentAmount = paymentAmount;
+      let ndflAmount = 0;
+      
+      if (salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance')) {
+        ndflAmount = paymentAmount * 0.13; // 13% НДФЛ
+        actualPaymentAmount = paymentAmount - ndflAmount; // Уменьшаем сумму на 13%
+      }
+
+      // Create transaction in transactions table with reduced amount for white salary
       const employeeCompany = (employee as any).company || 'Спасение';
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
@@ -138,8 +147,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           type: 'expense',
           category: 'Зарплата',
           subcategory: `${employee.profiles.first_name} ${employee.profiles.last_name}`,
-          amount: paymentAmount,
-          description: notes || `Выплата зарплаты: ${paymentTypes.find(t => t.value === paymentType)?.label}`,
+          amount: actualPaymentAmount,
+          description: notes || `Выплата зарплаты: ${paymentTypes.find(t => t.value === paymentType)?.label}${salaryType === 'white' ? ' (за вычетом 13% НДФЛ)' : ''}`,
           expense_account: expenseAccount,
           company: employeeCompany
         })
@@ -159,7 +168,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
         .insert({
           user_id: user.id,
           department_employee_id: employee.id,
-          amount: paymentAmount,
+          amount: actualPaymentAmount,
           payment_date: format(paymentDate, 'yyyy-MM-dd'),
           payment_type: finalPaymentType,
           notes: notes,
@@ -168,10 +177,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
       if (paymentError) throw paymentError;
 
-      // If it's a white advance payment, update NDFL in department_employees
-      if (paymentType === 'advance' && salaryType === 'white') {
-        const ndflAmount = paymentAmount * 0.13; // 13% НДФЛ
-        
+      // If it's white salary or advance payment, update NDFL in department_employees
+      if (salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance') && ndflAmount > 0) {
         // Get current employee data
         const { data: currentEmployee, error: fetchError } = await supabase
           .from('department_employees')
@@ -181,7 +188,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
         if (fetchError) throw fetchError;
 
-        // Update NDFL by adding 13% of advance
+        // Update NDFL by adding 13% of payment
         const { error: updateError } = await supabase
           .from('department_employees')
           .update({
@@ -192,13 +199,21 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
         if (updateError) throw updateError;
       }
 
+      const displayAmount = salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance')
+        ? actualPaymentAmount
+        : paymentAmount;
+
       toast({
         title: "Выплата проведена",
         description: `Выплата в размере ${new Intl.NumberFormat('ru-RU', {
           style: 'currency',
           currency: 'RUB',
           minimumFractionDigits: 0
-        }).format(paymentAmount)} успешно проведена`
+        }).format(displayAmount)} успешно проведена${salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance') ? ` (исходная сумма ${new Intl.NumberFormat('ru-RU', {
+          style: 'currency',
+          currency: 'RUB',
+          minimumFractionDigits: 0
+        }).format(paymentAmount)}, вычтен НДФЛ 13%)` : ''}`
       });
 
       clearStoredValues();
