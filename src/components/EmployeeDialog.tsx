@@ -67,8 +67,8 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
 
   useEffect(() => {
     if (open) {
-      fetchProfiles();
       if (employee) {
+        // Сначала устанавливаем данные редактируемого сотрудника
         setSelectedEmployeeId(employee.employee_id);
         setSelectedCompany(employee.company || defaultCompany);
         setWhiteSalary(employee.white_salary.toString());
@@ -101,6 +101,8 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
           resetForm();
         }
       }
+      // Загружаем профили после установки состояния
+      fetchProfiles();
     }
   }, [open, employee, defaultCompany]);
 
@@ -128,7 +130,28 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         .order('first_name', { ascending: true });
 
       if (error) throw error;
-      setProfiles(data || []);
+      
+      let profilesList = data || [];
+      
+      // Если редактируем сотрудника и его профиля нет в списке (например, он неактивен),
+      // добавляем его в список, чтобы он был доступен для выбора
+      if (employee && employee.employee_id) {
+        const existsInList = profilesList.some(p => p.id === employee.employee_id);
+        if (!existsInList) {
+          // Загружаем профиль редактируемого сотрудника
+          const { data: employeeProfile, error: empError } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, position')
+            .eq('id', employee.employee_id)
+            .single();
+          
+          if (!empError && employeeProfile) {
+            profilesList = [employeeProfile, ...profilesList];
+          }
+        }
+      }
+      
+      setProfiles(profilesList);
     } catch (error) {
       console.error('Error fetching profiles:', error);
       toast({
