@@ -30,7 +30,7 @@ export default function Dashboard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [copyMode, setCopyMode] = useState(false);
-  const [periodFilter, setPeriodFilter] = useState("month");
+  const [periodFilter, setPeriodFilter] = useState("all");
   const [customDateFrom, setCustomDateFrom] = useState<Date>();
   const [customDateTo, setCustomDateTo] = useState<Date>();
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
@@ -1119,6 +1119,7 @@ export default function Dashboard() {
               <SelectValue placeholder="Выберите период" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Все транзакции</SelectItem>
               <SelectItem value="month">Текущий месяц</SelectItem>
               <SelectItem value="specific-month">Конкретный месяц</SelectItem>
               <SelectItem value="quarter">Текущий квартал</SelectItem>
