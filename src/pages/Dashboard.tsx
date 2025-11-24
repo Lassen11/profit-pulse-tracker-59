@@ -23,7 +23,7 @@ import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOf
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
-const accountOptions = ["Зайнаб карта", "Касса офис Диана", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
+const accountOptions = ["Зайнаб карта", "Касса офис", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]); // All transactions across companies for account balances
