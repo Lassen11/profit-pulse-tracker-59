@@ -280,9 +280,11 @@ export default function Dashboard() {
       const {
         data: allData,
         error: allError
-      } = await supabase.from('transactions').select('*').order('date', {
-        ascending: false
-      });
+      } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(10000);
       if (allError) {
         console.error('Supabase error:', allError);
         throw allError;
