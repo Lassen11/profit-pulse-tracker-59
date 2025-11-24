@@ -375,17 +375,24 @@ export default function Dashboard() {
 
   // Memoized filtered transactions for better performance
   const filteredTransactions = useMemo(() => {
+    // Для конкретного месяца сравниваем по строке "YYYY-MM", чтобы исключить проблемы с часовыми поясами
+    if (periodFilter === "specific-month" && selectedMonth) {
+      const yearMonth = format(selectedMonth, "yyyy-MM");
+      return transactions.filter(transaction => {
+        if (!transaction.date) return false;
+        const txDate = String(transaction.date);
+        return txDate.startsWith(yearMonth);
+      });
+    }
+
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
+
     switch (periodFilter) {
       case "month":
         startDate = startOfMonth(now);
         endDate = endOfMonth(now);
-        break;
-      case "specific-month":
-        startDate = startOfMonth(selectedMonth);
-        endDate = endOfMonth(selectedMonth);
         break;
       case "quarter":
         startDate = startOfQuarter(now);
@@ -403,6 +410,7 @@ export default function Dashboard() {
       default:
         return transactions;
     }
+
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
       return transactionDate >= startDate && transactionDate <= endDate;
