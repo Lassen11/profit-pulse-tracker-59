@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Transaction } from "./TransactionTable";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -91,7 +92,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     company: selectedCompany || 'Спасение',
     salesEmployeeId: '',
     leadSource: '',
-    city: ''
+    city: '',
+    isBonus: false
   });
 
   const formKey = `transaction-dialog-${transaction?.id || 'new'}`;
@@ -122,7 +124,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         company: transaction.company || selectedCompany || 'Спасение',
         salesEmployeeId: '',
         leadSource: '',
-        city: ''
+        city: '',
+        isBonus: false
       });
     } else if (open) {
       // Пытаемся восстановить сохраненные значения
@@ -150,7 +153,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           company: selectedCompany || 'Спасение',
           salesEmployeeId: '',
           leadSource: '',
-          city: ''
+          city: '',
+          isBonus: false
         });
       }
     }
@@ -270,6 +274,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     // Создаем запись в таблице sales если это продажа
     if (formData.type === 'income' && formData.category === 'Продажи' && formData.salesEmployeeId && user) {
       try {
+        // Рассчитываем премию 4.5% от суммы договора если установлен чекбокс
+        const contractAmount = formData.contractAmount ? parseFloat(formData.contractAmount) : 0;
+        const managerBonus = formData.isBonus && contractAmount > 0 ? contractAmount * 0.045 : 0;
+
         const { error: salesError } = await supabase
           .from('sales')
           .insert({
@@ -277,11 +285,11 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
             employee_id: formData.salesEmployeeId,
             client_name: formData.clientName,
             payment_amount: parseFloat(formData.amount),
-            contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : 0,
+            contract_amount: contractAmount,
             city: formData.city,
             lead_source: formData.leadSource,
             payment_date: formData.date,
-            manager_bonus: 0
+            manager_bonus: managerBonus
           });
 
         if (salesError) {
@@ -474,6 +482,17 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2 flex items-center gap-2 pt-6">
+                  <Checkbox
+                    id="isBonus"
+                    checked={formData.isBonus}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isBonus: checked === true })}
+                  />
+                  <Label htmlFor="isBonus" className="cursor-pointer text-sm font-normal">
+                    Премия (4.5% от договора)
+                  </Label>
                 </div>
 
                 <div className="space-y-2">

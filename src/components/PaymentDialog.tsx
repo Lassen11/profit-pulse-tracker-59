@@ -177,22 +177,26 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
       if (paymentError) throw paymentError;
 
-      // If it's white salary or advance payment, update NDFL in department_employees
+      // If it's white salary or advance payment, update NDFL and contributions in department_employees
       if (salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance') && ndflAmount > 0) {
         // Get current employee data
         const { data: currentEmployee, error: fetchError } = await supabase
           .from('department_employees')
-          .select('ndfl')
+          .select('ndfl, contributions')
           .eq('id', employee.id)
           .single();
 
         if (fetchError) throw fetchError;
 
-        // Update NDFL by adding 13% of payment
+        // Calculate 30% contributions from initial payment amount
+        const contributionsAmount = paymentAmount * 0.30;
+
+        // Update NDFL by adding 13% of payment and contributions by adding 30% of payment
         const { error: updateError } = await supabase
           .from('department_employees')
           .update({
-            ndfl: (currentEmployee.ndfl || 0) + ndflAmount
+            ndfl: (currentEmployee.ndfl || 0) + ndflAmount,
+            contributions: (currentEmployee.contributions || 0) + contributionsAmount
           })
           .eq('id', employee.id);
 
