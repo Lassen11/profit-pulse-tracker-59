@@ -67,19 +67,11 @@ const expenseCategories = [
   "Прочие расходы"
 ];
 
-const accountOptions = [
-  "Зайнаб карта",
-  "Касса офис Диана",
-  "Мариана Карта - депозит",
-  "Карта Visa/Т-Банк (КИ)",
-  "Наличные Сейф (КИ)",
-  "Расчетный счет"
-];
-
 export function TransactionDialog({ open, onOpenChange, transaction, onSave, copyMode = false, selectedCompany }: TransactionDialogProps) {
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
+  const [accountOptions, setAccountOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
     category: '',
@@ -165,10 +157,34 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   }, [transaction, open, selectedCompany]);
 
   useEffect(() => {
-    if (open && formData.type === 'income' && formData.category === 'Продажи') {
-      fetchSalesEmployees();
+    if (open) {
+      fetchAccounts();
+      if (formData.type === 'income' && formData.category === 'Продажи') {
+        fetchSalesEmployees();
+      }
     }
   }, [open, formData.type, formData.category]);
+
+  const fetchAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('name, company')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      // Фильтруем счета по выбранной компании или показываем все
+      const filteredAccounts = data?.filter(acc => 
+        !acc.company || acc.company === formData.company
+      ).map(acc => acc.name) || [];
+
+      setAccountOptions(filteredAccounts);
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+    }
+  };
 
   const fetchSalesEmployees = async () => {
     try {
@@ -427,7 +443,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               </Select>
             </div>
 
-            {formData.type === 'income' && (
+            {formData.type === 'income' && formData.company !== 'Дело Бизнеса' && (
               <div className="space-y-2">
                 <Label htmlFor="clientName">ФИО Клиента</Label>
                 <Input
@@ -494,12 +510,12 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
 
             {formData.company === 'Дело Бизнеса' && (
               <div className="space-y-2">
-                <Label htmlFor="organizationName">Наименование организации</Label>
+                <Label htmlFor="organizationName">Наименование организации/ФИО</Label>
                 <Input
                   id="organizationName"
                   value={formData.organizationName}
                   onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
-                  placeholder="Введите наименование организации..."
+                  placeholder="Введите наименование организации или ФИО..."
                 />
               </div>
             )}
