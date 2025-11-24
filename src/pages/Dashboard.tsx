@@ -13,7 +13,7 @@ import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { calculateKPIs } from "@/lib/supabaseData";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersistedDialog } from "@/hooks/useDialogPersistence";
@@ -23,10 +23,11 @@ import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOf
 import { cn } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
-const accountOptions = ["Зайнаб карта", "Касса офис", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
+
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]); // All transactions across companies for account balances
+  const [accounts, setAccounts] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [copyMode, setCopyMode] = useState(false);
@@ -126,6 +127,27 @@ export default function Dashboard() {
     checkAdminStatus();
   }, [user]);
 
+  // Fetch accounts from database
+  const fetchAccounts = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('name')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      
+      const accountNames = data?.map(acc => acc.name) || [];
+      setAccounts(accountNames);
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      // Fallback to default accounts
+      setAccounts(["Зайнаб карта", "Касса офис", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"]);
+    }
+  }, [user]);
+
   // Restore dialog states from localStorage
   useEffect(() => {
     if (!user) return;
@@ -133,7 +155,8 @@ export default function Dashboard() {
     transferDialogPersistence.restoreDialog();
     accountActionsDialogPersistence.restoreDialog();
     accountTransactionsDialogPersistence.restoreDialog();
-  }, [user]);
+    fetchAccounts();
+  }, [user, fetchAccounts]);
 
   // Fetch balance adjustments
   const fetchBalanceAdjustments = useCallback(async () => {
@@ -440,7 +463,10 @@ export default function Dashboard() {
 
   // Calculate account balances across ALL companies and up to current period
   const accountBalances = useMemo(() => {
-    const accounts = ["Зайнаб карта", "Касса офис Диана", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
+    // Use accounts from database, fallback to default if empty
+    const accountList = accounts.length > 0 
+      ? accounts 
+      : ["Зайнаб карта", "Касса офис", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"];
 
     // Get start and end date of current filter period
     let startDate: Date;
@@ -1133,6 +1159,11 @@ export default function Dashboard() {
               <span className="hidden xs:inline">ФОТ</span>
               <span className="xs:hidden">ФОТ</span>
             </Button>
+            {isAdmin && <Button variant="outline" onClick={() => navigate("/settings")}>
+                <Settings className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Настройки</span>
+                <span className="xs:hidden">Настройки</span>
+              </Button>}
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Выйти</span>
@@ -1385,7 +1416,7 @@ export default function Dashboard() {
           if (!open) {
             transferDialogPersistence.closeDialog();
           }
-        }} accounts={accountOptions} selectedAccount={selectedAccountForTransfer} onSave={handleSaveTransfer} />
+        }} accounts={accounts} selectedAccount={selectedAccountForTransfer} onSave={handleSaveTransfer} />
 
         {/* Account Actions Dialog */}
         <AccountActionsDialog open={accountActionsDialogOpen} onOpenChange={open => {
