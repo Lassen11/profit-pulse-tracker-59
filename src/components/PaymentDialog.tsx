@@ -186,21 +186,39 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           .eq('id', employee.id)
           .single();
 
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+          console.error('Error fetching employee data:', fetchError);
+          throw fetchError;
+        }
 
         // Calculate 30% contributions from initial payment amount
         const contributionsAmount = paymentAmount * 0.30;
 
+        console.log('Updating contributions:', {
+          currentContributions: currentEmployee.contributions,
+          contributionsAmount,
+          newTotal: (currentEmployee.contributions || 0) + contributionsAmount,
+          currentNdfl: currentEmployee.ndfl,
+          ndflAmount,
+          newNdflTotal: (currentEmployee.ndfl || 0) + ndflAmount
+        });
+
         // Update NDFL by adding 13% of payment and contributions by adding 30% of payment
-        const { error: updateError } = await supabase
+        const { error: updateError, data: updatedData } = await supabase
           .from('department_employees')
           .update({
             ndfl: (currentEmployee.ndfl || 0) + ndflAmount,
             contributions: (currentEmployee.contributions || 0) + contributionsAmount
           })
-          .eq('id', employee.id);
+          .eq('id', employee.id)
+          .select();
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating employee:', updateError);
+          throw updateError;
+        }
+
+        console.log('Updated employee data:', updatedData);
       }
 
       const displayAmount = salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance')
