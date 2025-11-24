@@ -277,18 +277,37 @@ export default function Dashboard() {
       setError(null);
 
       // Load all transactions for the user (all companies) for account balances
-      const {
-        data: allData,
-        error: allError
-      } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(10000);
-      if (allError) {
-        console.error('Supabase error:', allError);
-        throw allError;
+      const pageSize = 1000;
+      let allData: any[] = [];
+      let from = 0;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('date', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          console.error('Supabase error while fetching page:', error);
+          throw error;
+        }
+
+        if (!data || data.length === 0) {
+          break;
+        }
+
+        allData = allData.concat(data);
+
+        if (data.length < pageSize) {
+          break; // Last page reached
+        }
+
+        from += pageSize;
       }
+
+      console.log('Total transactions loaded:', allData.length);
+
       const formattedAllData = allData?.map(t => ({
         ...t,
         type: t.type as 'income' | 'expense'
