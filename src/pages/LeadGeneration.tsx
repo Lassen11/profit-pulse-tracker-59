@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DemoBanner } from "@/components/DemoBanner";
 import { LeadDialog } from "@/components/LeadDialog";
 import { LeadDashboard } from "@/components/LeadDashboard";
 import { CalendarIcon, Upload, Download, LogOut, TrendingUp, BarChart3, Edit } from "lucide-react";
@@ -42,6 +43,7 @@ export default function LeadGeneration() {
   } = useToast();
   const {
     user,
+    isDemo,
     signOut,
     loading: authLoading
   } = useAuth();
@@ -56,12 +58,12 @@ export default function LeadGeneration() {
     }
   });
 
-  // Redirect to auth if not logged in
+  // Redirect to auth if not logged in (unless in demo mode)
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !isDemo) {
       navigate("/auth");
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, isDemo, navigate]);
 
   // Restore dialog state from localStorage
   useEffect(() => {
@@ -70,6 +72,14 @@ export default function LeadGeneration() {
     leadDialogPersistence.restoreDialog();
   }, [user]);
   const fetchLeadData = useCallback(async () => {
+    if (isDemo) {
+      // Load demo data
+      import('@/lib/demoData').then(({ demoLeadGeneration }) => {
+        setLeadData(demoLeadGeneration as any);
+        setLoading(false);
+      });
+      return;
+    }
     if (!user) {
       setLoading(false);
       return;
@@ -98,8 +108,10 @@ export default function LeadGeneration() {
   useEffect(() => {
     if (user) {
       fetchLeadData();
+    } else if (isDemo) {
+      fetchLeadData(); // Call fetchLeadData which already handles demo mode
     }
-  }, [user, fetchLeadData]);
+  }, [user, isDemo, fetchLeadData]);
   const calculateTotals = useMemo(() => {
     const totals = leadData.reduce((acc, item) => ({
       total_leads: acc.total_leads + item.total_leads,
@@ -285,6 +297,15 @@ export default function LeadGeneration() {
       </div>;
   }
   return <div className="min-h-screen bg-background">
+      {/* Demo Banner */}
+      {isDemo && (
+        <div className="border-b bg-card/50 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <DemoBanner />
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isDemo: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  isDemo: false,
   signOut: async () => {},
 });
 
@@ -83,6 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     session,
     loading,
+    isDemo: !user && !loading,
     signOut,
   };
 

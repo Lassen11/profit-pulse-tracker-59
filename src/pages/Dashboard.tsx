@@ -12,6 +12,7 @@ import { AccountTransferDialog, AccountTransfer } from "@/components/AccountTran
 import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
+import { DemoBanner } from "@/components/DemoBanner";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +57,7 @@ export default function Dashboard() {
   } = useToast();
   const {
     user,
+    isDemo,
     signOut,
     loading: authLoading
   } = useAuth();
@@ -101,17 +103,26 @@ export default function Dashboard() {
     }
   });
 
-  // Redirect to auth if not logged in
+  // Load demo data if not logged in
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth");
+    if (isDemo) {
+      import('@/lib/demoData').then(({ demoTransactions }) => {
+        setTransactions(demoTransactions as any);
+        setAllTransactions(demoTransactions as any);
+        setAccounts(["Зайнаб карта", "Касса офис", "Мариана Карта - депозит", "Карта Visa/Т-Банк (КИ)", "Наличные Сейф (КИ)", "Расчетный счет"]);
+        setReceivablesPlan(180000);
+        setReceivablesFact(50000);
+        setSalesPlan(350000);
+        setSalesFact(400000);
+        setLoading(false);
+      });
     }
-  }, [user, authLoading, navigate]);
+  }, [isDemo]);
 
   // Check admin status
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!user) return;
+      if (!user || isDemo) return;
       try {
         const {
           data,
@@ -610,6 +621,14 @@ export default function Dashboard() {
   const handleSaveTransaction = async (transactionData: Omit<Transaction, 'id'> & {
     id?: string;
   }, taxTransaction?: Omit<Transaction, 'id'>) => {
+    if (isDemo) {
+      toast({
+        title: "Демонстрационный режим",
+        description: "Войдите, чтобы сохранить операцию",
+        variant: "default"
+      });
+      return;
+    }
     if (!user) return;
     if (transactionData.id) {
       // Update existing transaction
@@ -740,6 +759,14 @@ export default function Dashboard() {
     });
   };
   const handleDeleteTransaction = async (id: string) => {
+    if (isDemo) {
+      toast({
+        title: "Демонстрационный режим",
+        description: "Войдите, чтобы удалить операцию",
+        variant: "default"
+      });
+      return;
+    }
     if (!user) return;
     const transaction = transactions.find(t => t.id === id);
     if (!transaction) return;
@@ -772,6 +799,14 @@ export default function Dashboard() {
     }
   };
   const handleAddNew = () => {
+    if (isDemo) {
+      toast({
+        title: "Демонстрационный режим",
+        description: "Войдите, чтобы добавить операцию",
+        variant: "default"
+      });
+      return;
+    }
     setEditTransaction(null);
     setCopyMode(false);
     setDialogOpen(true);
@@ -1107,6 +1142,9 @@ export default function Dashboard() {
   try {
     return <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
+        {/* Demo Banner */}
+        {isDemo && <DemoBanner />}
+        
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -1133,7 +1171,7 @@ export default function Dashboard() {
                 <span className="xs:hidden">Дебиторка</span>
               </a>
             </Button>
-            <Button onClick={handleAddNew} className="shadow-kpi">
+            <Button onClick={handleAddNew} className="shadow-kpi" disabled={isDemo}>
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Добавить операцию</span>
               <span className="xs:hidden">Добавить</span>
