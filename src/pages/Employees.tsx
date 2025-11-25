@@ -19,6 +19,7 @@ interface Profile {
   user_id: string;
   first_name: string;
   last_name: string;
+  middle_name: string;
   position: string;
   department: string;
   is_active: boolean;
@@ -40,6 +41,7 @@ export default function Employees() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [middleName, setMiddleName] = useState("");
   const [position, setPosition] = useState("");
   const [department, setDepartment] = useState("");
   const [role, setRole] = useState<'admin' | 'user'>('user');
@@ -52,6 +54,7 @@ export default function Employees() {
   const [editingEmployee, setEditingEmployee] = useState<Profile | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editMiddleName, setEditMiddleName] = useState("");
   const [editPosition, setEditPosition] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
@@ -74,6 +77,7 @@ export default function Employees() {
       setEditingEmployee(data.employee);
       setEditFirstName(data.employee.first_name || "");
       setEditLastName(data.employee.last_name || "");
+      setEditMiddleName(data.employee.middle_name || "");
       setEditPosition(data.employee.position || "");
       setEditDepartment(data.employee.department || "");
       setIsEditDialogOpen(true);
@@ -186,6 +190,7 @@ export default function Employees() {
           password,
           firstName,
           lastName,
+          middleName,
           position,
           department,
           role
@@ -200,7 +205,7 @@ export default function Employees() {
 
       toast({
         title: "Успешно",
-        description: `Сотрудник ${firstName} ${lastName} добавлен`,
+        description: `Сотрудник ${lastName} ${firstName} ${middleName} добавлен`,
       });
 
       // Сбрасываем форму
@@ -208,6 +213,7 @@ export default function Employees() {
       setPassword("");
       setFirstName("");
       setLastName("");
+      setMiddleName("");
       setPosition("");
       setDepartment("");
       setRole('user');
@@ -228,8 +234,8 @@ export default function Employees() {
     }
   };
 
-  const handleDeleteEmployee = async (userId: string, firstName: string, lastName: string) => {
-    if (!confirm(`Вы уверены, что хотите удалить сотрудника ${firstName} ${lastName}?`)) {
+  const handleDeleteEmployee = async (userId: string, fullName: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить сотрудника ${fullName}?`)) {
       return;
     }
 
@@ -260,7 +266,7 @@ export default function Employees() {
 
       toast({
         title: "Успешно",
-        description: `Сотрудник ${firstName} ${lastName} удален`,
+        description: `Сотрудник ${fullName} удален`,
       });
 
       // Обновляем список
@@ -277,7 +283,7 @@ export default function Employees() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'user', firstName: string, lastName: string) => {
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'user', fullName: string) => {
     setUpdatingRoleUserId(userId);
 
     try {
@@ -306,7 +312,7 @@ export default function Employees() {
 
       toast({
         title: "Успешно",
-        description: `Роль сотрудника ${firstName} ${lastName} изменена на ${newRole === 'admin' ? 'Администратор' : 'Пользователь'}`,
+        description: `Роль сотрудника ${fullName} изменена на ${newRole === 'admin' ? 'Администратор' : 'Пользователь'}`,
       });
 
       // Обновляем список
@@ -329,6 +335,7 @@ export default function Employees() {
     setEditingEmployee(employee);
     setEditFirstName(employee.first_name);
     setEditLastName(employee.last_name);
+    setEditMiddleName(employee.middle_name || "");
     setEditPosition(employee.position || "");
     setEditDepartment(employee.department || "");
     setIsEditDialogOpen(true);
@@ -347,6 +354,7 @@ export default function Employees() {
         .update({
           first_name: editFirstName,
           last_name: editLastName,
+          middle_name: editMiddleName || null,
           position: editPosition || null,
           department: editDepartment || null,
         })
@@ -356,7 +364,7 @@ export default function Employees() {
 
       toast({
         title: "Успешно",
-        description: `Данные сотрудника ${editFirstName} ${editLastName} обновлены`,
+        description: `Данные сотрудника ${editLastName} ${editFirstName} ${editMiddleName} обновлены`,
       });
 
       setIsEditDialogOpen(false);
@@ -421,16 +429,6 @@ export default function Employees() {
               <form onSubmit={handleAddEmployee} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="first-name">Имя</Label>
-                    <Input
-                      id="first-name"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                      placeholder="Иван"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="last-name">Фамилия</Label>
                     <Input
                       id="last-name"
@@ -440,6 +438,26 @@ export default function Employees() {
                       placeholder="Иванов"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="first-name">Имя</Label>
+                    <Input
+                      id="first-name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      placeholder="Иван"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="middle-name">Отчество</Label>
+                  <Input
+                    id="middle-name"
+                    value={middleName}
+                    onChange={(e) => setMiddleName(e.target.value)}
+                    placeholder="Иванович"
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -547,7 +565,7 @@ export default function Employees() {
                   {employees.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">
-                        {employee.first_name} {employee.last_name}
+                        {employee.last_name} {employee.first_name} {employee.middle_name || ''}
                       </TableCell>
                       <TableCell>-</TableCell>
                       <TableCell>{employee.position || "-"}</TableCell>
@@ -571,7 +589,7 @@ export default function Employees() {
                           <Select 
                             value={employee.role} 
                             onValueChange={(value: 'admin' | 'user') => 
-                              handleRoleChange(employee.user_id, value, employee.first_name, employee.last_name)
+                              handleRoleChange(employee.user_id, value, `${employee.last_name} ${employee.first_name} ${employee.middle_name || ''}`)
                             }
                             disabled={updatingRoleUserId === employee.user_id}
                           >
@@ -617,7 +635,7 @@ export default function Employees() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteEmployee(employee.user_id, employee.first_name, employee.last_name)}
+                              onClick={() => handleDeleteEmployee(employee.user_id, `${employee.last_name} ${employee.first_name} ${employee.middle_name || ''}`)}
                               disabled={deletingUserId === employee.user_id}
                               className="text-destructive hover:text-destructive"
                             >
@@ -654,16 +672,6 @@ export default function Employees() {
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-first-name">Имя</Label>
-                  <Input
-                    id="edit-first-name"
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    required
-                    placeholder="Иван"
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="edit-last-name">Фамилия</Label>
                   <Input
                     id="edit-last-name"
@@ -673,6 +681,26 @@ export default function Employees() {
                     placeholder="Иванов"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-first-name">Имя</Label>
+                  <Input
+                    id="edit-first-name"
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    required
+                    placeholder="Иван"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-middle-name">Отчество</Label>
+                <Input
+                  id="edit-middle-name"
+                  value={editMiddleName}
+                  onChange={(e) => setEditMiddleName(e.target.value)}
+                  placeholder="Иванович"
+                />
               </div>
               
               <div className="grid grid-cols-2 gap-4">

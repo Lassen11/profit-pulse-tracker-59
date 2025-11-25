@@ -12,6 +12,7 @@ interface CreateUserRequest {
   password: string;
   firstName: string;
   lastName: string;
+  middleName?: string;
   position?: string;
   department?: string;
   role: 'admin' | 'user';
@@ -74,6 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
       password,
       firstName,
       lastName,
+      middleName,
       position,
       department,
       role
@@ -87,6 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
       user_metadata: {
         first_name: firstName,
         last_name: lastName,
+        middle_name: middleName || '',
         position: position || '',
         department: department || ''
       }
@@ -118,6 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
           email: newUser.user.email,
           firstName,
           lastName,
+          middleName,
           position,
           department,
           role
