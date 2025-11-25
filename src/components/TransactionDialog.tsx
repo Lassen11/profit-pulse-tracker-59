@@ -93,7 +93,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     salesEmployeeId: '',
     leadSource: '',
     city: '',
-    isBonus: false
+    isBonus: false,
+    isBonus5: false
   });
 
   const formKey = `transaction-dialog-${transaction?.id || 'new'}`;
@@ -125,7 +126,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         salesEmployeeId: '',
         leadSource: '',
         city: '',
-        isBonus: false
+        isBonus: false,
+        isBonus5: false
       });
     } else if (open) {
       // Пытаемся восстановить сохраненные значения
@@ -154,7 +156,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           salesEmployeeId: '',
           leadSource: '',
           city: '',
-          isBonus: false
+          isBonus: false,
+          isBonus5: false
         });
       }
     }
@@ -194,7 +197,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name')
+        .select('id, first_name, last_name, middle_name')
         .eq('department', 'Отдел продаж')
         .eq('is_active', true);
 
@@ -203,7 +206,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       setSalesEmployees(
         data?.map(emp => ({
           id: emp.id,
-          name: `${emp.first_name} ${emp.last_name}`
+          name: `${emp.last_name} ${emp.first_name} ${emp.middle_name || ''}`
         })) || []
       );
     } catch (error) {
@@ -484,15 +487,28 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   </Select>
                 </div>
 
-                <div className="space-y-2 flex items-center gap-2 pt-6">
-                  <Checkbox
-                    id="isBonus"
-                    checked={formData.isBonus}
-                    onCheckedChange={(checked) => setFormData({ ...formData, isBonus: checked === true })}
-                  />
-                  <Label htmlFor="isBonus" className="cursor-pointer text-sm font-normal">
-                    Премия (4.5% от договора)
-                  </Label>
+                <div className="flex items-center gap-4 pt-6">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="isBonus"
+                      checked={formData.isBonus}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isBonus: checked === true })}
+                    />
+                    <Label htmlFor="isBonus" className="cursor-pointer text-sm font-normal">
+                      Премия (4.5% от договора)
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="isBonus5"
+                      checked={formData.isBonus5}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isBonus5: checked === true })}
+                    />
+                    <Label htmlFor="isBonus5" className="cursor-pointer text-sm font-normal">
+                      Премия (5% от договора)
+                    </Label>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

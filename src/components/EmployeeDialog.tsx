@@ -23,6 +23,7 @@ interface Profile {
   id: string;
   first_name: string;
   last_name: string;
+  middle_name: string | null;
   position: string | null;
 }
 
@@ -125,9 +126,9 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, position')
+        .select('id, first_name, last_name, middle_name, position')
         .eq('is_active', true)
-        .order('first_name', { ascending: true });
+        .order('last_name', { ascending: true });
 
       if (error) throw error;
       
@@ -141,7 +142,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
           // Загружаем профиль редактируемого сотрудника
           const { data: employeeProfile, error: empError } = await supabase
             .from('profiles')
-            .select('id, first_name, last_name, position')
+            .select('id, first_name, last_name, middle_name, position')
             .eq('id', employee.employee_id)
             .single();
           
@@ -263,7 +264,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
                 <SelectContent>
                   {profiles.map((profile) => (
                     <SelectItem key={profile.id} value={profile.id}>
-                      {profile.first_name} {profile.last_name}
+                      {profile.last_name} {profile.first_name} {profile.middle_name || ''}
                       {profile.position && ` - ${profile.position}`}
                     </SelectItem>
                   ))}
