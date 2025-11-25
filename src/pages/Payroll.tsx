@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DemoBanner } from "@/components/DemoBanner";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersistedDialog } from "@/hooks/useDialogPersistence";
@@ -29,7 +30,7 @@ export default function Payroll() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Dialog persistence hook
@@ -44,17 +45,23 @@ export default function Payroll() {
   });
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !isDemo) {
       navigate("/auth");
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, isDemo, navigate]);
 
   useEffect(() => {
     if (user) {
       fetchDepartments();
       fetchAllEmployees();
+    } else if (isDemo) {
+      // Load demo data
+      import('@/lib/demoData').then(({ demoDepartments }) => {
+        setDepartments(demoDepartments as any);
+        setLoading(false);
+      });
     }
-  }, [user]);
+  }, [user, isDemo]);
 
   // Restore dialog state from localStorage
   useEffect(() => {
@@ -256,6 +263,9 @@ export default function Payroll() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 max-w-7xl">
+        {/* Demo Banner */}
+        {isDemo && <DemoBanner />}
+        
         <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
