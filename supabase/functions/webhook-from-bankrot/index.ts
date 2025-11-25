@@ -80,7 +80,19 @@ interface SyncClientsStatsPayload {
   user_id?: string;
 }
 
-type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload | SyncClientsStatsPayload;
+interface DashboardMetricsPayload {
+  event_type: 'dashboard_metrics';
+  new_clients_count: number;
+  new_clients_monthly_payment_sum: number;
+  completed_clients_count: number;
+  completed_clients_monthly_payment_sum: number;
+  company: string;
+  user_id: string;
+  date: string;
+  month: string;
+}
+
+type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload | SyncClientsStatsPayload | DashboardMetricsPayload;
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -545,6 +557,98 @@ Deno.serve(async (req) => {
         console.error('sync_clients_stats handler error:', e);
         return new Response(
           JSON.stringify({ success: false, error: 'sync_clients_stats failed', details: (e as Error).message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+    } else if (payload.event_type === 'dashboard_metrics') {
+      // Обработка метрик дашборда из bankrot-helper
+      try {
+        const p = payload as DashboardMetricsPayload;
+        
+        // Определяем месяц из payload (формат "2025-11")
+        const monthStr = p.month ? `${p.month}-30` : new Date(p.date).toISOString().split('T')[0];
+        const company = p.company || 'Спасение';
+        
+        console.log(`Processing dashboard metrics for company: ${company}, month: ${monthStr}`);
+        console.log(`New clients count: ${p.new_clients_count}, payment sum: ${p.new_clients_monthly_payment_sum}`);
+        console.log(`Completed cases count: ${p.completed_clients_count}, payment sum: ${p.completed_clients_monthly_payment_sum}`);
+
+        // Определяем user_id
+        let userId: string | undefined = p.user_id !== 'all' ? p.user_id : undefined;
+        if (!userId) {
+          const { data: adminUser } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('role', 'admin')
+            .limit(1)
+            .maybeSingle();
+          userId = adminUser?.user_id;
+        }
+        if (!userId) {
+          const { data: anyProfile } = await supabase
+            .from('profiles')
+            .select('user_id')
+            .limit(1)
+            .maybeSingle();
+          userId = anyProfile?.user_id as string | undefined;
+        }
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'No user_id available' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+
+        // Сохраняем метрики в kpi_targets
+        const kpiData = [
+          { kpi_name: 'new_clients_count', value: p.new_clients_count },
+          { kpi_name: 'new_clients_monthly_payment_sum', value: p.new_clients_monthly_payment_sum },
+          { kpi_name: 'completed_cases_count', value: p.completed_clients_count },
+          { kpi_name: 'completed_cases_monthly_payment_sum', value: p.completed_clients_monthly_payment_sum }
+        ];
+
+        for (const kpi of kpiData) {
+          const { data: existing } = await supabase
+            .from('kpi_targets')
+            .select('id')
+            .eq('company', company)
+            .eq('kpi_name', kpi.kpi_name)
+            .eq('month', monthStr)
+            .maybeSingle();
+
+          if (existing) {
+            await supabase
+              .from('kpi_targets')
+              .update({ target_value: kpi.value, updated_at: new Date().toISOString() })
+              .eq('id', existing.id);
+          } else {
+            await supabase
+              .from('kpi_targets')
+              .insert({
+                user_id: userId,
+                company,
+                kpi_name: kpi.kpi_name,
+                target_value: kpi.value,
+                month: monthStr
+              });
+          }
+        }
+
+        console.log('Dashboard metrics saved successfully');
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Метрики дашборда обновлены',
+            company,
+            month: monthStr
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      } catch (e) {
+        console.error('dashboard_metrics handler error:', e);
+        return new Response(
+          JSON.stringify({ success: false, error: 'dashboard_metrics failed', details: (e as Error).message }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
