@@ -13,6 +13,9 @@ import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { DemoBanner } from "@/components/DemoBanner";
+import { AppTour } from "@/components/AppTour";
+import { TourButton } from "@/components/TourButton";
+import { useTour } from "@/hooks/useTour";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +65,7 @@ export default function Dashboard() {
     loading: authLoading
   } = useAuth();
   const navigate = useNavigate();
+  const { runTour, startTour, finishTour } = useTour();
 
   // Dialog persistence hooks
   const transactionDialogPersistence = usePersistedDialog<{
@@ -1154,7 +1158,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-            <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+            <Select value={selectedCompany} onValueChange={setSelectedCompany} data-tour="company-selector">
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Выберите компанию" />
               </SelectTrigger>
@@ -1171,7 +1175,7 @@ export default function Dashboard() {
                 <span className="xs:hidden">Дебиторка</span>
               </a>
             </Button>
-            <Button onClick={handleAddNew} className="shadow-kpi" disabled={isDemo}>
+            <Button onClick={handleAddNew} className="shadow-kpi" disabled={isDemo} data-tour="add-transaction">
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Добавить операцию</span>
               <span className="xs:hidden">Добавить</span>
