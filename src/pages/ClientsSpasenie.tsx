@@ -305,7 +305,7 @@ export default function ClientsSpasenie() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6" data-tour="summary-cards">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Всего клиентов</CardTitle>
@@ -370,7 +370,7 @@ export default function ClientsSpasenie() {
             <CardDescription>
               Подробная информация по клиентам из приложения bankrot-helper
             </CardDescription>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2" data-tour="search">
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Поиск по имени клиента или организации..."
