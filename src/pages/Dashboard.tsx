@@ -52,6 +52,8 @@ export default function Dashboard() {
   const [receivablesFact, setReceivablesFact] = useState<number>(0);
   const [salesPlan, setSalesPlan] = useState<number>(350000);
   const [salesFact, setSalesFact] = useState<number>(0);
+  const [newClientsCount, setNewClientsCount] = useState<number>(0);
+  const [completedCasesCount, setCompletedCasesCount] = useState<number>(0);
   const {
     toast
   } = useToast();
@@ -114,6 +116,8 @@ export default function Dashboard() {
         setReceivablesFact(50000);
         setSalesPlan(350000);
         setSalesFact(400000);
+        setNewClientsCount(12);
+        setCompletedCasesCount(8);
         setLoading(false);
       });
     }
@@ -282,14 +286,46 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Fetch bankrot clients data
+  const fetchBankrotClientsData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const now = new Date();
+      const currentMonth = startOfMonth(now);
+      const endOfCurrentMonth = endOfMonth(now);
+
+      // Get new clients count for current month
+      const { data: newClientsData, error: newClientsError } = await supabase
+        .from('bankrot_clients')
+        .select('id')
+        .gte('contract_date', currentMonth.toISOString().split('T')[0])
+        .lte('contract_date', endOfCurrentMonth.toISOString().split('T')[0]);
+
+      if (newClientsError) throw newClientsError;
+      setNewClientsCount(newClientsData?.length || 0);
+
+      // Get completed cases count (where remaining_amount = 0)
+      const { data: completedCasesData, error: completedCasesError } = await supabase
+        .from('bankrot_clients')
+        .select('id')
+        .eq('remaining_amount', 0);
+
+      if (completedCasesError) throw completedCasesError;
+      setCompletedCasesCount(completedCasesData?.length || 0);
+    } catch (error) {
+      console.error('Error fetching bankrot clients data:', error);
+    }
+  }, [user]);
+
   // Load balance adjustments on mount
   useEffect(() => {
     if (user) {
       fetchBalanceAdjustments();
       fetchReceivablesData();
       fetchSalesData();
+      fetchBankrotClientsData();
     }
-  }, [user, fetchBalanceAdjustments, fetchReceivablesData, fetchSalesData]);
+  }, [user, fetchBalanceAdjustments, fetchReceivablesData, fetchSalesData, fetchBankrotClientsData]);
 
   // Optimized fetch with caching and debouncing
   const fetchTransactions = useCallback(async () => {
@@ -658,6 +694,7 @@ export default function Dashboard() {
         await fetchTransactions();
         fetchReceivablesData();
         fetchSalesData();
+        fetchBankrotClientsData();
         toast({
           title: "Операция обновлена",
           description: "Данные успешно сохранены"
@@ -726,6 +763,7 @@ export default function Dashboard() {
         setAllTransactions(prev => [...newTransactions, ...prev]);
         fetchReceivablesData();
         fetchSalesData();
+        fetchBankrotClientsData();
         toast({
           title: taxTransaction ? "Операции добавлены" : "Операция добавлена",
           description: taxTransaction ? "Основная операция и налог успешно созданы" : "Новая транзакция успешно создана"
@@ -785,6 +823,7 @@ export default function Dashboard() {
         await fetchTransactions();
         fetchReceivablesData();
         fetchSalesData();
+        fetchBankrotClientsData();
         toast({
           title: "Операция удалена",
           description: "Транзакция была успешно удалена"
@@ -882,6 +921,7 @@ export default function Dashboard() {
       await fetchTransactions();
       fetchReceivablesData();
       fetchSalesData();
+      fetchBankrotClientsData();
       toast({
         title: "Перевод выполнен",
         description: `${transfer.amount} ₽ переведено с ${transfer.fromAccount} на ${transfer.toAccount}`
@@ -1322,6 +1362,22 @@ export default function Dashboard() {
           }) => <div key={company} className="group">
                 <EditableKPICard title={`Деньги в ${company}`} value={formatCurrency(balance)} calculatedValue={calculatedBalance} company={company} icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" onUpdate={fetchBalanceAdjustments} />
               </div>)}
+          
+          {/* Bankrot Helper KPIs - only for Спасение */}
+          {selectedCompany === "Спасение" && <>
+            <KPICard 
+              title="Новых клиентов за месяц" 
+              value={newClientsCount.toString()} 
+              icon={<Users className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
+            <KPICard 
+              title="Завершенных дел за месяц" 
+              value={completedCasesCount.toString()} 
+              icon={<Target className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
+          </>}
         </div>
 
         {/* Receivables and New Sales KPIs for Спасение only */}
