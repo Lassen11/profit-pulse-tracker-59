@@ -1433,7 +1433,7 @@ export default function Dashboard() {
         </div>
 
         {/* Transaction Table - Full Width */}
-        <div className="kpi-card">
+        <div className="kpi-card" data-tour="transactions-table">
           <div className="mb-6">
             <h2 className="text-lg sm:text-xl font-semibold text-card-foreground">
               Операции
@@ -1475,6 +1475,10 @@ export default function Dashboard() {
             accountTransactionsDialogPersistence.closeDialog();
           }
         }} account={selectedAccount} transactions={allTransactions} onTransactionUpdate={handleSaveTransaction} selectedCompany={selectedCompany} />
+        
+        {/* App Tour */}
+        <AppTour run={runTour} onFinish={finishTour} />
+        <TourButton onClick={startTour} />
         </div>
       </div>;
   } catch (error) {
