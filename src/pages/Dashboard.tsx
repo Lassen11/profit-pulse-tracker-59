@@ -1181,7 +1181,7 @@ export default function Dashboard() {
               <span className="xs:hidden">Добавить</span>
             </Button>
             
-            <Button variant="outline" onClick={() => navigate("/all-projects")}>
+            <Button variant="outline" onClick={() => navigate("/all-projects")} data-tour="navigation">
               <Building2 className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Все проекты</span>
               <span className="xs:hidden">Проекты</span>
