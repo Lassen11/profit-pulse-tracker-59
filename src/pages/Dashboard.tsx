@@ -53,7 +53,9 @@ export default function Dashboard() {
   const [salesPlan, setSalesPlan] = useState<number>(350000);
   const [salesFact, setSalesFact] = useState<number>(0);
   const [newClientsCount, setNewClientsCount] = useState<number>(0);
+  const [newClientsMonthlyPaymentSum, setNewClientsMonthlyPaymentSum] = useState<number>(0);
   const [completedCasesCount, setCompletedCasesCount] = useState<number>(0);
+  const [completedCasesMonthlyPaymentSum, setCompletedCasesMonthlyPaymentSum] = useState<number>(0);
   const {
     toast
   } = useToast();
@@ -308,6 +310,20 @@ export default function Dashboard() {
       }
       setNewClientsCount(newClientsData?.target_value || 0);
 
+      // Get new clients monthly payment sum from kpi_targets
+      const { data: newClientsSumData, error: newClientsSumError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'new_clients_monthly_payment_sum')
+        .eq('month', monthStr)
+        .maybeSingle();
+
+      if (newClientsSumError && newClientsSumError.code !== 'PGRST116') {
+        console.error('Error fetching new clients monthly sum KPI:', newClientsSumError);
+      }
+      setNewClientsMonthlyPaymentSum(newClientsSumData?.target_value || 0);
+
       // Get completed cases count from kpi_targets
       const { data: completedCasesData, error: completedCasesError } = await supabase
         .from('kpi_targets')
@@ -321,6 +337,20 @@ export default function Dashboard() {
         console.error('Error fetching completed cases KPI:', completedCasesError);
       }
       setCompletedCasesCount(completedCasesData?.target_value || 0);
+
+      // Get completed cases monthly payment sum from kpi_targets
+      const { data: completedCasesSumData, error: completedCasesSumError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'completed_cases_monthly_payment_sum')
+        .eq('month', monthStr)
+        .maybeSingle();
+
+      if (completedCasesSumError && completedCasesSumError.code !== 'PGRST116') {
+        console.error('Error fetching completed cases monthly sum KPI:', completedCasesSumError);
+      }
+      setCompletedCasesMonthlyPaymentSum(completedCasesSumData?.target_value || 0);
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
@@ -638,6 +668,13 @@ export default function Dashboard() {
       currency: 'RUB',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatNumberNoCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
     }).format(amount);
   };
   const getDeltaType = (current: number, previous: number): 'positive' | 'negative' | 'neutral' => {
@@ -1376,13 +1413,13 @@ export default function Dashboard() {
           {selectedCompany === "Спасение" && <>
             <KPICard 
               title="Новых клиентов за месяц" 
-              value={newClientsCount.toString()} 
+              value={`${newClientsCount} / ${formatNumberNoCurrency(newClientsMonthlyPaymentSum)}`} 
               icon={<Users className="w-5 h-5 sm:w-6 sm:h-6" />} 
               className="shadow-kpi" 
             />
             <KPICard 
               title="Завершенных дел за месяц" 
-              value={completedCasesCount.toString()} 
+              value={`${completedCasesCount} / ${formatNumberNoCurrency(completedCasesMonthlyPaymentSum)}`} 
               icon={<Target className="w-5 h-5 sm:w-6 sm:h-6" />} 
               className="shadow-kpi" 
             />
