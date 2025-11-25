@@ -286,32 +286,41 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Fetch bankrot clients data
+  // Fetch bankrot clients data from kpi_targets (synced from bankrot-helper)
   const fetchBankrotClientsData = useCallback(async () => {
     if (!user) return;
     try {
       const now = new Date();
-      const currentMonth = startOfMonth(now);
-      const endOfCurrentMonth = endOfMonth(now);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const monthStr = lastDayOfMonth.toISOString().split('T')[0];
 
-      // Get new clients count for current month
+      // Get new clients count from kpi_targets
       const { data: newClientsData, error: newClientsError } = await supabase
-        .from('bankrot_clients')
-        .select('id')
-        .gte('contract_date', currentMonth.toISOString().split('T')[0])
-        .lte('contract_date', endOfCurrentMonth.toISOString().split('T')[0]);
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'new_clients_count')
+        .eq('month', monthStr)
+        .maybeSingle();
 
-      if (newClientsError) throw newClientsError;
-      setNewClientsCount(newClientsData?.length || 0);
+      if (newClientsError && newClientsError.code !== 'PGRST116') {
+        console.error('Error fetching new clients KPI:', newClientsError);
+      }
+      setNewClientsCount(newClientsData?.target_value || 0);
 
-      // Get completed cases count (where remaining_amount = 0)
+      // Get completed cases count from kpi_targets
       const { data: completedCasesData, error: completedCasesError } = await supabase
-        .from('bankrot_clients')
-        .select('id')
-        .eq('remaining_amount', 0);
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'completed_cases_count')
+        .eq('month', monthStr)
+        .maybeSingle();
 
-      if (completedCasesError) throw completedCasesError;
-      setCompletedCasesCount(completedCasesData?.length || 0);
+      if (completedCasesError && completedCasesError.code !== 'PGRST116') {
+        console.error('Error fetching completed cases KPI:', completedCasesError);
+      }
+      setCompletedCasesCount(completedCasesData?.target_value || 0);
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
