@@ -1305,7 +1305,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-tour="kpi-cards">
           <KPICard title="Выручка" value={formatCurrency(kpis.income)} delta={calculateDelta(kpis.income, previousKpis.income)} deltaType={getDeltaType(kpis.income, previousKpis.income)} icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
           <KPICard title="Расходы" value={formatCurrency(kpis.expenses)} delta={calculateDelta(kpis.expenses, previousKpis.expenses)} deltaType={getDeltaType(previousKpis.expenses, kpis.expenses)} // Reversed for expenses
           icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" />
