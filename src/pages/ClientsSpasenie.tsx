@@ -5,6 +5,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DemoBanner } from "@/components/DemoBanner";
+import { AppTour } from "@/components/AppTour";
+import { TourButton } from "@/components/TourButton";
+import { useTour } from "@/hooks/useTour";
 import { Search, ArrowLeft, User, DollarSign, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Building2, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +42,7 @@ export default function ClientsSpasenie() {
   const { user, isDemo } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { runTour, startTour, finishTour } = useTour();
 
   useEffect(() => {
     if (user) {
