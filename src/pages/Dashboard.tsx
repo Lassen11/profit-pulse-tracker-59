@@ -294,7 +294,7 @@ export default function Dashboard() {
     try {
       const now = new Date();
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const monthStr = lastDayOfMonth.toISOString().split('T')[0];
+      const monthStr = `${lastDayOfMonth.getFullYear()}-${String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
 
       // Get new clients count from kpi_targets
       const { data: newClientsData, error: newClientsError } = await supabase
