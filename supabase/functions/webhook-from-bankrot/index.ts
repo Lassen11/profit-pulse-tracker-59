@@ -70,7 +70,17 @@ interface SyncSummaryPayload {
   user_id?: string; // необязательно, если хотим привязать к пользователю
 }
 
-type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload;
+interface SyncClientsStatsPayload {
+  event_type: 'sync_clients_stats';
+  company: string;
+  new_clients_count: number; // количество новых клиентов за месяц
+  completed_cases_count: number; // количество завершенных дел за месяц
+  date?: string; // дата, чтобы определить месяц
+  month?: string; // месяц в формате YYYY-MM-DD
+  user_id?: string;
+}
+
+type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload | SyncClientsStatsPayload;
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -419,6 +429,122 @@ Deno.serve(async (req) => {
         console.error('sync_summary handler error:', e);
         return new Response(
           JSON.stringify({ success: false, error: 'sync_summary failed', details: (e as Error).message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+    } else if (payload.event_type === 'sync_clients_stats') {
+      // Синхронизация статистики клиентов из bankrot-helper
+      try {
+        const p = payload as SyncClientsStatsPayload;
+        
+        // Определяем месяц
+        let monthStr: string;
+        if (p.month) {
+          monthStr = p.month;
+        } else {
+          const baseDate = p.date ? new Date(p.date) : new Date();
+          const endOfMonthDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+          monthStr = endOfMonthDate.toISOString().split('T')[0];
+        }
+        
+        const company = p.company || 'Спасение';
+        
+        console.log(`Syncing clients stats for company: ${company}, month: ${monthStr}`);
+        console.log(`New clients: ${p.new_clients_count}, Completed cases: ${p.completed_cases_count}`);
+
+        // Определяем user_id
+        let userId: string | undefined = p.user_id as string | undefined;
+        if (!userId) {
+          const { data: adminUser } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('role', 'admin')
+            .limit(1)
+            .maybeSingle();
+          userId = adminUser?.user_id;
+        }
+        if (!userId) {
+          const { data: anyProfile } = await supabase
+            .from('profiles')
+            .select('user_id')
+            .limit(1)
+            .maybeSingle();
+          userId = anyProfile?.user_id as string | undefined;
+        }
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'No user_id available' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+
+        // Обновляем или создаем KPI для новых клиентов
+        const { data: existingNewClients } = await supabase
+          .from('kpi_targets')
+          .select('id')
+          .eq('company', company)
+          .eq('kpi_name', 'new_clients_count')
+          .eq('month', monthStr)
+          .maybeSingle();
+
+        if (existingNewClients) {
+          await supabase
+            .from('kpi_targets')
+            .update({ target_value: p.new_clients_count, updated_at: new Date().toISOString() })
+            .eq('id', existingNewClients.id);
+        } else {
+          await supabase
+            .from('kpi_targets')
+            .insert({
+              user_id: userId,
+              company,
+              kpi_name: 'new_clients_count',
+              target_value: p.new_clients_count,
+              month: monthStr
+            });
+        }
+
+        // Обновляем или создаем KPI для завершенных дел
+        const { data: existingCompleted } = await supabase
+          .from('kpi_targets')
+          .select('id')
+          .eq('company', company)
+          .eq('kpi_name', 'completed_cases_count')
+          .eq('month', monthStr)
+          .maybeSingle();
+
+        if (existingCompleted) {
+          await supabase
+            .from('kpi_targets')
+            .update({ target_value: p.completed_cases_count, updated_at: new Date().toISOString() })
+            .eq('id', existingCompleted.id);
+        } else {
+          await supabase
+            .from('kpi_targets')
+            .insert({
+              user_id: userId,
+              company,
+              kpi_name: 'completed_cases_count',
+              target_value: p.completed_cases_count,
+              month: monthStr
+            });
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Статистика клиентов обновлена', 
+            company, 
+            month: monthStr, 
+            new_clients: p.new_clients_count,
+            completed_cases: p.completed_cases_count
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      } catch (e) {
+        console.error('sync_clients_stats handler error:', e);
+        return new Response(
+          JSON.stringify({ success: false, error: 'sync_clients_stats failed', details: (e as Error).message }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
