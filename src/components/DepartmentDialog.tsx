@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export function DepartmentDialog({ open, onOpenChange, onSave, department }: Dep
     }
   }, [department, open, restoreValues]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       id: department?.id,
@@ -51,7 +51,7 @@ export function DepartmentDialog({ open, onOpenChange, onSave, department }: Dep
       project_name: projectName || null
     });
     clearStoredValues();
-  };
+  }, [department, name, projectName, onSave, clearStoredValues]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

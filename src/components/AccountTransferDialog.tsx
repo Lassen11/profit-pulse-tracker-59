@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,7 @@ export function AccountTransferDialog({
     }
   }, [open, selectedAccount, restoreValues]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!fromAccount || !toAccount || !amount || fromAccount === toAccount) {
       return;
     }
@@ -87,10 +87,17 @@ export function AccountTransferDialog({
 
     clearStoredValues();
     onOpenChange(false);
-  };
+  }, [fromAccount, toAccount, amount, date, description, onSave, clearStoredValues, onOpenChange]);
 
-  const filteredToAccounts = accounts.filter(acc => acc !== fromAccount);
-  const filteredFromAccounts = accounts.filter(acc => acc !== toAccount);
+  const filteredToAccounts = useMemo(() => 
+    accounts.filter(acc => acc !== fromAccount), 
+    [accounts, fromAccount]
+  );
+  
+  const filteredFromAccounts = useMemo(() => 
+    accounts.filter(acc => acc !== toAccount), 
+    [accounts, toAccount]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,7 +115,7 @@ export function AccountTransferDialog({
               <SelectTrigger id="from-account">
                 <SelectValue placeholder="Выберите счет списания" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" className="max-h-[300px]">
                 {filteredFromAccounts.map((account) => (
                   <SelectItem key={account} value={account}>
                     {account}
@@ -124,7 +131,7 @@ export function AccountTransferDialog({
               <SelectTrigger id="to-account">
                 <SelectValue placeholder="Выберите счет зачисления" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" className="max-h-[300px]">
                 {filteredToAccounts.map((account) => (
                   <SelectItem key={account} value={account}>
                     {account}
