@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,16 +163,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     }
   }, [transaction, open, selectedCompany]);
 
-  useEffect(() => {
-    if (open) {
-      fetchAccounts();
-      if (formData.type === 'income' && formData.category === 'Продажи') {
-        fetchSalesEmployees();
-      }
-    }
-  }, [open, formData.type, formData.category]);
-
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('accounts')
@@ -191,9 +182,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     } catch (error) {
       console.error('Error fetching accounts:', error);
     }
-  };
+  }, [formData.company]);
 
-  const fetchSalesEmployees = async () => {
+  const fetchSalesEmployees = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -212,10 +203,19 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     } catch (error) {
       console.error('Error fetching sales employees:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchAccounts();
+      if (formData.type === 'income' && formData.category === 'Продажи') {
+        fetchSalesEmployees();
+      }
+    }
+  }, [open, fetchAccounts, fetchSalesEmployees, formData.type, formData.category]);
 
   // Проверяем существующих клиентов при изменении ФИО
-  const checkExistingClient = async (clientName: string) => {
+  const checkExistingClient = useCallback(async (clientName: string) => {
     if (!user || !clientName.trim() || formData.type !== 'income' || formData.category !== 'Продажи') {
       setExistingClient(null);
       return;
@@ -254,18 +254,18 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     } catch (error) {
       console.error('Error checking existing client:', error);
     }
-  };
+  }, [user]);
 
   // Эффект для проверки клиентов при изменении ФИО
   useEffect(() => {
     if (!transaction) { // Только для новых операций
       const timeoutId = setTimeout(() => {
         checkExistingClient(formData.clientName);
-      }, 500); // Debounce для избежания частых запросов
+      }, 300); // Уменьшенный debounce для более быстрой реакции
 
       return () => clearTimeout(timeoutId);
     }
-  }, [formData.clientName, formData.type, formData.category, user, transaction]);
+  }, [formData.clientName, formData.type, formData.category, checkExistingClient, transaction]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -365,7 +365,13 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     onOpenChange(false);
   };
 
-  const categories = formData.type === 'income' ? incomeCategories : expenseCategories;
+  const categories = useMemo(() => 
+    formData.type === 'income' ? incomeCategories : expenseCategories, 
+    [formData.type]
+  );
+
+  const memoizedAccountOptions = useMemo(() => accountOptions, [accountOptions]);
+  const memoizedSalesEmployees = useMemo(() => salesEmployees, [salesEmployees]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -401,7 +407,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   <SelectItem value="income">Доход</SelectItem>
                   <SelectItem value="expense">Расход</SelectItem>
                 </SelectContent>
@@ -417,7 +423,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите категорию" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="max-h-[300px]">
                   {categories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
@@ -446,7 +452,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите проект" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   <SelectItem value="Спасение">Спасение</SelectItem>
                   <SelectItem value="Дело Бизнеса">Дело Бизнеса</SelectItem>
                   <SelectItem value="Кебаб Босс">Кебаб Босс</SelectItem>
@@ -477,8 +483,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите сотрудника" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {salesEmployees.map((employee) => (
+                    <SelectContent position="popper" className="max-h-[300px]">
+                      {memoizedSalesEmployees.map((employee) => (
                         <SelectItem key={employee.id} value={employee.id}>
                           {employee.name}
                         </SelectItem>
@@ -520,7 +526,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите источник" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper">
                       <SelectItem value="Авито">Авито</SelectItem>
                       <SelectItem value="Сайт">Сайт</SelectItem>
                       <SelectItem value="Квиз">Квиз</SelectItem>
@@ -565,8 +571,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите счет пополнения" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {accountOptions.map((account) => (
+                  <SelectContent position="popper" className="max-h-[300px]">
+                    {memoizedAccountOptions.map((account) => (
                       <SelectItem key={account} value={account}>
                         {account}
                       </SelectItem>
@@ -586,8 +592,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите счет списания" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {accountOptions.map((account) => (
+                  <SelectContent position="popper" className="max-h-[300px]">
+                    {memoizedAccountOptions.map((account) => (
                       <SelectItem key={account} value={account}>
                         {account}
                       </SelectItem>
