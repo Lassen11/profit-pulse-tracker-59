@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
@@ -95,14 +94,14 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
     }
   }, [editData, open, restoreValues]);
 
-  const formatDateForDB = (date: Date) => {
+  const formatDateForDB = useCallback((date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
@@ -179,7 +178,9 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, formData, editData, toast, onSuccess, clearStoredValues, formatDateForDB]);
+
+  const memoizedCompanies = useMemo(() => companies, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -203,8 +204,8 @@ export function LeadDialog({ onSuccess, editData }: LeadDialogProps) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {companies.map(company => (
+                <SelectContent position="popper">
+                  {memoizedCompanies.map(company => (
                     <SelectItem key={company} value={company}>{company}</SelectItem>
                   ))}
                 </SelectContent>

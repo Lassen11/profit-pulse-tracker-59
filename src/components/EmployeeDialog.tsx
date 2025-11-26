@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,7 +107,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     }
   }, [open, employee, defaultCompany]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setSelectedEmployeeId("");
     setSelectedCompany(defaultCompany);
     setWhiteSalary("0");
@@ -120,9 +120,9 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     setCost("0");
     setNetSalary("0");
     setTotalAmount("0");
-  };
+  }, [defaultCompany]);
 
-  const fetchProfiles = async () => {
+  const fetchProfiles = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -161,9 +161,50 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         variant: "destructive"
       });
     }
-  };
+  }, [user, employee, toast]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (open) {
+      if (employee) {
+        // Сначала устанавливаем данные редактируемого сотрудника
+        setSelectedEmployeeId(employee.employee_id);
+        setSelectedCompany(employee.company || defaultCompany);
+        setWhiteSalary(employee.white_salary.toString());
+        setGraySalary(employee.gray_salary.toString());
+        setAdvance(employee.advance.toString());
+        setNdfl(employee.ndfl.toString());
+        setContributions(employee.contributions.toString());
+        setBonus(employee.bonus.toString());
+        setNextMonthBonus(employee.next_month_bonus.toString());
+        setCost(employee.cost.toString());
+        setNetSalary(employee.net_salary.toString());
+        setTotalAmount(employee.total_amount.toString());
+      } else {
+        // Пытаемся восстановить сохраненные значения
+        const restored = restoreValues();
+        if (restored) {
+          setSelectedEmployeeId(restored.selectedEmployeeId || "");
+          setSelectedCompany(restored.selectedCompany || defaultCompany);
+          setWhiteSalary(restored.whiteSalary || "0");
+          setGraySalary(restored.graySalary || "0");
+          setAdvance(restored.advance || "0");
+          setNdfl(restored.ndfl || "0");
+          setContributions(restored.contributions || "0");
+          setBonus(restored.bonus || "0");
+          setNextMonthBonus(restored.nextMonthBonus || "0");
+          setCost(restored.cost || "0");
+          setNetSalary(restored.netSalary || "0");
+          setTotalAmount(restored.totalAmount || "0");
+        } else {
+          resetForm();
+        }
+      }
+      // Загружаем профили после установки состояния
+      fetchProfiles();
+    }
+  }, [open, employee, defaultCompany, fetchProfiles, resetForm, restoreValues]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
@@ -241,7 +282,14 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         variant: "destructive"
       });
     }
-  };
+  }, [
+    user, departmentId, selectedEmployeeId, selectedCompany, 
+    whiteSalary, graySalary, advance, ndfl, contributions, 
+    bonus, nextMonthBonus, employee, toast, clearStoredValues, onSave
+  ]);
+
+  const memoizedProfiles = useMemo(() => profiles, [profiles]);
+  const memoizedCompanies = useMemo(() => companies, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -261,8 +309,8 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите сотрудника" />
                 </SelectTrigger>
-                <SelectContent>
-                  {profiles.map((profile) => (
+                <SelectContent position="popper" className="max-h-[300px]">
+                  {memoizedProfiles.map((profile) => (
                     <SelectItem key={profile.id} value={profile.id}>
                       {profile.last_name} {profile.first_name} {profile.middle_name || ''}
                       {profile.position && ` - ${profile.position}`}
@@ -282,8 +330,8 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите компанию" />
                 </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
+                <SelectContent position="popper">
+                  {memoizedCompanies.map((company) => (
                     <SelectItem key={company} value={company}>
                       {company}
                     </SelectItem>
