@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +111,11 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     enabled: open && isRestored && (amount !== "" || notes !== "")
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const memoizedAccountOptions = useMemo(() => accountOptions, []);
+  const memoizedPaymentTypes = useMemo(() => paymentTypes, []);
+  const memoizedSalaryTypes = useMemo(() => salaryTypes, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !employee) return;
 
@@ -251,7 +255,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, employee, amount, paymentDate, paymentType, salaryType, expenseAccount, notes, toast, clearStoredValues, onSuccess, onOpenChange]);
 
   if (!employee) return null;
 
@@ -271,8 +275,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите тип выплаты" />
                 </SelectTrigger>
-                <SelectContent>
-                  {paymentTypes.map((type) => (
+                <SelectContent position="popper">
+                  {memoizedPaymentTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
                     </SelectItem>
@@ -288,8 +292,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите вид зарплаты" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {salaryTypes.map((type) => (
+                  <SelectContent position="popper">
+                    {memoizedSalaryTypes.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -344,8 +348,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите счет" />
                 </SelectTrigger>
-                <SelectContent>
-                  {accountOptions.map((account) => (
+                <SelectContent position="popper">
+                  {memoizedAccountOptions.map((account) => (
                     <SelectItem key={account} value={account}>
                       {account}
                     </SelectItem>
