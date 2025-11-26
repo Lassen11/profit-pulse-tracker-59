@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,25 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
     enabled: open && !sale
   });
 
+  const fetchSalesEmployees = useCallback(async () => {
+    try {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, department')
+        .eq('department', 'Отдел продаж')
+        .eq('is_active', true);
+
+      const employees: SalesEmployee[] = profilesData?.map(p => ({
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`
+      })) || [];
+
+      setSalesEmployees(employees);
+    } catch (error) {
+      console.error('Error fetching sales employees:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
       fetchSalesEmployees();
@@ -84,32 +103,15 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
         }
       }
     }
-  }, [open, sale, restoreValues]);
+  }, [open, sale, fetchSalesEmployees, restoreValues]);
 
-  const fetchSalesEmployees = async () => {
-    try {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, department')
-        .eq('department', 'Отдел продаж')
-        .eq('is_active', true);
-
-      const employees: SalesEmployee[] = profilesData?.map(p => ({
-        id: p.id,
-        name: `${p.first_name} ${p.last_name}`
-      })) || [];
-
-      setSalesEmployees(employees);
-    } catch (error) {
-      console.error('Error fetching sales employees:', error);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
     clearStoredValues();
-  };
+  }, [formData, onSave, clearStoredValues]);
+
+  const memoizedSalesEmployees = useMemo(() => salesEmployees, [salesEmployees]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,8 +130,8 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
               <SelectTrigger>
                 <SelectValue placeholder="Выберите менеджера" />
               </SelectTrigger>
-              <SelectContent>
-                {salesEmployees.map(emp => (
+              <SelectContent position="popper" className="max-h-[300px]">
+                {memoizedSalesEmployees.map(emp => (
                   <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -192,7 +194,7 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите источник" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   <SelectItem value="Авито">Авито</SelectItem>
                   <SelectItem value="Сайт">Сайт</SelectItem>
                   <SelectItem value="Квиз">Квиз</SelectItem>
