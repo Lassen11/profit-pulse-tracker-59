@@ -549,7 +549,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               </>
             )}
 
-            {formData.company === 'Дело Бизнеса' && (
+            {formData.company === 'Дело Бизнеса' && formData.type === 'income' && (
               <div className="space-y-2">
                 <Label htmlFor="organizationName">Наименование организации/ФИО</Label>
                 <Input
