@@ -73,7 +73,14 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
   const [legalDepartmentEmployees, setLegalDepartmentEmployees] = useState<{ id: string; name: string }[]>([]);
-  const [selectedLegalEmployees, setSelectedLegalEmployees] = useState<Record<string, boolean>>({});
+  const [selectedLegalEmployees, setSelectedLegalEmployees] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('selectedLegalEmployees');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [legalBonusPercent, setLegalBonusPercent] = useState<string>(() => {
     const saved = localStorage.getItem('legalBonusPercent');
     return saved || '4';
@@ -250,6 +257,35 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       localStorage.setItem('legalBonusPercent', legalBonusPercent);
     }
   }, [legalBonusPercent]);
+
+  // Сохраняем выбранных сотрудников в localStorage при изменении
+  useEffect(() => {
+    localStorage.setItem('selectedLegalEmployees', JSON.stringify(selectedLegalEmployees));
+  }, [selectedLegalEmployees]);
+
+  // Применяем сохраненные выборы сотрудников при загрузке списка
+  useEffect(() => {
+    if (legalDepartmentEmployees.length > 0) {
+      try {
+        const saved = localStorage.getItem('selectedLegalEmployees');
+        if (saved) {
+          const savedSelections = JSON.parse(saved);
+          // Применяем только для тех ID, которые существуют в текущем списке
+          const validSelections: Record<string, boolean> = {};
+          legalDepartmentEmployees.forEach(emp => {
+            if (savedSelections[emp.id] !== undefined) {
+              validSelections[emp.id] = savedSelections[emp.id];
+            }
+          });
+          if (Object.keys(validSelections).length > 0) {
+            setSelectedLegalEmployees(validSelections);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved legal employees:', error);
+      }
+    }
+  }, [legalDepartmentEmployees]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = useCallback(async (clientName: string) => {
