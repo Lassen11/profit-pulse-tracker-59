@@ -72,6 +72,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
+  const [legalDepartmentEmployees, setLegalDepartmentEmployees] = useState<{ id: string; name: string }[]>([]);
+  const [selectedLegalEmployees, setSelectedLegalEmployees] = useState<Record<string, boolean>>({});
   const [accountOptions, setAccountOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
@@ -205,14 +207,38 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     }
   }, []);
 
+  const fetchLegalDepartmentEmployees = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, middle_name')
+        .eq('department', 'Юридический департамент')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const employees = data?.map(emp => ({
+        id: emp.id,
+        name: `${emp.last_name} ${emp.first_name} ${emp.middle_name || ''}`
+      })) || [];
+
+      setLegalDepartmentEmployees(employees);
+    } catch (error) {
+      console.error('Error fetching legal department employees:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
       fetchAccounts();
       if (formData.type === 'income' && formData.category === 'Продажи') {
         fetchSalesEmployees();
       }
+      if (formData.type === 'income' && formData.company === 'Дело Бизнеса') {
+        fetchLegalDepartmentEmployees();
+      }
     }
-  }, [open, fetchAccounts, fetchSalesEmployees, formData.type, formData.category]);
+  }, [open, fetchAccounts, fetchSalesEmployees, fetchLegalDepartmentEmployees, formData.type, formData.category, formData.company]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = useCallback(async (clientName: string) => {
@@ -300,6 +326,43 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         }
       } catch (error) {
         console.error('Error creating sales record:', error);
+      }
+    }
+
+    // Создаем записи для юридического департамента если это доход в Дело Бизнеса
+    if (formData.type === 'income' && formData.company === 'Дело Бизнеса' && user) {
+      const selectedEmployeeIds = Object.entries(selectedLegalEmployees)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([id]) => id);
+
+      if (selectedEmployeeIds.length > 0) {
+        try {
+          const amount = parseFloat(formData.amount);
+          const totalBonus = amount * 0.04; // 4% от суммы операции
+          const bonusPerEmployee = totalBonus / selectedEmployeeIds.length;
+
+          const salesRecords = selectedEmployeeIds.map(employeeId => ({
+            user_id: user.id,
+            employee_id: employeeId,
+            client_name: formData.organizationName || '',
+            payment_amount: amount,
+            contract_amount: 0,
+            city: '',
+            lead_source: 'Дело Бизнеса',
+            payment_date: formData.date,
+            manager_bonus: bonusPerEmployee
+          }));
+
+          const { error: salesError } = await supabase
+            .from('sales')
+            .insert(salesRecords);
+
+          if (salesError) {
+            console.error('Error creating legal department sales records:', salesError);
+          }
+        } catch (error) {
+          console.error('Error creating legal department sales records:', error);
+        }
       }
     }
 
@@ -558,6 +621,44 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
                   placeholder="Введите наименование организации или ФИО..."
                 />
+              </div>
+            )}
+
+            {formData.company === 'Дело Бизнеса' && formData.type === 'income' && legalDepartmentEmployees.length > 0 && (
+              <div className="col-span-2 space-y-3 p-4 border rounded-lg bg-muted/20">
+                <Label className="text-sm font-medium">
+                  Распределить 4% от суммы операции для Юридического департамента
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {legalDepartmentEmployees.map((employee) => (
+                    <div key={employee.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`legal-${employee.id}`}
+                        checked={selectedLegalEmployees[employee.id] || false}
+                        onCheckedChange={(checked) => 
+                          setSelectedLegalEmployees(prev => ({
+                            ...prev,
+                            [employee.id]: checked === true
+                          }))
+                        }
+                      />
+                      <Label 
+                        htmlFor={`legal-${employee.id}`} 
+                        className="cursor-pointer text-sm font-normal"
+                      >
+                        {employee.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                {Object.values(selectedLegalEmployees).some(v => v) && formData.amount && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Премия на каждого: {(
+                      (parseFloat(formData.amount) * 0.04) / 
+                      Object.values(selectedLegalEmployees).filter(v => v).length
+                    ).toFixed(2)} ₽
+                  </p>
+                )}
               </div>
             )}
             
