@@ -74,6 +74,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
   const [legalDepartmentEmployees, setLegalDepartmentEmployees] = useState<{ id: string; name: string }[]>([]);
   const [selectedLegalEmployees, setSelectedLegalEmployees] = useState<Record<string, boolean>>({});
+  const [legalBonusPercent, setLegalBonusPercent] = useState<string>('4');
   const [accountOptions, setAccountOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
@@ -338,7 +339,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       if (selectedEmployeeIds.length > 0) {
         try {
           const amount = parseFloat(formData.amount);
-          const totalBonus = amount * 0.04; // 4% от суммы операции
+          const bonusPercentValue = parseFloat(legalBonusPercent) || 0;
+          const totalBonus = amount * (bonusPercentValue / 100);
           const bonusPerEmployee = totalBonus / selectedEmployeeIds.length;
 
           const salesRecords = selectedEmployeeIds.map(employeeId => ({
@@ -626,9 +628,24 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
 
             {formData.company === 'Дело Бизнеса' && formData.type === 'income' && legalDepartmentEmployees.length > 0 && (
               <div className="col-span-2 space-y-3 p-4 border rounded-lg bg-muted/20">
-                <Label className="text-sm font-medium">
-                  Распределить 4% от суммы операции для Юридического департамента
-                </Label>
+                <div className="flex items-center justify-between gap-4">
+                  <Label className="text-sm font-medium">
+                    Распределить премию для Юридического департамента
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={legalBonusPercent}
+                      onChange={(e) => setLegalBonusPercent(e.target.value)}
+                      className="w-20 h-8 text-sm"
+                      placeholder="4"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {legalDepartmentEmployees.map((employee) => (
                     <div key={employee.id} className="flex items-center gap-2">
@@ -651,10 +668,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                     </div>
                   ))}
                 </div>
-                {Object.values(selectedLegalEmployees).some(v => v) && formData.amount && (
+                {Object.values(selectedLegalEmployees).some(v => v) && formData.amount && legalBonusPercent && (
                   <p className="text-xs text-muted-foreground mt-2">
                     Премия на каждого: {(
-                      (parseFloat(formData.amount) * 0.04) / 
+                      (parseFloat(formData.amount) * (parseFloat(legalBonusPercent) / 100)) / 
                       Object.values(selectedLegalEmployees).filter(v => v).length
                     ).toFixed(2)} ₽
                   </p>
