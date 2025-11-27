@@ -74,7 +74,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
   const [legalDepartmentEmployees, setLegalDepartmentEmployees] = useState<{ id: string; name: string }[]>([]);
   const [selectedLegalEmployees, setSelectedLegalEmployees] = useState<Record<string, boolean>>({});
-  const [legalBonusPercent, setLegalBonusPercent] = useState<string>('4');
+  const [legalBonusPercent, setLegalBonusPercent] = useState<string>(() => {
+    const saved = localStorage.getItem('legalBonusPercent');
+    return saved || '4';
+  });
   const [accountOptions, setAccountOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
@@ -240,6 +243,13 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
     }
   }, [open, fetchAccounts, fetchSalesEmployees, fetchLegalDepartmentEmployees, formData.type, formData.category, formData.company]);
+
+  // Сохраняем процент премии в localStorage при изменении
+  useEffect(() => {
+    if (legalBonusPercent) {
+      localStorage.setItem('legalBonusPercent', legalBonusPercent);
+    }
+  }, [legalBonusPercent]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = useCallback(async (clientName: string) => {
