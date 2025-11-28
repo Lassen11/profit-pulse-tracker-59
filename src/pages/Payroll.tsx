@@ -63,12 +63,6 @@ export default function Payroll() {
     }
   }, [user, isDemo]);
 
-  // Restore dialog state from localStorage
-  useEffect(() => {
-    if (!user) return;
-    
-    departmentDialogPersistence.restoreDialog();
-  }, [user]);
 
   const fetchAllEmployees = async () => {
     try {
@@ -402,7 +396,10 @@ export default function Payroll() {
           open={dialogOpen}
           onOpenChange={(open) => {
             setDialogOpen(open);
-            if (!open) setEditDepartment(null);
+            if (!open) {
+              setEditDepartment(null);
+              departmentDialogPersistence.closeDialog();
+            }
           }}
           onSave={handleSaveDepartment}
           department={editDepartment}
