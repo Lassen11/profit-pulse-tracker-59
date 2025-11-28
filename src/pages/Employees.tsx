@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePersistedDialog } from "@/hooks/useDialogPersistence";
-import { UserPlus, Users, Shield, User, Trash2, Pencil } from "lucide-react";
+import { UserPlus, Users, Shield, User, Trash2, Pencil, Archive, UserCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 
 interface Profile {
@@ -48,6 +49,7 @@ export default function Employees() {
   const [submitting, setSubmitting] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   
   // Edit employee state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -382,6 +384,38 @@ export default function Employees() {
     }
   };
 
+  const handleToggleActiveStatus = async (profileId: string, currentStatus: boolean, fullName: string) => {
+    setUpdatingStatusId(profileId);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_active: !currentStatus
+        })
+        .eq('id', profileId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Успешно",
+        description: `Статус сотрудника ${fullName} изменен на ${!currentStatus ? 'Активный' : 'Архивный'}`,
+      });
+
+      fetchEmployees();
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось изменить статус сотрудника",
+        variant: "destructive"
+      });
+      fetchEmployees();
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -614,9 +648,30 @@ export default function Employees() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={employee.is_active ? 'default' : 'secondary'}>
-                          {employee.is_active ? 'Активный' : 'Неактивный'}
-                        </Badge>
+                        <div className="flex items-center gap-3">
+                          <Badge variant={employee.is_active ? 'default' : 'secondary'} className="flex items-center gap-1">
+                            {employee.is_active ? (
+                              <>
+                                <UserCheck className="h-3 w-3" />
+                                Активный
+                              </>
+                            ) : (
+                              <>
+                                <Archive className="h-3 w-3" />
+                                Архивный
+                              </>
+                            )}
+                          </Badge>
+                          <Switch
+                            checked={employee.is_active}
+                            onCheckedChange={() => handleToggleActiveStatus(
+                              employee.id, 
+                              employee.is_active, 
+                              `${employee.last_name} ${employee.first_name} ${employee.middle_name || ''}`
+                            )}
+                            disabled={updatingStatusId === employee.id}
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         {new Date(employee.created_at).toLocaleDateString('ru-RU')}
