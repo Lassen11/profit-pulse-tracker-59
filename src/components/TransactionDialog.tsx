@@ -372,7 +372,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 total_budget: newTotalBudget,
                 user_id: user.id
               }, {
-                onConflict: 'department_id,month'
+                onConflict: 'department_id,month,user_id'
               });
 
             if (budgetError) {
@@ -706,7 +706,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                           {(() => {
                             const amount = parseFloat(formData.amount);
                             const mainBonus = amount * (parseFloat(legalBonusPercent) / 100);
-                            const additionalBonus = enableAdditionalBonus ? amount * (parseFloat(additionalBonusPercent) / 100) : 0;
+                            const additionalBonus = enableAdditionalBonus ? mainBonus * (parseFloat(additionalBonusPercent) / 100) : 0;
                             return (mainBonus + additionalBonus).toFixed(2);
                           })()} ₽
                         </span>
