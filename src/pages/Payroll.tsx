@@ -298,19 +298,19 @@ export default function Payroll() {
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground mb-1">Белая</div>
                     <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.paid_white || 0), 0)
+                      allEmployees.reduce((s, e: any) => s + (e.white_salary || 0), 0)
                     )}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground mb-1">Серая</div>
                     <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.paid_gray || 0), 0)
+                      allEmployees.reduce((s, e: any) => s + (e.gray_salary || 0), 0)
                     )}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground mb-1">Аванс</div>
                     <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.paid_advance || 0), 0)
+                      allEmployees.reduce((s, e: any) => s + (e.advance || 0), 0)
                     )}</div>
                   </div>
                   <div className="text-right">
@@ -328,7 +328,7 @@ export default function Payroll() {
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground mb-1">Премия</div>
                     <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.paid_bonus || 0), 0)
+                      allEmployees.reduce((s, e: any) => s + (e.bonus || 0), 0)
                     )}</div>
                   </div>
                   <div className="text-right">
