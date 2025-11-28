@@ -102,10 +102,13 @@ export function DepartmentBonuses() {
   }, [targetPoints]);
 
   const fetchDepartments = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('departments')
         .select('*')
+        .eq('user_id', user.id)
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -117,11 +120,14 @@ export function DepartmentBonuses() {
   };
 
   const fetchBonusBudgets = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('department_bonus_budget')
         .select('department_id, total_budget')
-        .eq('month', selectedMonth);
+        .eq('month', selectedMonth)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
