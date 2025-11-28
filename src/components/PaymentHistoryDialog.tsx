@@ -130,6 +130,35 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
         }
       }
 
+      // Если это выплата "Аванс", восстанавливаем сумму в поле advance
+      if (payment.payment_type === 'advance' && employee) {
+        const { data: currentEmployee, error: fetchError } = await supabase
+          .from('department_employees')
+          .select('advance')
+          .eq('id', employee.id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching employee data:', fetchError);
+          throw fetchError;
+        }
+
+        // Восстанавливаем сумму выплаты обратно в advance
+        const restoredAdvance = (currentEmployee.advance || 0) + payment.amount;
+
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            advance: restoredAdvance
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error('Error restoring advance:', updateError);
+          throw updateError;
+        }
+      }
+
       // Сначала удаляем связанную транзакцию, если она есть
       if (payment.transaction_id) {
         const { error: transactionError } = await supabase
