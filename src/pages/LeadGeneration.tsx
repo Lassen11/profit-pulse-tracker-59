@@ -112,6 +112,31 @@ export default function LeadGeneration() {
       fetchLeadData(); // Call fetchLeadData which already handles demo mode
     }
   }, [user, isDemo, fetchLeadData]);
+
+  // Realtime subscriptions for Lead Generation
+  useEffect(() => {
+    if (!user) return;
+
+    const leadGenerationChannel = supabase
+      .channel('lead-generation-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lead_generation',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchLeadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(leadGenerationChannel);
+    };
+  }, [user, fetchLeadData]);
   const calculateTotals = useMemo(() => {
     const totals = leadData.reduce((acc, item) => ({
       total_leads: acc.total_leads + item.total_leads,

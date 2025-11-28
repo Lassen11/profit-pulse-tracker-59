@@ -93,6 +93,82 @@ export function DepartmentBonuses() {
     fetchBonusBudgets();
   }, [selectedMonth]);
 
+  // Realtime subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    const bonusBudgetChannel = supabase
+      .channel('bonus-budget-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'department_bonus_budget',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchBonusBudgets();
+          fetchDepartments();
+        }
+      )
+      .subscribe();
+
+    const bonusPointsChannel = supabase
+      .channel('bonus-points-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'department_bonus_points',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchBonusData();
+        }
+      )
+      .subscribe();
+
+    const departmentsChannel = supabase
+      .channel('departments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'departments',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchDepartments();
+        }
+      )
+      .subscribe();
+
+    const profilesChannel = supabase
+      .channel('profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          fetchLegalDepartmentEmployees();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bonusBudgetChannel);
+      supabase.removeChannel(bonusPointsChannel);
+      supabase.removeChannel(departmentsChannel);
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [user, selectedMonth]);
+
   useEffect(() => {
     localStorage.setItem('bonus-point-value', pointValue.toString());
   }, [pointValue]);

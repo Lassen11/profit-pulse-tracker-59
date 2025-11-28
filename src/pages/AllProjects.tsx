@@ -88,6 +88,52 @@ export default function AllProjects() {
     }
   }, [user, authLoading, toast]);
 
+  // Realtime subscriptions for AllProjects
+  useEffect(() => {
+    if (!user) return;
+
+    const transactionsChannel = supabase
+      .channel('all-projects-transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Refetch all transactions when any change occurs
+          const fetchAllTransactions = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('transactions')
+                .select('*')
+                .order('date', { ascending: false });
+
+              if (error) throw error;
+
+              const formattedData = data?.map(t => ({
+                ...t,
+                type: t.type as 'income' | 'expense'
+              })) || [];
+
+              setTransactions(formattedData);
+            } catch (error) {
+              console.error('Error refetching transactions:', error);
+            }
+          };
+
+          fetchAllTransactions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(transactionsChannel);
+    };
+  }, [user]);
+
   // Filtered transactions based on company and date filters
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
