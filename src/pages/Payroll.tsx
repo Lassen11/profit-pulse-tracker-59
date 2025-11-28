@@ -13,6 +13,9 @@ import { DepartmentCard } from "@/components/DepartmentCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PayrollAnalytics } from "@/components/PayrollAnalytics";
 import { PayrollSales } from "@/components/PayrollSales";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format, startOfMonth } from "date-fns";
+import { ru } from "date-fns/locale";
 
 export interface Department {
   id: string;
@@ -29,9 +32,17 @@ export default function Payroll() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  
+  // Generate last 12 months for month filter
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - i);
+    return format(startOfMonth(date), 'yyyy-MM-dd');
+  });
 
   // Dialog persistence hook
   const departmentDialogPersistence = usePersistedDialog<{ editDepartment?: Department }>({
@@ -61,7 +72,7 @@ export default function Payroll() {
         setLoading(false);
       });
     }
-  }, [user, isDemo]);
+  }, [user, isDemo, selectedMonth]);
 
 
   const fetchAllEmployees = async () => {
@@ -75,7 +86,8 @@ export default function Payroll() {
             last_name,
             position
           )
-        `);
+        `)
+        .eq('month', selectedMonth);
 
       if (error) throw error;
 
@@ -86,7 +98,8 @@ export default function Payroll() {
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payroll_payments')
           .select('department_employee_id, amount, payment_type')
-          .in('department_employee_id', employeeIds);
+          .in('department_employee_id', employeeIds)
+          .eq('month', selectedMonth);
 
         if (!paymentsError && paymentsData) {
           // Агрегируем выплаты по типу для каждого сотрудника
@@ -148,7 +161,15 @@ export default function Payroll() {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      setDepartments(data || []);
+      
+      // Sort departments to put "Управление" first
+      const sortedDepartments = (data || []).sort((a, b) => {
+        if (a.name === 'Управление') return -1;
+        if (b.name === 'Управление') return 1;
+        return a.name.localeCompare(b.name);
+      });
+      
+      setDepartments(sortedDepartments);
     } catch (error) {
       console.error('Error fetching departments:', error);
       toast({
@@ -260,15 +281,32 @@ export default function Payroll() {
         {/* Demo Banner */}
         {isDemo && <DemoBanner />}
         
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-4xl font-bold">ФОТ (Фонд оплаты труда)</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-4xl font-bold">ФОТ (Фонд оплаты труда)</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Месяц:</span>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {format(new Date(month), 'LLLL yyyy', { locale: ru })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Tabs defaultValue="departments" className="w-full">
@@ -281,7 +319,7 @@ export default function Payroll() {
           <TabsContent value="departments">
             {allEmployees.length > 0 && (
               <Card className="p-6 mb-6 bg-primary/5">
-                <div className="grid grid-cols-11 gap-4 text-sm font-semibold">
+                <div className="grid grid-cols-12 gap-4 text-sm font-semibold">
                   <div className="col-span-2 text-lg">Итого по всем отделам:</div>
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground mb-1">Общая сумма</div>
@@ -341,6 +379,12 @@ export default function Payroll() {
                     <div className="text-xs text-muted-foreground mb-1">На руки</div>
                     <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
                       allEmployees.reduce((s, e: any) => s + (e.net_salary || 0), 0)
+                    )}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground mb-1">Выплачено</div>
+                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                      allEmployees.reduce((s, e: any) => s + ((e.paid_white || 0) + (e.paid_gray || 0) + (e.paid_advance || 0) + (e.paid_bonus || 0)), 0)
                     )}</div>
                   </div>
                 </div>

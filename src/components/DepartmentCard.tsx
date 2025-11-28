@@ -7,6 +7,7 @@ import { EmployeeDialog } from "@/components/EmployeeDialog";
 import { PayrollTable } from "@/components/PayrollTable";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format, startOfMonth } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +70,9 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
   const fetchEmployees = async () => {
     try {
       setLoading(true);
+      // Get current month
+      const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+      
       const { data, error } = await supabase
         .from('department_employees')
         .select(`
@@ -79,7 +83,8 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
             position
           )
         `)
-        .eq('department_id', department.id);
+        .eq('department_id', department.id)
+        .eq('month', currentMonth);
 
       if (error) throw error;
 
@@ -87,10 +92,12 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
       const employeeIds = data?.map(emp => emp.id) || [];
       
       if (employeeIds.length > 0) {
+        const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd');
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payroll_payments')
           .select('department_employee_id, amount, payment_type')
-          .in('department_employee_id', employeeIds);
+          .in('department_employee_id', employeeIds)
+          .eq('month', currentMonth);
 
         if (paymentsError) {
           console.error('Error fetching payments:', paymentsError);
