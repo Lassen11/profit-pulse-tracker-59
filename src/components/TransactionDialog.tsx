@@ -338,15 +338,17 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           
           // Основная премия
           const bonusPercentValue = parseFloat(legalBonusPercent) || 0;
+          let mainBonusAmount = 0;
           if (bonusPercentValue > 0) {
-            totalBonusToAdd += amount * (bonusPercentValue / 100);
+            mainBonusAmount = amount * (bonusPercentValue / 100);
+            totalBonusToAdd += mainBonusAmount;
           }
           
-          // Дополнительная премия
-          if (enableAdditionalBonus) {
+          // Дополнительная премия (считается от основной премии)
+          if (enableAdditionalBonus && mainBonusAmount > 0) {
             const additionalBonusValue = parseFloat(additionalBonusPercent) || 0;
             if (additionalBonusValue > 0) {
-              totalBonusToAdd += amount * (additionalBonusValue / 100);
+              totalBonusToAdd += mainBonusAmount * (additionalBonusValue / 100);
             }
           }
 
