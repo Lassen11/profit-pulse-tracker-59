@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, Wallet, Edit2 } from "lucide-react";
 import { DepartmentDialog } from "@/components/DepartmentDialog";
 import { DepartmentCard } from "@/components/DepartmentCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +17,8 @@ import { DepartmentBonuses } from "@/components/DepartmentBonuses";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export interface Department {
   id: string;
@@ -34,6 +36,10 @@ export default function Payroll() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [bonusBudgets, setBonusBudgets] = useState<Record<string, number>>({});
+  const [editBudgetDepartment, setEditBudgetDepartment] = useState<Department | null>(null);
+  const [editBudgetValue, setEditBudgetValue] = useState<string>('');
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -66,6 +72,7 @@ export default function Payroll() {
     if (user) {
       fetchDepartments();
       fetchAllEmployees();
+      fetchBonusBudgets();
     } else if (isDemo) {
       // Load demo data
       import('@/lib/demoData').then(({ demoDepartments }) => {
@@ -270,6 +277,70 @@ export default function Payroll() {
     departmentDialogPersistence.openDialog({ editDepartment: department });
   };
 
+  const fetchBonusBudgets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('department_bonus_budget')
+        .select('department_id, total_budget')
+        .eq('month', selectedMonth);
+
+      if (error) throw error;
+
+      const budgets: Record<string, number> = {};
+      data?.forEach(item => {
+        budgets[item.department_id] = item.total_budget;
+      });
+      setBonusBudgets(budgets);
+    } catch (error) {
+      console.error('Error fetching bonus budgets:', error);
+    }
+  };
+
+  const handleEditBudget = (department: Department) => {
+    setEditBudgetDepartment(department);
+    setEditBudgetValue((bonusBudgets[department.id] || 0).toString());
+    setBudgetDialogOpen(true);
+  };
+
+  const handleSaveBudget = async () => {
+    if (!user || !editBudgetDepartment) return;
+
+    try {
+      const budgetValue = parseFloat(editBudgetValue) || 0;
+
+      const { error } = await supabase
+        .from('department_bonus_budget')
+        .upsert({
+          department_id: editBudgetDepartment.id,
+          month: selectedMonth,
+          total_budget: budgetValue,
+          user_id: user.id
+        }, {
+          onConflict: 'department_id,month'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Бюджет сохранен",
+        description: `Бюджет премий для отдела "${editBudgetDepartment.name}" обновлен`
+      });
+
+      fetchBonusBudgets();
+      setBudgetDialogOpen(false);
+      setEditBudgetDepartment(null);
+    } catch (error) {
+      console.error('Error saving budget:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить бюджет премий",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const totalBonusBudget = Object.values(bonusBudgets).reduce((sum, budget) => sum + budget, 0);
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -324,6 +395,44 @@ export default function Payroll() {
           </TabsList>
 
           <TabsContent value="departments">
+            {/* Bonus Budget Card */}
+            <Card className="p-6 mb-6 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Wallet className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Общий фонд премий за месяц</div>
+                    <div className="text-3xl font-bold text-primary">
+                      {new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(totalBonusBudget)}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground mb-2">Бюджет по отделам:</div>
+                  <div className="space-y-1">
+                    {departments.map(dept => (
+                      <div key={dept.id} className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">{dept.name}:</span>
+                        <span className="font-medium">
+                          {new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(bonusBudgets[dept.id] || 0)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleEditBudget(dept)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             {allEmployees.length > 0 && (
               <Card className="p-6 mb-6 bg-primary/5">
                 <div className="grid grid-cols-12 gap-4 text-sm font-semibold">
@@ -446,6 +555,44 @@ export default function Payroll() {
             <PayrollSales />
           </TabsContent>
         </Tabs>
+
+        {/* Budget Edit Dialog */}
+        <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Редактировать бюджет премий</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium">Отдел</label>
+                <div className="text-lg font-semibold text-primary mt-1">
+                  {editBudgetDepartment?.name}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Общая сумма премий (₽)</label>
+                <Input
+                  type="number"
+                  value={editBudgetValue}
+                  onChange={(e) => setEditBudgetValue(e.target.value)}
+                  placeholder="0"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Эта сумма будет распределена между сотрудниками на основе их баллов
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBudgetDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSaveBudget}>
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <DepartmentDialog
           open={dialogOpen}
