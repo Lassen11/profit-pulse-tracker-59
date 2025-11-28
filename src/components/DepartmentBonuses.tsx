@@ -14,7 +14,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Save, Archive, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Save, Archive, TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Switch } from "@/components/ui/switch";
@@ -55,6 +56,10 @@ export function DepartmentBonuses() {
     const stored = localStorage.getItem('bonus-point-value');
     return stored ? Number(stored) : 1000;
   });
+  const [targetPoints, setTargetPoints] = useState<number>(() => {
+    const stored = localStorage.getItem('bonus-target-points');
+    return stored ? Number(stored) : 100;
+  });
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -78,45 +83,19 @@ export function DepartmentBonuses() {
     localStorage.setItem('bonus-point-value', pointValue.toString());
   }, [pointValue]);
 
+  useEffect(() => {
+    localStorage.setItem('bonus-target-points', targetPoints.toString());
+  }, [targetPoints]);
+
   const fetchLegalDepartmentEmployees = async () => {
     try {
       setLoading(true);
       
-      // Find Legal Department
-      const { data: departments, error: deptError } = await supabase
-        .from('departments')
-        .select('id')
-        .eq('name', 'Юридический департамент')
-        .maybeSingle();
-
-      if (deptError) throw deptError;
-      
-      if (!departments) {
-        setEmployees([]);
-        return;
-      }
-
-      // Get all unique employees from this department (across all months)
-      const { data: deptEmployees, error: empError } = await supabase
-        .from('department_employees')
-        .select('employee_id')
-        .eq('department_id', departments.id);
-
-      if (empError) throw empError;
-
-      // Get unique employee IDs
-      const uniqueEmployeeIds = Array.from(new Set(deptEmployees?.map(de => de.employee_id) || []));
-
-      if (uniqueEmployeeIds.length === 0) {
-        setEmployees([]);
-        return;
-      }
-
-      // Get employee profiles - filter by is_active based on showArchived state
+      // Get employee profiles directly from profiles table by department field
       let query = supabase
         .from('profiles')
-        .select('id, first_name, last_name, middle_name, position, is_active')
-        .in('id', uniqueEmployeeIds);
+        .select('id, first_name, last_name, middle_name, position, is_active, department')
+        .eq('department', 'Юридический департамент');
 
       // If not showing archived, only get active employees
       if (!showArchived) {
@@ -438,6 +417,21 @@ export function DepartmentBonuses() {
             <span className="text-sm text-muted-foreground">₽</span>
           </div>
           <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="target-points" className="text-sm whitespace-nowrap">
+              Цель баллов:
+            </Label>
+            <Input
+              id="target-points"
+              type="number"
+              min="0"
+              step="10"
+              value={targetPoints}
+              onChange={(e) => setTargetPoints(Number(e.target.value))}
+              className="w-24"
+            />
+          </div>
+          <div className="flex items-center gap-2">
             <Archive className="h-4 w-4 text-muted-foreground" />
             <Label htmlFor="show-archived" className="text-sm cursor-pointer">
               Показать архивных
@@ -583,6 +577,7 @@ export function DepartmentBonuses() {
                 <TableHead className="text-center min-w-[150px]">Бонус от Руководства</TableHead>
                 <TableHead className="text-center min-w-[120px]">Минус баллы</TableHead>
                 <TableHead className="text-center min-w-[120px] font-bold">Итого баллов</TableHead>
+                <TableHead className="text-center min-w-[200px] font-bold">Прогресс к цели</TableHead>
                 <TableHead className="text-center min-w-[150px] font-bold">Изменение</TableHead>
                 <TableHead className="text-right min-w-[150px] font-bold">Премия</TableHead>
               </TableRow>
@@ -695,6 +690,27 @@ export function DepartmentBonuses() {
                   </TableCell>
                   <TableCell className="text-center font-bold text-lg">
                     {calculateTotalPoints(employee.id)}
+                  </TableCell>
+                  <TableCell className="px-4">
+                    {(() => {
+                      const current = calculateTotalPoints(employee.id);
+                      const progress = targetPoints > 0 ? (current / targetPoints) * 100 : 0;
+                      const progressCapped = Math.min(progress, 100);
+                      
+                      return (
+                        <div className="space-y-1">
+                          <Progress value={progressCapped} className="h-2" />
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              {current} / {targetPoints}
+                            </span>
+                            <span className={`font-medium ${progress >= 100 ? 'text-green-500' : progress >= 75 ? 'text-primary' : 'text-muted-foreground'}`}>
+                              {progress.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-center">
                     {(() => {
