@@ -86,7 +86,8 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
       white: "Белая зарплата",
       gray: "Серая зарплата",
       advance: "Аванс",
-      bonus: "Премия"
+      bonus: "Премия",
+      net_salary: "На руки"
     };
     return types[type] || type;
   };
@@ -99,6 +100,35 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
 
     try {
       setDeleting(true);
+
+      // Если это выплата "На руки", восстанавливаем сумму в поле net_salary
+      if (payment.payment_type === 'net_salary' && employee) {
+        const { data: currentEmployee, error: fetchError } = await supabase
+          .from('department_employees')
+          .select('net_salary')
+          .eq('id', employee.id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching employee data:', fetchError);
+          throw fetchError;
+        }
+
+        // Восстанавливаем сумму выплаты обратно в net_salary
+        const restoredNetSalary = (currentEmployee.net_salary || 0) + payment.amount;
+
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            net_salary: restoredNetSalary
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error('Error restoring net_salary:', updateError);
+          throw updateError;
+        }
+      }
 
       // Сначала удаляем связанную транзакцию, если она есть
       if (payment.transaction_id) {
