@@ -75,6 +75,81 @@ export default function Payroll() {
     }
   }, [user, isDemo, selectedMonth]);
 
+  // Realtime subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    const departmentsChannel = supabase
+      .channel('payroll-departments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'departments',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchDepartments();
+        }
+      )
+      .subscribe();
+
+    const departmentEmployeesChannel = supabase
+      .channel('department-employees-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'department_employees',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchAllEmployees();
+        }
+      )
+      .subscribe();
+
+    const payrollPaymentsChannel = supabase
+      .channel('payroll-payments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payroll_payments',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchAllEmployees();
+        }
+      )
+      .subscribe();
+
+    const profilesChannel = supabase
+      .channel('payroll-profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          fetchAllEmployees();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(departmentsChannel);
+      supabase.removeChannel(departmentEmployeesChannel);
+      supabase.removeChannel(payrollPaymentsChannel);
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [user, selectedMonth]);
+
 
   const fetchAllEmployees = async () => {
     try {

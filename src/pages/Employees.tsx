@@ -111,6 +111,46 @@ export default function Employees() {
     editDialogPersistence.restoreDialog();
   }, [user]);
 
+  // Realtime subscriptions for Employees
+  useEffect(() => {
+    if (!user) return;
+
+    const profilesChannel = supabase
+      .channel('employees-profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          fetchEmployees();
+        }
+      )
+      .subscribe();
+
+    const userRolesChannel = supabase
+      .channel('employees-roles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_roles'
+        },
+        () => {
+          fetchEmployees();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(userRolesChannel);
+    };
+  }, [user]);
+
   const checkAdminStatus = async () => {
     if (!user) return;
     

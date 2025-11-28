@@ -1,0 +1,29 @@
+-- Enable realtime for all application tables
+ALTER TABLE public.department_bonus_budget REPLICA IDENTITY FULL;
+ALTER TABLE public.department_bonus_points REPLICA IDENTITY FULL;
+ALTER TABLE public.transactions REPLICA IDENTITY FULL;
+ALTER TABLE public.payroll_payments REPLICA IDENTITY FULL;
+ALTER TABLE public.department_employees REPLICA IDENTITY FULL;
+ALTER TABLE public.departments REPLICA IDENTITY FULL;
+ALTER TABLE public.profiles REPLICA IDENTITY FULL;
+ALTER TABLE public.accounts REPLICA IDENTITY FULL;
+ALTER TABLE public.sales REPLICA IDENTITY FULL;
+ALTER TABLE public.bankrot_clients REPLICA IDENTITY FULL;
+ALTER TABLE public.lead_generation REPLICA IDENTITY FULL;
+ALTER TABLE public.kpi_targets REPLICA IDENTITY FULL;
+ALTER TABLE public.company_balance_adjustments REPLICA IDENTITY FULL;
+
+-- Add tables to realtime publication
+ALTER PUBLICATION supabase_realtime ADD TABLE public.department_bonus_budget;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.department_bonus_points;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.transactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.payroll_payments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.department_employees;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.departments;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.accounts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.sales;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.bankrot_clients;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.lead_generation;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.kpi_targets;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.company_balance_adjustments;

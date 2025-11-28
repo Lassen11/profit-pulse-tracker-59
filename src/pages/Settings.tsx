@@ -55,6 +55,31 @@ export default function Settings() {
     loadAccounts();
   }, [user]);
 
+  // Realtime subscriptions for Settings
+  useEffect(() => {
+    if (!user) return;
+
+    const accountsChannel = supabase
+      .channel('settings-accounts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'accounts',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          loadAccounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(accountsChannel);
+    };
+  }, [user]);
+
   const loadAccounts = async () => {
     if (!user) return;
 

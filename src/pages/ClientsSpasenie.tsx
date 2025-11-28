@@ -71,6 +71,48 @@ export default function ClientsSpasenie() {
     }
   }, [user, isDemo]);
 
+  // Realtime subscriptions for ClientsSpasenie
+  useEffect(() => {
+    if (!user) return;
+
+    const bankrotClientsChannel = supabase
+      .channel('clients-bankrot-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bankrot_clients',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchClientsData();
+        }
+      )
+      .subscribe();
+
+    const transactionsChannel = supabase
+      .channel('clients-transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchClientsData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bankrotClientsChannel);
+      supabase.removeChannel(transactionsChannel);
+    };
+  }, [user]);
+
   const handleDeleteSyncTransactions = async () => {
     if (!user) return;
 

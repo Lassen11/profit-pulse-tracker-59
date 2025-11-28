@@ -494,6 +494,103 @@ export default function Dashboard() {
       }
     }
   }, [selectedCompany, user, allTransactions]);
+
+  // Realtime subscriptions for Dashboard
+  useEffect(() => {
+    if (!user) return;
+
+    const transactionsChannel = supabase
+      .channel('dashboard-transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchTransactions();
+          fetchReceivablesData();
+          fetchSalesData();
+        }
+      )
+      .subscribe();
+
+    const accountsChannel = supabase
+      .channel('dashboard-accounts-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'accounts',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchAccounts();
+        }
+      )
+      .subscribe();
+
+    const balanceAdjustmentsChannel = supabase
+      .channel('dashboard-balance-adjustments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'company_balance_adjustments',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchBalanceAdjustments();
+        }
+      )
+      .subscribe();
+
+    const kpiTargetsChannel = supabase
+      .channel('dashboard-kpi-targets')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kpi_targets',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchReceivablesData();
+          fetchSalesData();
+          fetchBankrotClientsData();
+        }
+      )
+      .subscribe();
+
+    const bankrotClientsChannel = supabase
+      .channel('dashboard-bankrot-clients')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bankrot_clients',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchReceivablesData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(transactionsChannel);
+      supabase.removeChannel(accountsChannel);
+      supabase.removeChannel(balanceAdjustmentsChannel);
+      supabase.removeChannel(kpiTargetsChannel);
+      supabase.removeChannel(bankrotClientsChannel);
+    };
+  }, [user, fetchTransactions, fetchAccounts, fetchBalanceAdjustments, fetchReceivablesData, fetchSalesData, fetchBankrotClientsData]);
   const handleRetry = () => {
     setLastFetchTime(0); // Force refresh
     fetchTransactions();
