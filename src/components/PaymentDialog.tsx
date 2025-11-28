@@ -27,15 +27,8 @@ const accountOptions = [
 ];
 
 const paymentTypes = [
-  { value: "salary", label: "Зарплата" },
   { value: "advance", label: "Аванс" },
-  { value: "bonus", label: "Премия" },
-  { value: "other", label: "Другое" }
-];
-
-const salaryTypes = [
-  { value: "white", label: "Белая" },
-  { value: "gray", label: "Серая" }
+  { value: "net_salary", label: "На руки" }
 ];
 
 interface PaymentDialogProps {
@@ -48,8 +41,7 @@ interface PaymentDialogProps {
 export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: PaymentDialogProps) {
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
-  const [paymentType, setPaymentType] = useState("salary");
-  const [salaryType, setSalaryType] = useState("white");
+  const [paymentType, setPaymentType] = useState("advance");
   const [expenseAccount, setExpenseAccount] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -69,16 +61,14 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           const restored = JSON.parse(stored);
           setAmount(restored.amount || "");
           setPaymentDate(restored.paymentDate ? new Date(restored.paymentDate) : new Date());
-          setPaymentType(restored.paymentType || "salary");
-          setSalaryType(restored.salaryType || "white");
+          setPaymentType(restored.paymentType || "advance");
           setExpenseAccount(restored.expenseAccount || "");
           setNotes(restored.notes || "");
         } else {
           // Сброс только если нет сохраненных значений
           setAmount("");
           setPaymentDate(new Date());
-          setPaymentType("salary");
-          setSalaryType("white");
+          setPaymentType("advance");
           setExpenseAccount("");
           setNotes("");
         }
@@ -87,8 +77,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
         // Сброс при ошибке
         setAmount("");
         setPaymentDate(new Date());
-        setPaymentType("salary");
-        setSalaryType("white");
+        setPaymentType("advance");
         setExpenseAccount("");
         setNotes("");
       }
@@ -104,7 +93,6 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       amount,
       paymentDate,
       paymentType,
-      salaryType,
       expenseAccount,
       notes
     },
@@ -113,7 +101,6 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
   const memoizedAccountOptions = useMemo(() => accountOptions, []);
   const memoizedPaymentTypes = useMemo(() => paymentTypes, []);
-  const memoizedSalaryTypes = useMemo(() => salaryTypes, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,16 +119,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     setLoading(true);
 
     try {
-      // Calculate actual payment amount and NDFL for white salary
-      let actualPaymentAmount = paymentAmount;
-      let ndflAmount = 0;
-      
-      if (salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance')) {
-        ndflAmount = paymentAmount * 0.13; // 13% НДФЛ
-        actualPaymentAmount = paymentAmount - ndflAmount; // Уменьшаем сумму на 13%
-      }
-
-      // Create transaction in transactions table with reduced amount for white salary
+      // Create transaction in transactions table
       const employeeCompany = (employee as any).company || 'Спасение';
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
@@ -151,8 +129,8 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           type: 'expense',
           category: 'Зарплата',
           subcategory: `${employee.profiles.first_name} ${employee.profiles.last_name}`,
-          amount: actualPaymentAmount,
-          description: notes || `Выплата зарплаты: ${paymentTypes.find(t => t.value === paymentType)?.label}${salaryType === 'white' ? ' (за вычетом 13% НДФЛ)' : ''}`,
+          amount: paymentAmount,
+          description: notes || `Выплата зарплаты: ${paymentTypes.find(t => t.value === paymentType)?.label}`,
           expense_account: expenseAccount,
           company: employeeCompany
         })
@@ -162,31 +140,26 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       if (transactionError) throw transactionError;
 
       // Create payroll payment record
-      // For advance payments, always save as 'advance' regardless of salary type
-      // For salary payments, use the salary type (white/gray)
-      // For other payments, use the payment type directly
-      const finalPaymentType = paymentType === 'salary' ? salaryType : paymentType;
-      
       const { error: paymentError } = await supabase
         .from('payroll_payments')
         .insert({
           user_id: user.id,
           department_employee_id: employee.id,
-          amount: actualPaymentAmount,
+          amount: paymentAmount,
           payment_date: format(paymentDate, 'yyyy-MM-dd'),
-          payment_type: finalPaymentType,
+          payment_type: paymentType,
           notes: notes,
           transaction_id: transactionData.id
         });
 
       if (paymentError) throw paymentError;
 
-      // If it's white salary or advance payment, update NDFL and contributions in department_employees
-      if (salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance') && ndflAmount > 0) {
+      // If payment type is "net_salary" (На руки), decrease the net_salary field
+      if (paymentType === 'net_salary') {
         // Get current employee data
         const { data: currentEmployee, error: fetchError } = await supabase
           .from('department_employees')
-          .select('ndfl, contributions')
+          .select('net_salary')
           .eq('id', employee.id)
           .single();
 
@@ -195,39 +168,21 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           throw fetchError;
         }
 
-        // Calculate 30% contributions from initial payment amount
-        const contributionsAmount = paymentAmount * 0.30;
+        // Decrease net_salary by payment amount
+        const newNetSalary = (currentEmployee.net_salary || 0) - paymentAmount;
 
-        console.log('Updating contributions:', {
-          currentContributions: currentEmployee.contributions,
-          contributionsAmount,
-          newTotal: (currentEmployee.contributions || 0) + contributionsAmount,
-          currentNdfl: currentEmployee.ndfl,
-          ndflAmount,
-          newNdflTotal: (currentEmployee.ndfl || 0) + ndflAmount
-        });
-
-        // Update NDFL by adding 13% of payment and contributions by adding 30% of payment
-        const { error: updateError, data: updatedData } = await supabase
+        const { error: updateError } = await supabase
           .from('department_employees')
           .update({
-            ndfl: (currentEmployee.ndfl || 0) + ndflAmount,
-            contributions: (currentEmployee.contributions || 0) + contributionsAmount
+            net_salary: newNetSalary
           })
-          .eq('id', employee.id)
-          .select();
+          .eq('id', employee.id);
 
         if (updateError) {
-          console.error('Error updating employee:', updateError);
+          console.error('Error updating employee net_salary:', updateError);
           throw updateError;
         }
-
-        console.log('Updated employee data:', updatedData);
       }
-
-      const displayAmount = salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance')
-        ? actualPaymentAmount
-        : paymentAmount;
 
       toast({
         title: "Выплата проведена",
@@ -235,11 +190,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           style: 'currency',
           currency: 'RUB',
           minimumFractionDigits: 0
-        }).format(displayAmount)} успешно проведена${salaryType === 'white' && (paymentType === 'salary' || paymentType === 'advance') ? ` (исходная сумма ${new Intl.NumberFormat('ru-RU', {
-          style: 'currency',
-          currency: 'RUB',
-          minimumFractionDigits: 0
-        }).format(paymentAmount)}, вычтен НДФЛ 13%)` : ''}`
+        }).format(paymentAmount)} успешно проведена`
       });
 
       clearStoredValues();
@@ -255,7 +206,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     } finally {
       setLoading(false);
     }
-  }, [user, employee, amount, paymentDate, paymentType, salaryType, expenseAccount, notes, toast, clearStoredValues, onSuccess, onOpenChange]);
+  }, [user, employee, amount, paymentDate, paymentType, expenseAccount, notes, toast, clearStoredValues, onSuccess, onOpenChange]);
 
   if (!employee) return null;
 
@@ -284,24 +235,6 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
                 </SelectContent>
               </Select>
             </div>
-
-            {(paymentType === "salary" || paymentType === "advance") && (
-              <div className="space-y-2">
-                <Label htmlFor="salary_type">Вид зарплаты</Label>
-                <Select value={salaryType} onValueChange={setSalaryType} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите вид зарплаты" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {memoizedSalaryTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="amount">Сумма</Label>
