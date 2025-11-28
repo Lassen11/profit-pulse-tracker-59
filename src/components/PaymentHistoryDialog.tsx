@@ -107,11 +107,15 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
           .from('department_employees')
           .select('net_salary')
           .eq('id', employee.id)
-          .single();
+          .maybeSingle();
 
         if (fetchError) {
           console.error('Error fetching employee data:', fetchError);
           throw fetchError;
+        }
+
+        if (!currentEmployee) {
+          throw new Error('Сотрудник не найден');
         }
 
         // Восстанавливаем сумму выплаты обратно в net_salary
@@ -126,6 +130,39 @@ export function PaymentHistoryDialog({ open, onOpenChange, employee }: PaymentHi
 
         if (updateError) {
           console.error('Error restoring net_salary:', updateError);
+          throw updateError;
+        }
+      }
+
+      // Если это выплата "Аванс", уменьшаем сумму в поле advance
+      if (payment.payment_type === 'advance' && employee) {
+        const { data: currentEmployee, error: fetchError } = await supabase
+          .from('department_employees')
+          .select('advance')
+          .eq('id', employee.id)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.error('Error fetching employee data:', fetchError);
+          throw fetchError;
+        }
+
+        if (!currentEmployee) {
+          throw new Error('Сотрудник не найден');
+        }
+
+        // Уменьшаем сумму выплаты из advance
+        const reducedAdvance = (currentEmployee.advance || 0) - payment.amount;
+
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            advance: reducedAdvance
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error('Error reducing advance:', updateError);
           throw updateError;
         }
       }
