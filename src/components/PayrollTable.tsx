@@ -171,13 +171,13 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.total_amount || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_white || 0), 0))}
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.white_salary || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_gray || 0), 0))}
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.gray_salary || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.paid_advance || 0), 0))}
+                {formatCurrency(employees.reduce((sum, emp) => sum + (emp.advance || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.ndfl || 0), 0))}
@@ -211,9 +211,9 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 </TableCell>
                 <TableCell>{employee.company}</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(employee.total_amount)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.paid_white || 0)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.paid_gray || 0)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(employee.paid_advance || 0)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.white_salary || 0)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.gray_salary || 0)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(employee.advance || 0)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.ndfl)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.contributions)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(employee.bonus || 0)}</TableCell>
