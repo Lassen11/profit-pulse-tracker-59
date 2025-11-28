@@ -14,9 +14,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Save } from "lucide-react";
+import { Save, Archive } from "lucide-react";
 import { format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Employee {
   id: string;
@@ -24,6 +26,7 @@ interface Employee {
   last_name: string;
   middle_name: string | null;
   position: string | null;
+  is_active: boolean;
 }
 
 interface BonusPoints {
@@ -46,6 +49,7 @@ export function DepartmentBonuses() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -58,7 +62,7 @@ export function DepartmentBonuses() {
 
   useEffect(() => {
     fetchLegalDepartmentEmployees();
-  }, []);
+  }, [showArchived]);
 
   useEffect(() => {
     fetchBonusData();
@@ -98,12 +102,18 @@ export function DepartmentBonuses() {
         return;
       }
 
-      // Get employee profiles
-      const { data: profiles, error: profilesError } = await supabase
+      // Get employee profiles - filter by is_active based on showArchived state
+      let query = supabase
         .from('profiles')
-        .select('id, first_name, last_name, middle_name, position')
-        .in('id', uniqueEmployeeIds)
-        .eq('is_active', true);
+        .select('id, first_name, last_name, middle_name, position, is_active')
+        .in('id', uniqueEmployeeIds);
+
+      // If not showing archived, only get active employees
+      if (!showArchived) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data: profiles, error: profilesError } = await query;
 
       if (profilesError) throw profilesError;
 
@@ -261,6 +271,17 @@ export function DepartmentBonuses() {
         <h2 className="text-2xl font-bold">Премии Юридического департамента</h2>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
+            <Archive className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="show-archived" className="text-sm cursor-pointer">
+              Показать архивных
+            </Label>
+            <Switch
+              id="show-archived"
+              checked={showArchived}
+              onCheckedChange={setShowArchived}
+            />
+          </div>
+          <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Месяц:</span>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-[200px]">
@@ -303,10 +324,15 @@ export function DepartmentBonuses() {
             </TableHeader>
             <TableBody>
               {employees.map((employee) => (
-                <TableRow key={employee.id}>
+                <TableRow key={employee.id} className={!employee.is_active ? "opacity-60" : ""}>
                   <TableCell className="font-medium sticky left-0 bg-background z-10">
                     <div>
-                      <div>{employee.last_name} {employee.first_name} {employee.middle_name}</div>
+                      <div className="flex items-center gap-2">
+                        {employee.last_name} {employee.first_name} {employee.middle_name}
+                        {!employee.is_active && (
+                          <span className="text-xs px-2 py-0.5 bg-muted rounded">Архив</span>
+                        )}
+                      </div>
                       {employee.position && (
                         <div className="text-xs text-muted-foreground">{employee.position}</div>
                       )}
