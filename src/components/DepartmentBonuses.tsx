@@ -14,7 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Save, Archive } from "lucide-react";
+import { Save, Archive, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Switch } from "@/components/ui/switch";
@@ -46,10 +46,15 @@ interface BonusPoints {
 export function DepartmentBonuses() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [bonusData, setBonusData] = useState<Record<string, BonusPoints>>({});
+  const [previousMonthData, setPreviousMonthData] = useState<Record<string, BonusPoints>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [showArchived, setShowArchived] = useState(false);
+  const [pointValue, setPointValue] = useState<number>(() => {
+    const stored = localStorage.getItem('bonus-point-value');
+    return stored ? Number(stored) : 1000;
+  });
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -66,7 +71,12 @@ export function DepartmentBonuses() {
 
   useEffect(() => {
     fetchBonusData();
+    fetchPreviousMonthData();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    localStorage.setItem('bonus-point-value', pointValue.toString());
+  }, [pointValue]);
 
   const fetchLegalDepartmentEmployees = async () => {
     try {
@@ -162,6 +172,42 @@ export function DepartmentBonuses() {
     }
   };
 
+  const fetchPreviousMonthData = async () => {
+    try {
+      const currentDate = new Date(selectedMonth);
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      const previousMonth = format(startOfMonth(currentDate), 'yyyy-MM-dd');
+
+      const { data, error } = await supabase
+        .from('department_bonus_points')
+        .select('*')
+        .eq('month', previousMonth);
+
+      if (error) throw error;
+
+      const bonusMap: Record<string, BonusPoints> = {};
+      data?.forEach(record => {
+        bonusMap[record.employee_id] = {
+          employee_id: record.employee_id,
+          case_category: record.case_category || 0,
+          urgency: record.urgency || 0,
+          assistance: record.assistance || 0,
+          qualification: record.qualification || 0,
+          marketing: record.marketing || 0,
+          crm: record.crm || 0,
+          improvements: record.improvements || 0,
+          overtime: record.overtime || 0,
+          leadership_bonus: record.leadership_bonus || 0,
+          minus_points: record.minus_points || 0,
+        };
+      });
+
+      setPreviousMonthData(bonusMap);
+    } catch (error) {
+      console.error('Error fetching previous month data:', error);
+    }
+  };
+
   const updateBonusPoints = (employeeId: string, field: keyof BonusPoints, value: number) => {
     setBonusData(prev => ({
       ...prev,
@@ -199,6 +245,48 @@ export function DepartmentBonuses() {
       bonus.leadership_bonus -
       bonus.minus_points
     );
+  };
+
+  const calculatePreviousPoints = (employeeId: string): number => {
+    const bonus = previousMonthData[employeeId];
+    if (!bonus) return 0;
+    
+    return (
+      bonus.case_category +
+      bonus.urgency +
+      bonus.assistance +
+      bonus.qualification +
+      bonus.marketing +
+      bonus.crm +
+      bonus.improvements +
+      bonus.overtime +
+      bonus.leadership_bonus -
+      bonus.minus_points
+    );
+  };
+
+  const getPointsChange = (employeeId: string) => {
+    const current = calculateTotalPoints(employeeId);
+    const previous = calculatePreviousPoints(employeeId);
+    
+    if (previous === 0) return null;
+    
+    const change = current - previous;
+    const percentChange = ((change / previous) * 100).toFixed(1);
+    
+    return {
+      change,
+      percentChange: parseFloat(percentChange),
+    };
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
   const getStatistics = () => {
@@ -334,6 +422,21 @@ export function DepartmentBonuses() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Премии Юридического департамента</h2>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="point-value" className="text-sm whitespace-nowrap">
+              Стоимость балла:
+            </Label>
+            <Input
+              id="point-value"
+              type="number"
+              min="0"
+              step="100"
+              value={pointValue}
+              onChange={(e) => setPointValue(Number(e.target.value))}
+              className="w-32"
+            />
+            <span className="text-sm text-muted-foreground">₽</span>
+          </div>
           <div className="flex items-center gap-2">
             <Archive className="h-4 w-4 text-muted-foreground" />
             <Label htmlFor="show-archived" className="text-sm cursor-pointer">
@@ -480,6 +583,8 @@ export function DepartmentBonuses() {
                 <TableHead className="text-center min-w-[150px]">Бонус от Руководства</TableHead>
                 <TableHead className="text-center min-w-[120px]">Минус баллы</TableHead>
                 <TableHead className="text-center min-w-[120px] font-bold">Итого баллов</TableHead>
+                <TableHead className="text-center min-w-[150px] font-bold">Изменение</TableHead>
+                <TableHead className="text-right min-w-[150px] font-bold">Премия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -590,6 +695,40 @@ export function DepartmentBonuses() {
                   </TableCell>
                   <TableCell className="text-center font-bold text-lg">
                     {calculateTotalPoints(employee.id)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {(() => {
+                      const change = getPointsChange(employee.id);
+                      if (!change) return <span className="text-xs text-muted-foreground">Нет данных</span>;
+                      
+                      return (
+                        <div className="flex items-center justify-center gap-1">
+                          {change.change > 0 ? (
+                            <>
+                              <TrendingUp className="h-4 w-4 text-green-500" />
+                              <span className="text-green-500 font-medium">
+                                +{change.percentChange}%
+                              </span>
+                            </>
+                          ) : change.change < 0 ? (
+                            <>
+                              <TrendingDown className="h-4 w-4 text-red-500" />
+                              <span className="text-red-500 font-medium">
+                                {change.percentChange}%
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Minus className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">0%</span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-lg text-primary">
+                    {formatCurrency(calculateTotalPoints(employee.id) * pointValue)}
                   </TableCell>
                 </TableRow>
               ))}
