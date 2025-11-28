@@ -152,6 +152,7 @@ export type Database = {
           employee_id: string
           gray_salary: number | null
           id: string
+          month: string
           ndfl: number | null
           net_salary: number | null
           next_month_bonus: number | null
@@ -171,6 +172,7 @@ export type Database = {
           employee_id: string
           gray_salary?: number | null
           id?: string
+          month: string
           ndfl?: number | null
           net_salary?: number | null
           next_month_bonus?: number | null
@@ -190,6 +192,7 @@ export type Database = {
           employee_id?: string
           gray_salary?: number | null
           id?: string
+          month?: string
           ndfl?: number | null
           net_salary?: number | null
           next_month_bonus?: number | null
@@ -326,6 +329,7 @@ export type Database = {
           created_at: string
           department_employee_id: string
           id: string
+          month: string
           notes: string | null
           payment_date: string
           payment_type: string
@@ -337,6 +341,7 @@ export type Database = {
           created_at?: string
           department_employee_id: string
           id?: string
+          month: string
           notes?: string | null
           payment_date: string
           payment_type: string
@@ -348,6 +353,7 @@ export type Database = {
           created_at?: string
           department_employee_id?: string
           id?: string
+          month?: string
           notes?: string | null
           payment_date?: string
           payment_type?: string

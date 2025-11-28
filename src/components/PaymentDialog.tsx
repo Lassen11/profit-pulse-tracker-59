@@ -143,13 +143,14 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
       const { error: paymentError } = await supabase
         .from('payroll_payments')
         .insert({
-          user_id: user.id,
           department_employee_id: employee.id,
           amount: paymentAmount,
           payment_date: format(paymentDate, 'yyyy-MM-dd'),
           payment_type: paymentType,
           notes: notes,
-          transaction_id: transactionData.id
+          transaction_id: transactionData.id,
+          month: format(paymentDate, 'yyyy-MM-01'),
+          user_id: user.id
         });
 
       if (paymentError) throw paymentError;

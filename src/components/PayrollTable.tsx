@@ -161,6 +161,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
               <TableHead className="text-right min-w-[120px]">Премия сл. мес</TableHead>
               <TableHead className="text-right min-w-[100px]">Стоимость</TableHead>
               <TableHead className="text-right min-w-[100px]">На руки</TableHead>
+              <TableHead className="text-right min-w-[100px]">Выплачено</TableHead>
               <TableHead className="text-right min-w-[150px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
@@ -197,6 +198,9 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
               <TableCell className="text-right">
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.net_salary || 0), 0))}
               </TableCell>
+              <TableCell className="text-right">
+                {formatCurrency(employees.reduce((sum, emp) => sum + ((emp.paid_white || 0) + (emp.paid_gray || 0) + (emp.paid_advance || 0) + (emp.paid_bonus || 0)), 0))}
+              </TableCell>
               <TableCell></TableCell>
             </TableRow>
             {employees.map((employee) => (
@@ -221,6 +225,9 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 <TableCell className="text-right">{formatCurrency(employee.cost)}</TableCell>
                 <TableCell className="text-right">
                   {formatCurrency(employee.net_salary || 0)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatCurrency((employee.paid_white || 0) + (employee.paid_gray || 0) + (employee.paid_advance || 0) + (employee.paid_bonus || 0))}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

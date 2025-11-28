@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DepartmentEmployee } from "@/components/DepartmentCard";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { format } from "date-fns";
 
 interface EmployeeDialogProps {
   open: boolean;
@@ -227,7 +228,10 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
       } else {
         const { error } = await supabase
           .from('department_employees')
-          .insert(employeeData);
+          .insert({
+            ...employeeData,
+            month: format(new Date(), 'yyyy-MM-01')
+          });
 
         if (error) throw error;
 
