@@ -109,7 +109,8 @@ export default function Payroll() {
                 paid_white: 0,
                 paid_gray: 0,
                 paid_advance: 0,
-                paid_bonus: 0
+                paid_bonus: 0,
+                paid_net_salary: 0
               };
             }
             
@@ -126,6 +127,9 @@ export default function Payroll() {
               case 'bonus':
                 acc[payment.department_employee_id].paid_bonus += payment.amount;
                 break;
+              case 'net_salary':
+                acc[payment.department_employee_id].paid_net_salary += payment.amount;
+                break;
             }
             
             return acc;
@@ -137,7 +141,8 @@ export default function Payroll() {
             paid_white: paymentsByEmployee[emp.id]?.paid_white || 0,
             paid_gray: paymentsByEmployee[emp.id]?.paid_gray || 0,
             paid_advance: paymentsByEmployee[emp.id]?.paid_advance || 0,
-            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0
+            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0,
+            paid_net_salary: paymentsByEmployee[emp.id]?.paid_net_salary || 0
           }));
           
           setAllEmployees(employeesWithPayments);
@@ -384,7 +389,7 @@ export default function Payroll() {
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground mb-1">Выплачено</div>
                     <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + ((e.paid_white || 0) + (e.paid_gray || 0) + (e.paid_advance || 0) + (e.paid_bonus || 0)), 0)
+                      allEmployees.reduce((s, e: any) => s + ((e.paid_white || 0) + (e.paid_gray || 0) + (e.paid_advance || 0) + (e.paid_bonus || 0) + (e.paid_net_salary || 0)), 0)
                     )}</div>
                   </div>
                 </div>

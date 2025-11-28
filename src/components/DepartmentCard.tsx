@@ -53,6 +53,7 @@ export interface DepartmentEmployee {
   paid_gray?: number;
   paid_advance?: number;
   paid_bonus?: number;
+  paid_net_salary?: number;
 }
 
 export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardProps) {
@@ -109,7 +110,8 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
                 paid_white: 0,
                 paid_gray: 0,
                 paid_advance: 0,
-                paid_bonus: 0
+                paid_bonus: 0,
+                paid_net_salary: 0
               };
             }
             
@@ -126,10 +128,13 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
               case 'bonus':
                 acc[payment.department_employee_id].paid_bonus += payment.amount;
                 break;
+              case 'net_salary':
+                acc[payment.department_employee_id].paid_net_salary += payment.amount;
+                break;
             }
             
             return acc;
-          }, {} as Record<string, { paid_white: number; paid_gray: number; paid_advance: number; paid_bonus: number }>);
+          }, {} as Record<string, { paid_white: number; paid_gray: number; paid_advance: number; paid_bonus: number; paid_net_salary: number }>);
 
           // Объединяем данные сотрудников с выплатами
           const employeesWithPayments = (data || []).map(emp => ({
@@ -137,7 +142,8 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
             paid_white: paymentsByEmployee[emp.id]?.paid_white || 0,
             paid_gray: paymentsByEmployee[emp.id]?.paid_gray || 0,
             paid_advance: paymentsByEmployee[emp.id]?.paid_advance || 0,
-            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0
+            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0,
+            paid_net_salary: paymentsByEmployee[emp.id]?.paid_net_salary || 0
           }));
 
           setEmployees(employeesWithPayments);

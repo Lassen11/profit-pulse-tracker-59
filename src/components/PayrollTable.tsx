@@ -199,7 +199,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                 {formatCurrency(employees.reduce((sum, emp) => sum + (emp.net_salary || 0), 0))}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(employees.reduce((sum, emp) => sum + ((emp.paid_white || 0) + (emp.paid_gray || 0) + (emp.paid_advance || 0) + (emp.paid_bonus || 0)), 0))}
+                {formatCurrency(employees.reduce((sum, emp) => sum + ((emp.paid_white || 0) + (emp.paid_gray || 0) + (emp.paid_advance || 0) + (emp.paid_bonus || 0) + (emp.paid_net_salary || 0)), 0))}
               </TableCell>
               <TableCell></TableCell>
             </TableRow>
@@ -227,7 +227,7 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
                   {formatCurrency(employee.net_salary || 0)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatCurrency((employee.paid_white || 0) + (employee.paid_gray || 0) + (employee.paid_advance || 0) + (employee.paid_bonus || 0))}
+                  {formatCurrency((employee.paid_white || 0) + (employee.paid_gray || 0) + (employee.paid_advance || 0) + (employee.paid_bonus || 0) + (employee.paid_net_salary || 0))}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
