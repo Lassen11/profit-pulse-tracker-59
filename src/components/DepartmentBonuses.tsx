@@ -58,6 +58,9 @@ export function DepartmentBonuses() {
 
   useEffect(() => {
     fetchLegalDepartmentEmployees();
+  }, []);
+
+  useEffect(() => {
     fetchBonusData();
   }, [selectedMonth]);
 
@@ -79,18 +82,18 @@ export function DepartmentBonuses() {
         return;
       }
 
-      // Get employees from this department
+      // Get all unique employees from this department (across all months)
       const { data: deptEmployees, error: empError } = await supabase
         .from('department_employees')
         .select('employee_id')
-        .eq('department_id', departments.id)
-        .eq('month', selectedMonth);
+        .eq('department_id', departments.id);
 
       if (empError) throw empError;
 
-      const employeeIds = deptEmployees?.map(de => de.employee_id) || [];
+      // Get unique employee IDs
+      const uniqueEmployeeIds = Array.from(new Set(deptEmployees?.map(de => de.employee_id) || []));
 
-      if (employeeIds.length === 0) {
+      if (uniqueEmployeeIds.length === 0) {
         setEmployees([]);
         return;
       }
@@ -99,7 +102,7 @@ export function DepartmentBonuses() {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, middle_name, position')
-        .in('id', employeeIds)
+        .in('id', uniqueEmployeeIds)
         .eq('is_active', true);
 
       if (profilesError) throw profilesError;
