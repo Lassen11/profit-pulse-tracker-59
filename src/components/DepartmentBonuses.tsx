@@ -201,6 +201,70 @@ export function DepartmentBonuses() {
     );
   };
 
+  const getStatistics = () => {
+    const totalPointsByCategory = {
+      case_category: 0,
+      urgency: 0,
+      assistance: 0,
+      qualification: 0,
+      marketing: 0,
+      crm: 0,
+      improvements: 0,
+      overtime: 0,
+      leadership_bonus: 0,
+      minus_points: 0,
+    };
+
+    const employeePoints: Array<{ id: string; name: string; points: number; isActive: boolean }> = [];
+
+    employees.forEach(employee => {
+      const bonus = bonusData[employee.id];
+      if (bonus) {
+        totalPointsByCategory.case_category += bonus.case_category;
+        totalPointsByCategory.urgency += bonus.urgency;
+        totalPointsByCategory.assistance += bonus.assistance;
+        totalPointsByCategory.qualification += bonus.qualification;
+        totalPointsByCategory.marketing += bonus.marketing;
+        totalPointsByCategory.crm += bonus.crm;
+        totalPointsByCategory.improvements += bonus.improvements;
+        totalPointsByCategory.overtime += bonus.overtime;
+        totalPointsByCategory.leadership_bonus += bonus.leadership_bonus;
+        totalPointsByCategory.minus_points += bonus.minus_points;
+      }
+      
+      const totalPoints = calculateTotalPoints(employee.id);
+      employeePoints.push({
+        id: employee.id,
+        name: `${employee.last_name} ${employee.first_name}`,
+        points: totalPoints,
+        isActive: employee.is_active
+      });
+    });
+
+    // Sort by points and get top 3
+    const topEmployees = [...employeePoints]
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 3);
+
+    // Calculate average points (only for employees with data)
+    const employeesWithPoints = employeePoints.filter(emp => emp.points > 0);
+    const averagePoints = employeesWithPoints.length > 0
+      ? employeesWithPoints.reduce((sum, emp) => sum + emp.points, 0) / employeesWithPoints.length
+      : 0;
+
+    // Calculate total points across all categories
+    const totalPoints = Object.values(totalPointsByCategory).reduce((sum, val) => sum + val, 0) - totalPointsByCategory.minus_points;
+
+    return {
+      totalPointsByCategory,
+      topEmployees,
+      averagePoints,
+      totalPoints,
+    };
+  };
+
+  const statistics = getStatistics();
+
   const handleSave = async () => {
     if (!user) return;
     
@@ -302,6 +366,102 @@ export function DepartmentBonuses() {
           </Button>
         </div>
       </div>
+
+      {employees.length > 0 && (
+        <Card className="p-6 mb-4 bg-primary/5">
+          <h3 className="text-lg font-semibold mb-4">Статистика по премиям за {format(new Date(selectedMonth), 'LLLL yyyy', { locale: ru })}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Total Points */}
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">Общая сумма баллов</div>
+              <div className="text-3xl font-bold text-primary">{statistics.totalPoints}</div>
+              <div className="text-xs text-muted-foreground">
+                по всем категориям (минус штрафные)
+              </div>
+            </div>
+
+            {/* Average Points */}
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">Средний балл по отделу</div>
+              <div className="text-3xl font-bold text-primary">
+                {statistics.averagePoints.toFixed(1)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                среди сотрудников с баллами
+              </div>
+            </div>
+
+            {/* Top Employees */}
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground mb-2">Топ-3 сотрудника</div>
+              <div className="space-y-1">
+                {statistics.topEmployees.map((emp, index) => (
+                  <div key={emp.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-primary">{index + 1}.</span>
+                      <span className={!emp.isActive ? "opacity-60" : ""}>
+                        {emp.name}
+                        {!emp.isActive && <span className="ml-1 text-xs">(Архив)</span>}
+                      </span>
+                    </div>
+                    <span className="font-semibold">{emp.points} б.</span>
+                  </div>
+                ))}
+                {statistics.topEmployees.length === 0 && (
+                  <div className="text-xs text-muted-foreground">Нет данных</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Category Breakdown */}
+          <div className="mt-6 pt-6 border-t">
+            <h4 className="text-sm font-semibold mb-3">Распределение по категориям:</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Категория дела:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.case_category}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Срочность:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.urgency}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Содействие:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.assistance}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Повышение квал:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.qualification}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Маркетинг:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.marketing}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">CRM:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.crm}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Улучшения:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.improvements}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Сверхнорма:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.overtime}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Бонус руководства:</span>
+                <span className="font-medium">{statistics.totalPointsByCategory.leadership_bonus}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground text-destructive">Минус баллы:</span>
+                <span className="font-medium text-destructive">-{statistics.totalPointsByCategory.minus_points}</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-4">
         <div className="overflow-x-auto">
