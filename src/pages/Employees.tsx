@@ -24,6 +24,7 @@ interface Profile {
   position: string;
   department: string;
   is_active: boolean;
+  termination_date: string | null;
   created_at: string;
 }
 
@@ -59,7 +60,13 @@ export default function Employees() {
   const [editMiddleName, setEditMiddleName] = useState("");
   const [editPosition, setEditPosition] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
+  const [editTerminationDate, setEditTerminationDate] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
+  
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('all');
+  const [terminationDateFrom, setTerminationDateFrom] = useState("");
+  const [terminationDateTo, setTerminationDateTo] = useState("");
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -340,6 +347,7 @@ export default function Employees() {
     setEditMiddleName(employee.middle_name || "");
     setEditPosition(employee.position || "");
     setEditDepartment(employee.department || "");
+    setEditTerminationDate(employee.termination_date || "");
     setIsEditDialogOpen(true);
     editDialogPersistence.openDialog({ employee });
   };
@@ -359,6 +367,7 @@ export default function Employees() {
           middle_name: editMiddleName || null,
           position: editPosition || null,
           department: editDepartment || null,
+          termination_date: editTerminationDate || null,
         })
         .eq('id', editingEmployee.id);
 
@@ -388,11 +397,21 @@ export default function Employees() {
     setUpdatingStatusId(profileId);
 
     try {
+      const updateData: any = {
+        is_active: !currentStatus
+      };
+      
+      // If archiving (setting to inactive), set termination date to today
+      // If reactivating, clear termination date
+      if (currentStatus) {
+        updateData.termination_date = new Date().toISOString().split('T')[0];
+      } else {
+        updateData.termination_date = null;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          is_active: !currentStatus
-        })
+        .update(updateData)
         .eq('id', profileId);
 
       if (error) throw error;
@@ -415,6 +434,22 @@ export default function Employees() {
       setUpdatingStatusId(null);
     }
   };
+
+  const filteredEmployees = employees.filter(employee => {
+    // Status filter
+    if (statusFilter === 'active' && !employee.is_active) return false;
+    if (statusFilter === 'archived' && employee.is_active) return false;
+    
+    // Termination date filter
+    if (terminationDateFrom && employee.termination_date) {
+      if (employee.termination_date < terminationDateFrom) return false;
+    }
+    if (terminationDateTo && employee.termination_date) {
+      if (employee.termination_date > terminationDateTo) return false;
+    }
+    
+    return true;
+  });
 
   if (!isAdmin) {
     return (
@@ -575,10 +610,77 @@ export default function Employees() {
           <CardHeader>
             <CardTitle>Список сотрудников</CardTitle>
             <CardDescription>
-              Всего сотрудников: {employees.length}
+              Всего сотрудников: {employees.length} | Активных: {employees.filter(e => e.is_active).length} | Архивных: {employees.filter(e => !e.is_active).length}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="flex flex-wrap gap-4 mb-6 pb-4 border-b">
+              <div className="space-y-2">
+                <Label htmlFor="status-filter" className="text-sm font-medium">
+                  Статус
+                </Label>
+                <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                  <SelectTrigger id="status-filter" className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все сотрудники</SelectItem>
+                    <SelectItem value="active">Только активные</SelectItem>
+                    <SelectItem value="archived">Только архивные</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="date-from" className="text-sm font-medium">
+                  Увольнение с
+                </Label>
+                <Input
+                  id="date-from"
+                  type="date"
+                  value={terminationDateFrom}
+                  onChange={(e) => setTerminationDateFrom(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="date-to" className="text-sm font-medium">
+                  Увольнение по
+                </Label>
+                <Input
+                  id="date-to"
+                  type="date"
+                  value={terminationDateTo}
+                  onChange={(e) => setTerminationDateTo(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+
+              {(statusFilter !== 'all' || terminationDateFrom || terminationDateTo) && (
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setStatusFilter('all');
+                      setTerminationDateFrom('');
+                      setTerminationDateTo('');
+                    }}
+                  >
+                    Сбросить фильтры
+                  </Button>
+                </div>
+              )}
+              
+              <div className="flex-1" />
+              
+              <div className="flex items-end">
+                <div className="text-sm text-muted-foreground">
+                  Показано: {filteredEmployees.length} из {employees.length}
+                </div>
+              </div>
+            </div>
             {loading ? (
               <div className="text-center py-8">Загрузка...</div>
             ) : (
@@ -591,12 +693,13 @@ export default function Employees() {
                     <TableHead>Отдел</TableHead>
                     <TableHead>Роль</TableHead>
                     <TableHead>Статус</TableHead>
+                    <TableHead>Дата увольнения</TableHead>
                     <TableHead>Дата регистрации</TableHead>
                     <TableHead>Действия</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {employees.map((employee) => (
+                  {filteredEmployees.map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">
                         {employee.last_name} {employee.first_name} {employee.middle_name || ''}
@@ -672,6 +775,37 @@ export default function Employees() {
                             disabled={updatingStatusId === employee.id}
                           />
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {employee.termination_date ? (
+                          <div className="text-sm">
+                            <div className="font-medium">
+                              {new Date(employee.termination_date).toLocaleDateString('ru-RU')}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {(() => {
+                                const termDate = new Date(employee.termination_date);
+                                const today = new Date();
+                                const diffTime = today.getTime() - termDate.getTime();
+                                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                                
+                                if (diffDays === 0) return 'Сегодня';
+                                if (diffDays === 1) return '1 день назад';
+                                if (diffDays < 30) return `${diffDays} дн. назад`;
+                                
+                                const diffMonths = Math.floor(diffDays / 30);
+                                if (diffMonths === 1) return '1 месяц назад';
+                                if (diffMonths < 12) return `${diffMonths} мес. назад`;
+                                
+                                const diffYears = Math.floor(diffMonths / 12);
+                                if (diffYears === 1) return '1 год назад';
+                                return `${diffYears} лет назад`;
+                              })()}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {new Date(employee.created_at).toLocaleDateString('ru-RU')}
@@ -777,6 +911,19 @@ export default function Employees() {
                     placeholder="Продажи"
                   />
                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-termination-date">Дата увольнения</Label>
+                <Input
+                  id="edit-termination-date"
+                  type="date"
+                  value={editTerminationDate}
+                  onChange={(e) => setEditTerminationDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Оставьте пустым для активных сотрудников
+                </p>
               </div>
               
               <div className="flex gap-3 pt-4">

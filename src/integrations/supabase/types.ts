@@ -454,6 +454,7 @@ export type Database = {
           middle_name: string | null
           phone: string | null
           position: string | null
+          termination_date: string | null
           updated_at: string
           user_id: string
         }
@@ -468,6 +469,7 @@ export type Database = {
           middle_name?: string | null
           phone?: string | null
           position?: string | null
+          termination_date?: string | null
           updated_at?: string
           user_id: string
         }
@@ -482,6 +484,7 @@ export type Database = {
           middle_name?: string | null
           phone?: string | null
           position?: string | null
+          termination_date?: string | null
           updated_at?: string
           user_id?: string
         }
