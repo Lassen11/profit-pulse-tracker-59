@@ -140,6 +140,44 @@ export type Database = {
         }
         Relationships: []
       }
+      department_bonus_budget: {
+        Row: {
+          created_at: string | null
+          department_id: string
+          id: string
+          month: string
+          total_budget: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department_id: string
+          id?: string
+          month: string
+          total_budget?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string
+          id?: string
+          month?: string
+          total_budget?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_bonus_budget_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_bonus_points: {
         Row: {
           assistance: number
