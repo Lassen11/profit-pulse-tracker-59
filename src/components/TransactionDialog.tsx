@@ -72,19 +72,12 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   const { user } = useAuth();
   const [existingClient, setExistingClient] = useState<Transaction | null>(null);
   const [salesEmployees, setSalesEmployees] = useState<{ id: string; name: string }[]>([]);
-  const [legalDepartmentEmployees, setLegalDepartmentEmployees] = useState<{ id: string; name: string }[]>([]);
-  const [selectedLegalEmployees, setSelectedLegalEmployees] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('selectedLegalEmployees');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
   const [legalBonusPercent, setLegalBonusPercent] = useState<string>(() => {
     const saved = localStorage.getItem('legalBonusPercent');
     return saved || '4';
   });
+  const [additionalBonusPercent, setAdditionalBonusPercent] = useState<string>('3');
+  const [enableAdditionalBonus, setEnableAdditionalBonus] = useState(false);
   const [accountOptions, setAccountOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
@@ -218,38 +211,14 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     }
   }, []);
 
-  const fetchLegalDepartmentEmployees = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, middle_name')
-        .eq('department', 'Юридический департамент')
-        .eq('is_active', true);
-
-      if (error) throw error;
-
-      const employees = data?.map(emp => ({
-        id: emp.id,
-        name: `${emp.last_name} ${emp.first_name} ${emp.middle_name || ''}`
-      })) || [];
-
-      setLegalDepartmentEmployees(employees);
-    } catch (error) {
-      console.error('Error fetching legal department employees:', error);
-    }
-  }, []);
-
   useEffect(() => {
     if (open) {
       fetchAccounts();
       if (formData.type === 'income' && formData.category === 'Продажи') {
         fetchSalesEmployees();
       }
-      if (formData.type === 'income' && formData.company === 'Дело Бизнеса') {
-        fetchLegalDepartmentEmployees();
-      }
     }
-  }, [open, fetchAccounts, fetchSalesEmployees, fetchLegalDepartmentEmployees, formData.type, formData.category, formData.company]);
+  }, [open, fetchAccounts, fetchSalesEmployees, formData.type, formData.category]);
 
   // Сохраняем процент премии в localStorage при изменении
   useEffect(() => {
@@ -257,35 +226,6 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       localStorage.setItem('legalBonusPercent', legalBonusPercent);
     }
   }, [legalBonusPercent]);
-
-  // Сохраняем выбранных сотрудников в localStorage при изменении
-  useEffect(() => {
-    localStorage.setItem('selectedLegalEmployees', JSON.stringify(selectedLegalEmployees));
-  }, [selectedLegalEmployees]);
-
-  // Применяем сохраненные выборы сотрудников при загрузке списка
-  useEffect(() => {
-    if (legalDepartmentEmployees.length > 0) {
-      try {
-        const saved = localStorage.getItem('selectedLegalEmployees');
-        if (saved) {
-          const savedSelections = JSON.parse(saved);
-          // Применяем только для тех ID, которые существуют в текущем списке
-          const validSelections: Record<string, boolean> = {};
-          legalDepartmentEmployees.forEach(emp => {
-            if (savedSelections[emp.id] !== undefined) {
-              validSelections[emp.id] = savedSelections[emp.id];
-            }
-          });
-          if (Object.keys(validSelections).length > 0) {
-            setSelectedLegalEmployees(validSelections);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading saved legal employees:', error);
-      }
-    }
-  }, [legalDepartmentEmployees]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = useCallback(async (clientName: string) => {
@@ -376,41 +316,70 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
     }
 
-    // Создаем записи для юридического департамента если это доход в Дело Бизнеса
+    // Начисляем премии в фонд юридического департамента если это доход в Дело Бизнеса
     if (formData.type === 'income' && formData.company === 'Дело Бизнеса' && user) {
-      const selectedEmployeeIds = Object.entries(selectedLegalEmployees)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([id]) => id);
+      try {
+        // Находим ID юридического департамента
+        const { data: deptData, error: deptError } = await supabase
+          .from('departments')
+          .select('id')
+          .eq('name', 'Юридический департамент')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (selectedEmployeeIds.length > 0) {
-        try {
+        if (deptError) {
+          console.error('Error finding legal department:', deptError);
+        } else if (deptData) {
           const amount = parseFloat(formData.amount);
+          const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+          
+          // Рассчитываем общую сумму премии
+          let totalBonusToAdd = 0;
+          
+          // Основная премия
           const bonusPercentValue = parseFloat(legalBonusPercent) || 0;
-          const totalBonus = amount * (bonusPercentValue / 100);
-          const bonusPerEmployee = totalBonus / selectedEmployeeIds.length;
-
-          const salesRecords = selectedEmployeeIds.map(employeeId => ({
-            user_id: user.id,
-            employee_id: employeeId,
-            client_name: formData.organizationName || '',
-            payment_amount: amount,
-            contract_amount: 0,
-            city: '',
-            lead_source: 'Дело Бизнеса',
-            payment_date: formData.date,
-            manager_bonus: bonusPerEmployee
-          }));
-
-          const { error: salesError } = await supabase
-            .from('sales')
-            .insert(salesRecords);
-
-          if (salesError) {
-            console.error('Error creating legal department sales records:', salesError);
+          if (bonusPercentValue > 0) {
+            totalBonusToAdd += amount * (bonusPercentValue / 100);
           }
-        } catch (error) {
-          console.error('Error creating legal department sales records:', error);
+          
+          // Дополнительная премия
+          if (enableAdditionalBonus) {
+            const additionalBonusValue = parseFloat(additionalBonusPercent) || 0;
+            if (additionalBonusValue > 0) {
+              totalBonusToAdd += amount * (additionalBonusValue / 100);
+            }
+          }
+
+          if (totalBonusToAdd > 0) {
+            // Получаем текущий бюджет
+            const { data: currentBudget } = await supabase
+              .from('department_bonus_budget')
+              .select('total_budget')
+              .eq('department_id', deptData.id)
+              .eq('month', currentMonth)
+              .maybeSingle();
+
+            const newTotalBudget = (currentBudget?.total_budget || 0) + totalBonusToAdd;
+
+            // Обновляем или создаем запись бюджета
+            const { error: budgetError } = await supabase
+              .from('department_bonus_budget')
+              .upsert({
+                department_id: deptData.id,
+                month: currentMonth,
+                total_budget: newTotalBudget,
+                user_id: user.id
+              }, {
+                onConflict: 'department_id,month'
+              });
+
+            if (budgetError) {
+              console.error('Error updating department bonus budget:', budgetError);
+            }
+          }
         }
+      } catch (error) {
+        console.error('Error processing legal department bonus:', error);
       }
     }
 
@@ -672,56 +641,77 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               </div>
             )}
 
-            {formData.company === 'Дело Бизнеса' && formData.type === 'income' && legalDepartmentEmployees.length > 0 && (
+            {formData.company === 'Дело Бизнеса' && formData.type === 'income' && (
               <div className="col-span-2 space-y-3 p-4 border rounded-lg bg-muted/20">
-                <div className="flex items-center justify-between gap-4">
-                  <Label className="text-sm font-medium">
-                    Распределить премию для Юридического департамента
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                      value={legalBonusPercent}
-                      onChange={(e) => setLegalBonusPercent(e.target.value)}
-                      className="w-20 h-8 text-sm"
-                      placeholder="4"
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {legalDepartmentEmployees.map((employee) => (
-                    <div key={employee.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`legal-${employee.id}`}
-                        checked={selectedLegalEmployees[employee.id] || false}
-                        onCheckedChange={(checked) => 
-                          setSelectedLegalEmployees(prev => ({
-                            ...prev,
-                            [employee.id]: checked === true
-                          }))
-                        }
+                <Label className="text-sm font-medium mb-3 block">
+                  Премии для Юридического департамента
+                </Label>
+                
+                <div className="space-y-3">
+                  {/* Основная премия */}
+                  <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
+                    <Label className="text-sm">
+                      Основная премия
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={legalBonusPercent}
+                        onChange={(e) => setLegalBonusPercent(e.target.value)}
+                        className="w-20 h-8 text-sm"
+                        placeholder="4"
                       />
-                      <Label 
-                        htmlFor={`legal-${employee.id}`} 
-                        className="cursor-pointer text-sm font-normal"
-                      >
-                        {employee.name}
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+
+                  {/* Дополнительная премия */}
+                  <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="enableAdditionalBonus"
+                        checked={enableAdditionalBonus}
+                        onCheckedChange={(checked) => setEnableAdditionalBonus(checked === true)}
+                      />
+                      <Label htmlFor="enableAdditionalBonus" className="text-sm cursor-pointer">
+                        Дополнительная премия
                       </Label>
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={additionalBonusPercent}
+                        onChange={(e) => setAdditionalBonusPercent(e.target.value)}
+                        className="w-20 h-8 text-sm"
+                        placeholder="3"
+                        disabled={!enableAdditionalBonus}
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+
+                  {/* Итоговая сумма */}
+                  {formData.amount && (parseFloat(legalBonusPercent) > 0 || (enableAdditionalBonus && parseFloat(additionalBonusPercent) > 0)) && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        Сумма премии в фонд: <span className="font-medium text-foreground">
+                          {(() => {
+                            const amount = parseFloat(formData.amount);
+                            const mainBonus = amount * (parseFloat(legalBonusPercent) / 100);
+                            const additionalBonus = enableAdditionalBonus ? amount * (parseFloat(additionalBonusPercent) / 100) : 0;
+                            return (mainBonus + additionalBonus).toFixed(2);
+                          })()} ₽
+                        </span>
+                      </p>
+                    </div>
+                  )}
                 </div>
-                {Object.values(selectedLegalEmployees).some(v => v) && formData.amount && legalBonusPercent && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Премия на каждого: {(
-                      (parseFloat(formData.amount) * (parseFloat(legalBonusPercent) / 100)) / 
-                      Object.values(selectedLegalEmployees).filter(v => v).length
-                    ).toFixed(2)} ₽
-                  </p>
-                )}
               </div>
             )}
             
