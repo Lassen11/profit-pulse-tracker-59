@@ -184,6 +184,36 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
         }
       }
 
+      // If payment type is "advance" (Аванс), decrease the advance field
+      if (paymentType === 'advance') {
+        // Get current employee data
+        const { data: currentEmployee, error: fetchError } = await supabase
+          .from('department_employees')
+          .select('advance')
+          .eq('id', employee.id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching employee data:', fetchError);
+          throw fetchError;
+        }
+
+        // Decrease advance by payment amount
+        const newAdvance = (currentEmployee.advance || 0) - paymentAmount;
+
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            advance: newAdvance
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error('Error updating employee advance:', updateError);
+          throw updateError;
+        }
+      }
+
       toast({
         title: "Выплата проведена",
         description: `Выплата в размере ${new Intl.NumberFormat('ru-RU', {
