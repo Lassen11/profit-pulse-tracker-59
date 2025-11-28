@@ -154,9 +154,9 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
       if (paymentError) throw paymentError;
 
-      // If payment type is "net_salary" (На руки), decrease the net_salary field
+      // Обновляем поля сотрудника в зависимости от типа выплаты
       if (paymentType === 'net_salary') {
-        // Get current employee data
+        // Тип "На руки" — уменьшаем поле net_salary
         const { data: currentEmployee, error: fetchError } = await supabase
           .from('department_employees')
           .select('net_salary')
@@ -168,7 +168,6 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           throw fetchError;
         }
 
-        // Decrease net_salary by payment amount
         const newNetSalary = (currentEmployee.net_salary || 0) - paymentAmount;
 
         const { error: updateError } = await supabase
@@ -180,6 +179,32 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
         if (updateError) {
           console.error('Error updating employee net_salary:', updateError);
+          throw updateError;
+        }
+      } else if (paymentType === 'advance') {
+        // Тип "Аванс" — увеличиваем поле advance
+        const { data: currentEmployee, error: fetchError } = await supabase
+          .from('department_employees')
+          .select('advance')
+          .eq('id', employee.id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching employee advance:', fetchError);
+          throw fetchError;
+        }
+
+        const newAdvance = (currentEmployee.advance || 0) + paymentAmount;
+
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            advance: newAdvance
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error('Error updating employee advance:', updateError);
           throw updateError;
         }
       }
