@@ -66,47 +66,6 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     enabled: open && !employee
   });
 
-  useEffect(() => {
-    if (open) {
-      if (employee) {
-        // Сначала устанавливаем данные редактируемого сотрудника
-        setSelectedEmployeeId(employee.employee_id);
-        setSelectedCompany(employee.company || defaultCompany);
-        setWhiteSalary(employee.white_salary.toString());
-        setGraySalary(employee.gray_salary.toString());
-        setAdvance(employee.advance.toString());
-        setNdfl(employee.ndfl.toString());
-        setContributions(employee.contributions.toString());
-        setBonus(employee.bonus.toString());
-        setNextMonthBonus(employee.next_month_bonus.toString());
-        setCost(employee.cost.toString());
-        setNetSalary(employee.net_salary.toString());
-        setTotalAmount(employee.total_amount.toString());
-      } else {
-        // Пытаемся восстановить сохраненные значения
-        const restored = restoreValues();
-        if (restored) {
-          setSelectedEmployeeId(restored.selectedEmployeeId || "");
-          setSelectedCompany(restored.selectedCompany || defaultCompany);
-          setWhiteSalary(restored.whiteSalary || "0");
-          setGraySalary(restored.graySalary || "0");
-          setAdvance(restored.advance || "0");
-          setNdfl(restored.ndfl || "0");
-          setContributions(restored.contributions || "0");
-          setBonus(restored.bonus || "0");
-          setNextMonthBonus(restored.nextMonthBonus || "0");
-          setCost(restored.cost || "0");
-          setNetSalary(restored.netSalary || "0");
-          setTotalAmount(restored.totalAmount || "0");
-        } else {
-          resetForm();
-        }
-      }
-      // Загружаем профили после установки состояния
-      fetchProfiles();
-    }
-  }, [open, employee, defaultCompany]);
-
   const resetForm = useCallback(() => {
     setSelectedEmployeeId("");
     setSelectedCompany(defaultCompany);
@@ -161,12 +120,20 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         variant: "destructive"
       });
     }
-  }, [user, employee, toast]);
+  }, [employee, toast]);
 
+  // Загружаем профили при открытии диалога ДО установки значений
   useEffect(() => {
     if (open) {
+      fetchProfiles();
+    }
+  }, [open, fetchProfiles]);
+
+  // Устанавливаем значения формы после загрузки профилей
+  useEffect(() => {
+    if (open && profiles.length > 0) {
       if (employee) {
-        // Сначала устанавливаем данные редактируемого сотрудника
+        // Устанавливаем данные редактируемого сотрудника
         setSelectedEmployeeId(employee.employee_id);
         setSelectedCompany(employee.company || defaultCompany);
         setWhiteSalary(employee.white_salary.toString());
@@ -199,10 +166,8 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
           resetForm();
         }
       }
-      // Загружаем профили после установки состояния
-      fetchProfiles();
     }
-  }, [open, employee, defaultCompany, fetchProfiles, resetForm, restoreValues]);
+  }, [open, profiles, employee, defaultCompany, resetForm, restoreValues]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,6 +267,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
             <div className="space-y-2">
               <Label htmlFor="employee">Сотрудник</Label>
               <Select
+                key={`employee-select-${employee?.id || 'new'}-${selectedEmployeeId}`}
                 value={selectedEmployeeId}
                 onValueChange={setSelectedEmployeeId}
                 required
