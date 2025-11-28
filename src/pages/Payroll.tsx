@@ -13,6 +13,7 @@ import { DepartmentCard } from "@/components/DepartmentCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PayrollAnalytics } from "@/components/PayrollAnalytics";
 import { PayrollSales } from "@/components/PayrollSales";
+import { DepartmentBonuses } from "@/components/DepartmentBonuses";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -315,9 +316,10 @@ export default function Payroll() {
         </div>
 
         <Tabs defaultValue="departments" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="departments">ФОТ</TabsTrigger>
             <TabsTrigger value="analytics">Аналитика</TabsTrigger>
+            <TabsTrigger value="bonuses">Премии отделов</TabsTrigger>
             <TabsTrigger value="sales">Продажи</TabsTrigger>
           </TabsList>
 
@@ -434,6 +436,10 @@ export default function Payroll() {
 
           <TabsContent value="analytics">
             <PayrollAnalytics />
+          </TabsContent>
+
+          <TabsContent value="bonuses">
+            <DepartmentBonuses />
           </TabsContent>
 
           <TabsContent value="sales">

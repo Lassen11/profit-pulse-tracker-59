@@ -140,6 +140,71 @@ export type Database = {
         }
         Relationships: []
       }
+      department_bonus_points: {
+        Row: {
+          assistance: number
+          case_category: number
+          created_at: string
+          crm: number
+          employee_id: string
+          id: string
+          improvements: number
+          leadership_bonus: number
+          marketing: number
+          minus_points: number
+          month: string
+          overtime: number
+          qualification: number
+          updated_at: string
+          urgency: number
+          user_id: string
+        }
+        Insert: {
+          assistance?: number
+          case_category?: number
+          created_at?: string
+          crm?: number
+          employee_id: string
+          id?: string
+          improvements?: number
+          leadership_bonus?: number
+          marketing?: number
+          minus_points?: number
+          month: string
+          overtime?: number
+          qualification?: number
+          updated_at?: string
+          urgency?: number
+          user_id: string
+        }
+        Update: {
+          assistance?: number
+          case_category?: number
+          created_at?: string
+          crm?: number
+          employee_id?: string
+          id?: string
+          improvements?: number
+          leadership_bonus?: number
+          marketing?: number
+          minus_points?: number
+          month?: string
+          overtime?: number
+          qualification?: number
+          updated_at?: string
+          urgency?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_bonus_points_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       department_employees: {
         Row: {
           advance: number | null
