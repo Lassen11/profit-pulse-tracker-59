@@ -544,6 +544,7 @@ export default function Payroll() {
                     department={department}
                     onEdit={handleEditDepartment}
                     onDelete={handleDeleteDepartment}
+                    selectedMonth={selectedMonth}
                   />
                 ))}
               </div>
