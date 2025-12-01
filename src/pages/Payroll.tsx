@@ -277,10 +277,13 @@ export default function Payroll() {
 
   const fetchDepartments = async () => {
     try {
+      if (!user) return;
+      
       setLoading(true);
       const { data, error } = await supabase
         .from('departments')
         .select('*')
+        .eq('user_id', user.id)
         .order('name', { ascending: true });
 
       if (error) throw error;
