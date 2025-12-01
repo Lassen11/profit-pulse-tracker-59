@@ -68,8 +68,9 @@ export default function Payroll() {
       fetchAllEmployees();
     } else if (isDemo) {
       // Load demo data
-      import('@/lib/demoData').then(({ demoDepartments }) => {
+      import('@/lib/demoData').then(({ demoDepartments, demoDepartmentEmployees }) => {
         setDepartments(demoDepartments as any);
+        setAllEmployees(demoDepartmentEmployees as any);
         setLoading(false);
       });
     }
