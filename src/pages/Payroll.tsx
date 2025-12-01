@@ -178,6 +178,31 @@ export default function Payroll() {
 
       if (deptError) throw deptError;
 
+      // Fetch previous month records to carry forward white_salary, gray_salary, ndfl, contributions
+      const previousMonth = new Date(selectedMonth);
+      previousMonth.setMonth(previousMonth.getMonth() - 1);
+      const previousMonthStr = format(previousMonth, 'yyyy-MM-dd');
+
+      const { data: previousMonthData, error: prevError } = await supabase
+        .from('department_employees')
+        .select('employee_id, white_salary, gray_salary, ndfl, contributions')
+        .eq('month', previousMonthStr);
+
+      if (prevError) throw prevError;
+
+      // Create a map of previous month data by employee_id
+      const previousMonthMap = new Map(
+        (previousMonthData || []).map(record => [
+          record.employee_id,
+          {
+            white_salary: record.white_salary || 0,
+            gray_salary: record.gray_salary || 0,
+            ndfl: record.ndfl || 0,
+            contributions: record.contributions || 0
+          }
+        ])
+      );
+
       // Create a map of employee records by employee_id
       const deptEmployeesMap = new Map(
         (departmentEmployeesData || []).map(de => [de.employee_id, de])
@@ -233,6 +258,7 @@ export default function Payroll() {
       const combinedData = allProfiles.map(profile => {
         const deptRecord = deptEmployeesMap.get(profile.id);
         const payments = deptRecord ? paymentsByEmployee[deptRecord.id] || {} : {};
+        const previousData = previousMonthMap.get(profile.id);
 
         return {
           id: deptRecord?.id || `temp-${profile.id}`,
@@ -241,13 +267,13 @@ export default function Payroll() {
           user_id: user.id,
           month: selectedMonth,
           company: deptRecord?.company || 'Спасение',
-          white_salary: deptRecord?.white_salary || 0,
-          gray_salary: deptRecord?.gray_salary || 0,
+          white_salary: deptRecord?.white_salary || previousData?.white_salary || 0,
+          gray_salary: deptRecord?.gray_salary || previousData?.gray_salary || 0,
           advance: deptRecord?.advance || 0,
           bonus: deptRecord?.bonus || 0,
           next_month_bonus: deptRecord?.next_month_bonus || 0,
-          ndfl: deptRecord?.ndfl || 0,
-          contributions: deptRecord?.contributions || 0,
+          ndfl: deptRecord?.ndfl || previousData?.ndfl || 0,
+          contributions: deptRecord?.contributions || previousData?.contributions || 0,
           net_salary: deptRecord?.net_salary || 0,
           total_amount: deptRecord?.total_amount || 0,
           cost: deptRecord?.cost || 0,
