@@ -7,7 +7,7 @@ import { EmployeeDialog } from "@/components/EmployeeDialog";
 import { PayrollTable } from "@/components/PayrollTable";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format, startOfMonth } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,7 @@ interface DepartmentCardProps {
   department: Department;
   onEdit: (department: Department) => void;
   onDelete: (id: string) => void;
+  selectedMonth: string;
 }
 
 export interface DepartmentEmployee {
@@ -56,55 +57,66 @@ export interface DepartmentEmployee {
   paid_net_salary?: number;
 }
 
-export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardProps) {
+export function DepartmentCard({ department, onEdit, onDelete, selectedMonth }: DepartmentCardProps) {
   const [employees, setEmployees] = useState<DepartmentEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<DepartmentEmployee | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchEmployees();
-  }, [department.id]);
+  }, [department.id, department.name, selectedMonth, user?.id]);
 
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      // Get current month
-      const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-      
-      const { data, error } = await supabase
+
+      // 1. Получаем всех активных сотрудников этого отдела (статично, не зависит от месяца)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('department', department.name)
+        .eq('is_active', true)
+        .order('last_name', { ascending: true });
+
+      if (profilesError) throw profilesError;
+
+      if (!profilesData || profilesData.length === 0) {
+        setEmployees([]);
+        return;
+      }
+
+      // 2. Получаем записи department_employees для выбранного месяца
+      const { data: deptData, error: deptError } = await supabase
         .from('department_employees')
-        .select(`
-          *,
-          profiles:employee_id (
-            first_name,
-            last_name,
-            position
-          )
-        `)
+        .select('*')
         .eq('department_id', department.id)
-        .eq('month', currentMonth);
+        .eq('month', selectedMonth);
 
-      if (error) throw error;
+      if (deptError) throw deptError;
 
-      // Загружаем выплаты для всех сотрудников
-      const employeeIds = data?.map(emp => emp.id) || [];
-      
-      if (employeeIds.length > 0) {
-        const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+      const deptByEmployeeId = new Map(
+        (deptData || []).map((de: any) => [de.employee_id, de])
+      );
+
+      // 3. Загружаем выплаты для всех найденных записей department_employees
+      const deptEmployeeIds = (deptData || []).map((de: any) => de.id);
+
+      let paymentsByEmployee: Record<string, any> = {};
+      if (deptEmployeeIds.length > 0) {
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payroll_payments')
           .select('department_employee_id, amount, payment_type')
-          .in('department_employee_id', employeeIds)
-          .eq('month', currentMonth);
+          .in('department_employee_id', deptEmployeeIds)
+          .eq('month', selectedMonth);
 
         if (paymentsError) {
           console.error('Error fetching payments:', paymentsError);
-        } else {
-          // Агрегируем выплаты по типу для каждого сотрудника
-          const paymentsByEmployee = (paymentsData || []).reduce((acc, payment) => {
+        } else if (paymentsData) {
+          paymentsByEmployee = paymentsData.reduce((acc: Record<string, any>, payment: any) => {
             if (!acc[payment.department_employee_id]) {
               acc[payment.department_employee_id] = {
                 paid_white: 0,
@@ -114,7 +126,7 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
                 paid_net_salary: 0
               };
             }
-            
+
             switch (payment.payment_type) {
               case 'white':
                 acc[payment.department_employee_id].paid_white += payment.amount;
@@ -132,26 +144,49 @@ export function DepartmentCard({ department, onEdit, onDelete }: DepartmentCardP
                 acc[payment.department_employee_id].paid_net_salary += payment.amount;
                 break;
             }
-            
+
             return acc;
-          }, {} as Record<string, { paid_white: number; paid_gray: number; paid_advance: number; paid_bonus: number; paid_net_salary: number }>);
-
-          // Объединяем данные сотрудников с выплатами
-          const employeesWithPayments = (data || []).map(emp => ({
-            ...emp,
-            paid_white: paymentsByEmployee[emp.id]?.paid_white || 0,
-            paid_gray: paymentsByEmployee[emp.id]?.paid_gray || 0,
-            paid_advance: paymentsByEmployee[emp.id]?.paid_advance || 0,
-            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0,
-            paid_net_salary: paymentsByEmployee[emp.id]?.paid_net_salary || 0
-          }));
-
-          setEmployees(employeesWithPayments);
-          return;
+          }, {} as Record<string, any>);
         }
       }
 
-      setEmployees(data || []);
+      // 4. Объединяем данные: статичный список сотрудников + данные по месяцу
+      const combinedEmployees: DepartmentEmployee[] = profilesData.map((profile: any) => {
+        const deptRecord = deptByEmployeeId.get(profile.id);
+        const payments = deptRecord ? paymentsByEmployee[deptRecord.id] || {} : {};
+
+        return {
+          id: deptRecord?.id || `temp-${profile.id}`,
+          department_id: department.id,
+          employee_id: profile.id,
+          white_salary: deptRecord?.white_salary || 0,
+          gray_salary: deptRecord?.gray_salary || 0,
+          advance: deptRecord?.advance || 0,
+          ndfl: deptRecord?.ndfl || 0,
+          contributions: deptRecord?.contributions || 0,
+          bonus: deptRecord?.bonus || 0,
+          next_month_bonus: deptRecord?.next_month_bonus || 0,
+          cost: deptRecord?.cost || 0,
+          net_salary: deptRecord?.net_salary || 0,
+          total_amount: deptRecord?.total_amount || 0,
+          company: deptRecord?.company || (department.project_name || "Спасение"),
+          created_at: deptRecord?.created_at || new Date().toISOString(),
+          updated_at: deptRecord?.updated_at || new Date().toISOString(),
+          user_id: deptRecord?.user_id || (user?.id || ""),
+          profiles: {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            position: profile.position,
+          },
+          paid_white: payments.paid_white || 0,
+          paid_gray: payments.paid_gray || 0,
+          paid_advance: payments.paid_advance || 0,
+          paid_bonus: payments.paid_bonus || 0,
+          paid_net_salary: payments.paid_net_salary || 0,
+        };
+      });
+
+      setEmployees(combinedEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast({
