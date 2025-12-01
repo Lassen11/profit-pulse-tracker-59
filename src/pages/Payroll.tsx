@@ -153,33 +153,50 @@ export default function Payroll() {
 
   const fetchAllEmployees = async () => {
     try {
-      const { data, error } = await supabase
+      if (!user) return;
+
+      // Fetch all active employees first
+      const { data: allProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('last_name', { ascending: true });
+
+      if (profilesError) throw profilesError;
+
+      if (!allProfiles || allProfiles.length === 0) {
+        setAllEmployees([]);
+        return;
+      }
+
+      // Fetch department_employees records for the selected month
+      const { data: departmentEmployeesData, error: deptError } = await supabase
         .from('department_employees')
-        .select(`
-          *,
-          profiles:employee_id (
-            first_name,
-            last_name,
-            position
-          )
-        `)
+        .select('*')
+        .eq('user_id', user.id)
         .eq('month', selectedMonth);
 
-      if (error) throw error;
+      if (deptError) throw deptError;
 
-      // Загружаем выплаты для всех сотрудников
-      const employeeIds = data?.map(emp => emp.id) || [];
+      // Create a map of employee records by employee_id
+      const deptEmployeesMap = new Map(
+        (departmentEmployeesData || []).map(de => [de.employee_id, de])
+      );
+
+      // Fetch payments for existing department_employee records
+      const deptEmployeeIds = (departmentEmployeesData || []).map(de => de.id);
       
-      if (employeeIds.length > 0) {
+      let paymentsByEmployee: Record<string, any> = {};
+      if (deptEmployeeIds.length > 0) {
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payroll_payments')
           .select('department_employee_id, amount, payment_type')
-          .in('department_employee_id', employeeIds)
+          .in('department_employee_id', deptEmployeeIds)
           .eq('month', selectedMonth);
 
         if (!paymentsError && paymentsData) {
-          // Агрегируем выплаты по типу для каждого сотрудника
-          const paymentsByEmployee = paymentsData.reduce((acc, payment) => {
+          paymentsByEmployee = paymentsData.reduce((acc, payment) => {
             if (!acc[payment.department_employee_id]) {
               acc[payment.department_employee_id] = {
                 paid_white: 0,
@@ -210,24 +227,48 @@ export default function Payroll() {
             
             return acc;
           }, {} as Record<string, any>);
-
-          // Объединяем данные сотрудников с выплатами
-          const employeesWithPayments = (data || []).map(emp => ({
-            ...emp,
-            paid_white: paymentsByEmployee[emp.id]?.paid_white || 0,
-            paid_gray: paymentsByEmployee[emp.id]?.paid_gray || 0,
-            paid_advance: paymentsByEmployee[emp.id]?.paid_advance || 0,
-            paid_bonus: paymentsByEmployee[emp.id]?.paid_bonus || 0,
-            paid_net_salary: paymentsByEmployee[emp.id]?.paid_net_salary || 0
-          }));
-          
-          setAllEmployees(employeesWithPayments);
-        } else {
-          setAllEmployees(data || []);
         }
-      } else {
-        setAllEmployees([]);
       }
+
+      // Combine all data: all employees with their department data for selected month
+      const combinedData = allProfiles.map(profile => {
+        const deptRecord = deptEmployeesMap.get(profile.id);
+        const payments = deptRecord ? paymentsByEmployee[deptRecord.id] || {} : {};
+
+        return {
+          id: deptRecord?.id || `temp-${profile.id}`,
+          employee_id: profile.id,
+          department_id: deptRecord?.department_id || null,
+          user_id: user.id,
+          month: selectedMonth,
+          company: deptRecord?.company || 'Спасение',
+          white_salary: deptRecord?.white_salary || 0,
+          gray_salary: deptRecord?.gray_salary || 0,
+          advance: deptRecord?.advance || 0,
+          bonus: deptRecord?.bonus || 0,
+          next_month_bonus: deptRecord?.next_month_bonus || 0,
+          ndfl: deptRecord?.ndfl || 0,
+          contributions: deptRecord?.contributions || 0,
+          net_salary: deptRecord?.net_salary || 0,
+          total_amount: deptRecord?.total_amount || 0,
+          cost: deptRecord?.cost || 0,
+          profiles: {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            middle_name: profile.middle_name,
+            position: profile.position
+          },
+          paid_white: payments.paid_white || 0,
+          paid_gray: payments.paid_gray || 0,
+          paid_advance: payments.paid_advance || 0,
+          paid_bonus: payments.paid_bonus || 0,
+          paid_net_salary: payments.paid_net_salary || 0,
+          created_at: deptRecord?.created_at || new Date().toISOString(),
+          updated_at: deptRecord?.updated_at || new Date().toISOString()
+        };
+      });
+
+      setAllEmployees(combinedData);
     } catch (error) {
       console.error('Error fetching all employees:', error);
     }
