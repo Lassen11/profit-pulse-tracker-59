@@ -156,11 +156,10 @@ export default function Payroll() {
     try {
       if (!user) return;
 
-      // Fetch all active employees first
+      // Fetch all active employees first (админ видит всех активных сотрудников, RLS контролирует доступ)
       const { data: allProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
         .eq('is_active', true)
         .order('last_name', { ascending: true });
 
@@ -175,7 +174,6 @@ export default function Payroll() {
       const { data: departmentEmployeesData, error: deptError } = await supabase
         .from('department_employees')
         .select('*')
-        .eq('user_id', user.id)
         .eq('month', selectedMonth);
 
       if (deptError) throw deptError;
