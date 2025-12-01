@@ -223,7 +223,11 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         user_id: user.id
       };
 
-      if (employee) {
+      // Проверяем, является ли ID временным (начинается с "temp-")
+      const isTemporaryId = employee && employee.id.startsWith('temp-');
+
+      if (employee && !isTemporaryId) {
+        // UPDATE существующей записи с реальным ID
         const { error } = await supabase
           .from('department_employees')
           .update(employeeData)
@@ -236,6 +240,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
           description: "Информация о сотруднике успешно обновлена"
         });
       } else {
+        // INSERT новой записи (для временных ID или новых сотрудников)
         const { error } = await supabase
           .from('department_employees')
           .insert({
