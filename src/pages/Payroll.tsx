@@ -441,79 +441,77 @@ export default function Payroll() {
           </TabsList>
 
           <TabsContent value="departments">
-            {allEmployees.length > 0 && (
-              <Card className="p-6 mb-6 bg-primary/5">
-                <div className="grid grid-cols-12 gap-4 text-sm font-semibold">
-                  <div className="col-span-2 text-lg">Итого по всем отделам:</div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Общая сумма</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.total_amount || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Белая</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.white_salary || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Серая</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.gray_salary || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Аванс</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.advance || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">НДФЛ</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.ndfl || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Взносы</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.contributions || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Премия</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.bonus || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Премия сл. мес</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.next_month_bonus || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Стоимость</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.cost || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">На руки</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + (e.net_salary || 0), 0)
-                    )}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">Выплачено</div>
-                    <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
-                      allEmployees.reduce((s, e: any) => s + ((e.paid_white || 0) + (e.paid_gray || 0) + (e.paid_advance || 0) + (e.paid_bonus || 0) + (e.paid_net_salary || 0)), 0)
-                    )}</div>
-                  </div>
+            <Card className="p-6 mb-6 bg-primary/5">
+              <div className="grid grid-cols-12 gap-4 text-sm font-semibold">
+                <div className="col-span-2 text-lg">Итого по всем отделам:</div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Общая сумма</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.total_amount || 0), 0)
+                  )}</div>
                 </div>
-              </Card>
-            )}
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Белая</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.white_salary || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Серая</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.gray_salary || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Аванс</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.advance || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">НДФЛ</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.ndfl || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Взносы</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.contributions || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Премия</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.bonus || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Премия сл. мес</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.next_month_bonus || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Стоимость</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.cost || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">На руки</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + (e.net_salary || 0), 0)
+                  )}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground mb-1">Выплачено</div>
+                  <div>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(
+                    allEmployees.reduce((s, e: any) => s + ((e.paid_white || 0) + (e.paid_gray || 0) + (e.paid_advance || 0) + (e.paid_bonus || 0) + (e.paid_net_salary || 0)), 0)
+                  )}</div>
+                </div>
+              </div>
+            </Card>
             
             <div className="flex justify-end mb-6">
               <Button onClick={() => {
