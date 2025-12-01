@@ -28,7 +28,9 @@ const accountOptions = [
 
 const paymentTypes = [
   { value: "advance", label: "Аванс" },
-  { value: "net_salary", label: "На руки" }
+  { value: "net_salary", label: "На руки" },
+  { value: "ndfl", label: "НДФЛ" },
+  { value: "contributions", label: "Взносы" }
 ];
 
 interface PaymentDialogProps {
@@ -121,13 +123,18 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
     try {
       // Create transaction in transactions table
       const employeeCompany = (employee as any).company || 'Спасение';
+      
+      // Определяем категорию в зависимости от типа выплаты
+      const isNdflOrContributions = paymentType === 'ndfl' || paymentType === 'contributions';
+      const transactionCategory = isNdflOrContributions ? 'Налог НДФЛ и Взносы' : 'Зарплата';
+      
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
         .insert({
           user_id: user.id,
           date: format(paymentDate, 'yyyy-MM-dd'),
           type: 'expense',
-          category: 'Зарплата',
+          category: transactionCategory,
           subcategory: `${employee.profiles.first_name} ${employee.profiles.last_name}`,
           amount: paymentAmount,
           description: notes || `Выплата зарплаты: ${paymentTypes.find(t => t.value === paymentType)?.label}`,
@@ -155,7 +162,7 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
 
       if (paymentError) throw paymentError;
 
-      // Обновляем поля сотрудника в зависимости от типа выплаты
+      // Обновляем поля сотрудника в зависимости от типа выплаты (только для Аванс и На руки)
       if (paymentType === 'net_salary') {
         // Тип "На руки" — уменьшаем поле net_salary
         const { data: currentEmployee, error: fetchError } = await supabase
