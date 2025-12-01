@@ -170,6 +170,16 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     }
   }, [open, profiles, employee, defaultCompany, resetForm, restoreValues]);
 
+  // Автоматический расчет НДФЛ (13%) и Взносов (30%) при изменении белой зарплаты
+  useEffect(() => {
+    const white = parseFloat(whiteSalary) || 0;
+    const calculatedNdfl = white * 0.13;
+    const calculatedContributions = white * 0.30;
+    
+    setNdfl(calculatedNdfl.toFixed(2));
+    setContributions(calculatedContributions.toFixed(2));
+  }, [whiteSalary]);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
