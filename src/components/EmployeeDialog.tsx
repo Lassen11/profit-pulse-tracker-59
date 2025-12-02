@@ -195,23 +195,26 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
     }
 
     try {
-      const white = parseFloat(whiteSalary) || 0;
+      const whiteGross = parseFloat(whiteSalary) || 0;
       const gray = parseFloat(graySalary) || 0;
       const adv = parseFloat(advance) || 0;
       const ndflVal = parseFloat(ndfl) || 0;
       const contrib = parseFloat(contributions) || 0;
       const bon = parseFloat(bonus) || 0;
       
+      // Белая зарплата уменьшается на 13% НДФЛ при сохранении
+      const whiteNet = whiteGross - ndflVal;
+      
       // Автоматические расчеты
-      const calculatedTotal = white + gray;
-      const calculatedCost = white + gray + ndflVal + contrib + bon;
-      const calculatedNetSalary = calculatedTotal + bon - adv - ndflVal;
+      const calculatedTotal = whiteNet + gray;
+      const calculatedCost = whiteGross + gray + contrib + bon; // Стоимость считается от gross + взносы
+      const calculatedNetSalary = calculatedTotal + bon - adv;
       
       const employeeData = {
         department_id: departmentId,
         employee_id: selectedEmployeeId,
         company: selectedCompany,
-        white_salary: white,
+        white_salary: whiteNet, // Сохраняем уже уменьшенную на 13% сумму
         gray_salary: gray,
         advance: adv,
         ndfl: ndflVal,
