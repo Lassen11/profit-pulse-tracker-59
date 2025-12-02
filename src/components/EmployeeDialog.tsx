@@ -287,6 +287,23 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         }
       }
 
+      // Обновляем Белая и Серая зарплаты во ВСЕХ месяцах для этого сотрудника в этом отделе
+      const { error: updateAllMonthsError } = await supabase
+        .from('department_employees')
+        .update({
+          white_salary: whiteNet,
+          gray_salary: gray,
+          ndfl: ndflVal,
+          contributions: contrib
+        })
+        .eq('department_id', departmentId)
+        .eq('employee_id', selectedEmployeeId)
+        .neq('month', selectedMonth); // Обновляем все месяцы кроме текущего (текущий уже обновлен выше)
+
+      if (updateAllMonthsError) {
+        console.error('Error updating salary across months:', updateAllMonthsError);
+      }
+
       clearStoredValues();
       onSave();
     } catch (error: any) {
