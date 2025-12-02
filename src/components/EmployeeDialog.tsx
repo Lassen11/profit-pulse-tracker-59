@@ -18,6 +18,7 @@ interface EmployeeDialogProps {
   employee: DepartmentEmployee | null;
   onSave: () => void;
   defaultCompany?: string;
+  selectedMonth: string;
 }
 
 interface Profile {
@@ -30,7 +31,7 @@ interface Profile {
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
 
-export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onSave, defaultCompany = "Спасение" }: EmployeeDialogProps) {
+export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onSave, defaultCompany = "Спасение", selectedMonth }: EmployeeDialogProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(defaultCompany);
@@ -240,20 +241,47 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
           description: "Информация о сотруднике успешно обновлена"
         });
       } else {
-        // INSERT новой записи (для временных ID или новых сотрудников)
-        const { error } = await supabase
+        // Для временных ID или новых сотрудников - используем upsert
+        // Проверяем, есть ли уже запись для этого сотрудника в выбранном месяце
+        const { data: existingRecord, error: checkError } = await supabase
           .from('department_employees')
-          .insert({
-            ...employeeData,
-            month: format(new Date(), 'yyyy-MM-01')
+          .select('id')
+          .eq('department_id', departmentId)
+          .eq('employee_id', selectedEmployeeId)
+          .eq('month', selectedMonth)
+          .maybeSingle();
+
+        if (checkError) throw checkError;
+
+        if (existingRecord) {
+          // Обновляем существующую запись
+          const { error } = await supabase
+            .from('department_employees')
+            .update(employeeData)
+            .eq('id', existingRecord.id);
+
+          if (error) throw error;
+
+          toast({
+            title: "Данные обновлены",
+            description: "Информация о сотруднике успешно обновлена"
           });
+        } else {
+          // Создаём новую запись
+          const { error } = await supabase
+            .from('department_employees')
+            .insert({
+              ...employeeData,
+              month: selectedMonth
+            });
 
-        if (error) throw error;
+          if (error) throw error;
 
-        toast({
-          title: "Сотрудник добавлен",
-          description: "Сотрудник успешно добавлен в отдел"
-        });
+          toast({
+            title: "Сотрудник добавлен",
+            description: "Сотрудник успешно добавлен в отдел"
+          });
+        }
       }
 
       clearStoredValues();
@@ -269,7 +297,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
   }, [
     user, departmentId, selectedEmployeeId, selectedCompany, 
     whiteSalary, graySalary, advance, ndfl, contributions, 
-    bonus, nextMonthBonus, employee, toast, clearStoredValues, onSave
+    bonus, nextMonthBonus, employee, toast, clearStoredValues, onSave, selectedMonth
   ]);
 
   const memoizedProfiles = useMemo(() => profiles, [profiles]);
