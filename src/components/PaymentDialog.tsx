@@ -190,29 +190,31 @@ export function PaymentDialog({ open, onOpenChange, employee, onSuccess }: Payme
           throw updateError;
         }
       } else if (paymentType === 'advance') {
-        // Тип "Аванс" — увеличиваем поле advance
+        // Тип "Аванс" — увеличиваем поле advance и уменьшаем поле net_salary
         const { data: currentEmployee, error: fetchError } = await supabase
           .from('department_employees')
-          .select('advance')
+          .select('advance, net_salary')
           .eq('id', employee.id)
           .single();
 
         if (fetchError) {
-          console.error('Error fetching employee advance:', fetchError);
+          console.error('Error fetching employee data:', fetchError);
           throw fetchError;
         }
 
         const newAdvance = (currentEmployee.advance || 0) + paymentAmount;
+        const newNetSalary = (currentEmployee.net_salary || 0) - paymentAmount;
 
         const { error: updateError } = await supabase
           .from('department_employees')
           .update({
-            advance: newAdvance
+            advance: newAdvance,
+            net_salary: newNetSalary
           })
           .eq('id', employee.id);
 
         if (updateError) {
-          console.error('Error updating employee advance:', updateError);
+          console.error('Error updating employee data:', updateError);
           throw updateError;
         }
       }
