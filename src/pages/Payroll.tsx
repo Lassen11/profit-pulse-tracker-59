@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, RefreshCw } from "lucide-react";
 import { DepartmentDialog } from "@/components/DepartmentDialog";
 import { DepartmentCard } from "@/components/DepartmentCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +15,7 @@ import { PayrollAnalytics } from "@/components/PayrollAnalytics";
 import { PayrollSales } from "@/components/PayrollSales";
 import { DepartmentBonuses } from "@/components/DepartmentBonuses";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, startOfMonth } from "date-fns";
+import { format, startOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 
 export interface Department {
@@ -35,9 +35,108 @@ export default function Payroll() {
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [isAdmin, setIsAdmin] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Sync salary data from previous month to current month
+  const handleSyncFromPreviousMonth = async () => {
+    if (!user || isDemo) return;
+    
+    setSyncing(true);
+    try {
+      const currentMonthDate = new Date(selectedMonth);
+      const previousMonthDate = subMonths(currentMonthDate, 1);
+      const previousMonth = format(startOfMonth(previousMonthDate), 'yyyy-MM-dd');
+
+      // Get all employees from previous month
+      const { data: sourceEmployees, error: sourceError } = await supabase
+        .from('department_employees')
+        .select('*')
+        .eq('month', previousMonth);
+
+      if (sourceError) throw sourceError;
+
+      if (!sourceEmployees || sourceEmployees.length === 0) {
+        toast({
+          title: "Нет данных",
+          description: `В ${format(previousMonthDate, 'LLLL yyyy', { locale: ru })} нет данных для копирования`,
+          variant: "destructive"
+        });
+        setSyncing(false);
+        return;
+      }
+
+      let updatedCount = 0;
+      let insertedCount = 0;
+
+      for (const emp of sourceEmployees) {
+        // Check if record exists for target month
+        const { data: existingRecord } = await supabase
+          .from('department_employees')
+          .select('id')
+          .eq('department_id', emp.department_id)
+          .eq('employee_id', emp.employee_id)
+          .eq('month', selectedMonth)
+          .maybeSingle();
+
+        if (existingRecord) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('department_employees')
+            .update({
+              white_salary: emp.white_salary,
+              gray_salary: emp.gray_salary,
+              ndfl: emp.ndfl,
+              contributions: emp.contributions
+            })
+            .eq('id', existingRecord.id);
+
+          if (!updateError) updatedCount++;
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('department_employees')
+            .insert({
+              department_id: emp.department_id,
+              employee_id: emp.employee_id,
+              company: emp.company,
+              white_salary: emp.white_salary,
+              gray_salary: emp.gray_salary,
+              ndfl: emp.ndfl,
+              contributions: emp.contributions,
+              advance: 0,
+              bonus: 0,
+              next_month_bonus: 0,
+              cost: emp.cost,
+              net_salary: emp.net_salary,
+              total_amount: emp.total_amount,
+              month: selectedMonth,
+              user_id: user.id
+            });
+
+          if (!insertError) insertedCount++;
+        }
+      }
+
+      toast({
+        title: "Синхронизация завершена",
+        description: `Обновлено: ${updatedCount}, создано: ${insertedCount} записей`
+      });
+
+      fetchAllEmployees();
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось синхронизировать данные",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Check if user is admin
   useEffect(() => {
@@ -483,6 +582,17 @@ export default function Payroll() {
                 ))}
               </SelectContent>
             </Select>
+            {!isDemo && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncFromPreviousMonth}
+                disabled={syncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                Синхр. из пред. месяца
+              </Button>
+            )}
           </div>
         </div>
 
