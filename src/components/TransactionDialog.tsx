@@ -79,6 +79,11 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
   });
   const [additionalBonusPercent, setAdditionalBonusPercent] = useState<string>('3');
   const [enableAdditionalBonus, setEnableAdditionalBonus] = useState(false);
+  const [legalBflBonusPercent, setLegalBflBonusPercent] = useState<string>(() => {
+    const saved = localStorage.getItem('legalBflBonusPercent');
+    return saved || '4';
+  });
+  const [enableLegalBflBonus, setEnableLegalBflBonus] = useState(false);
   const [accountOptions, setAccountOptions] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     type: 'income' as 'income' | 'expense',
@@ -227,6 +232,13 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       localStorage.setItem('legalBonusPercent', legalBonusPercent);
     }
   }, [legalBonusPercent]);
+
+  // Сохраняем процент премии ЮД БФЛ в localStorage при изменении
+  useEffect(() => {
+    if (legalBflBonusPercent) {
+      localStorage.setItem('legalBflBonusPercent', legalBflBonusPercent);
+    }
+  }, [legalBflBonusPercent]);
 
   // Проверяем существующих клиентов при изменении ФИО
   const checkExistingClient = useCallback(async (clientName: string) => {
@@ -383,6 +395,59 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         }
       } catch (error) {
         console.error('Error processing legal department bonus:', error);
+      }
+
+      // Начисляем премии в фонд ЮД БФЛ если включен чекбокс
+      if (enableLegalBflBonus) {
+        try {
+          // Находим ID департамента ЮД БФЛ
+          const { data: bflDeptData, error: bflDeptError } = await supabase
+            .from('departments')
+            .select('id')
+            .eq('name', 'ЮД БФЛ')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (bflDeptError) {
+            console.error('Error finding ЮД БФЛ department:', bflDeptError);
+          } else if (bflDeptData) {
+            const amount = parseFloat(formData.amount);
+            const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+            
+            const bflBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
+            const bflBonusAmount = amount * (bflBonusPercentValue / 100);
+
+            if (bflBonusAmount > 0) {
+              // Получаем текущий бюджет
+              const { data: currentBflBudget } = await supabase
+                .from('department_bonus_budget')
+                .select('total_budget')
+                .eq('department_id', bflDeptData.id)
+                .eq('month', currentMonth)
+                .maybeSingle();
+
+              const newBflTotalBudget = (currentBflBudget?.total_budget || 0) + bflBonusAmount;
+
+              // Обновляем или создаем запись бюджета
+              const { error: bflBudgetError } = await supabase
+                .from('department_bonus_budget')
+                .upsert({
+                  department_id: bflDeptData.id,
+                  month: currentMonth,
+                  total_budget: newBflTotalBudget,
+                  user_id: user.id
+                }, {
+                  onConflict: 'department_id,month,user_id'
+                });
+
+              if (bflBudgetError) {
+                console.error('Error updating ЮД БФЛ bonus budget:', bflBudgetError);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error processing ЮД БФЛ bonus:', error);
+        }
       }
     }
 
@@ -710,6 +775,55 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                             const additionalBonus = enableAdditionalBonus ? mainBonus * (parseFloat(additionalBonusPercent) / 100) : 0;
                             return (mainBonus + additionalBonus).toFixed(2);
                           })()} ₽
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Блок премии для ЮД БФЛ */}
+            {formData.company === 'Дело Бизнеса' && formData.type === 'income' && (
+              <div className="col-span-2 space-y-3 p-4 border rounded-lg bg-muted/20">
+                <Label className="text-sm font-medium mb-3 block">
+                  Премии для ЮД БФЛ
+                </Label>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="enableLegalBflBonus"
+                        checked={enableLegalBflBonus}
+                        onCheckedChange={(checked) => setEnableLegalBflBonus(checked === true)}
+                      />
+                      <Label htmlFor="enableLegalBflBonus" className="text-sm cursor-pointer">
+                        Премия ЮД БФЛ
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={legalBflBonusPercent}
+                        onChange={(e) => setLegalBflBonusPercent(e.target.value)}
+                        className="w-20 h-8 text-sm"
+                        placeholder="4"
+                        disabled={!enableLegalBflBonus}
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+
+                  {/* Итоговая сумма */}
+                  {enableLegalBflBonus && formData.amount && parseFloat(legalBflBonusPercent) > 0 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        Сумма премии в фонд: <span className="font-medium text-foreground">
+                          {(parseFloat(formData.amount) * (parseFloat(legalBflBonusPercent) / 100)).toFixed(2)} ₽
                         </span>
                       </p>
                     </div>
