@@ -273,7 +273,7 @@ export default function Payroll() {
   }, [user, selectedMonth, isAdmin]);
 
 
-  const fetchAllEmployees = async () => {
+  const fetchAllEmployees = async (skipAutoSync = false) => {
     try {
       if (!user) return;
 
@@ -306,10 +306,45 @@ export default function Payroll() {
 
       const { data: previousMonthData, error: prevError } = await supabase
         .from('department_employees')
-        .select('employee_id, white_salary, gray_salary, ndfl, contributions')
+        .select('*')
         .eq('month', previousMonthStr);
 
       if (prevError) throw prevError;
+
+      // Auto-sync: if no records for selected month but previous month has data, create records
+      if (!skipAutoSync && (!departmentEmployeesData || departmentEmployeesData.length === 0) && previousMonthData && previousMonthData.length > 0) {
+        console.log('Auto-syncing salary data from previous month...');
+        
+        const recordsToInsert = previousMonthData.map(emp => ({
+          department_id: emp.department_id,
+          employee_id: emp.employee_id,
+          company: emp.company,
+          white_salary: emp.white_salary,
+          gray_salary: emp.gray_salary,
+          ndfl: emp.ndfl,
+          contributions: emp.contributions,
+          advance: 0,
+          bonus: 0,
+          next_month_bonus: 0,
+          cost: emp.cost,
+          net_salary: emp.net_salary,
+          total_amount: emp.total_amount,
+          month: selectedMonth,
+          user_id: user.id
+        }));
+
+        const { error: insertError } = await supabase
+          .from('department_employees')
+          .insert(recordsToInsert);
+
+        if (insertError) {
+          console.error('Auto-sync error:', insertError);
+        } else {
+          // Re-fetch after auto-sync
+          fetchAllEmployees(true);
+          return;
+        }
+      }
 
       // Create a map of previous month data by employee_id
       const previousMonthMap = new Map(
