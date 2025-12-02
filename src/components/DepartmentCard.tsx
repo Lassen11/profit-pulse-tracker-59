@@ -268,6 +268,7 @@ export function DepartmentCard({ department, onEdit, onDelete, selectedMonth }: 
               departmentId={department.id}
               defaultCompany={department.project_name || "Спасение"}
               onRefresh={fetchEmployees}
+              selectedMonth={selectedMonth}
             />
           )}
         </CardContent>
@@ -282,6 +283,7 @@ export function DepartmentCard({ department, onEdit, onDelete, selectedMonth }: 
         departmentId={department.id}
         employee={editEmployee}
         defaultCompany={department.project_name || "Спасение"}
+        selectedMonth={selectedMonth}
         onSave={() => {
           fetchEmployees();
           setEmployeeDialogOpen(false);
