@@ -34,9 +34,31 @@ export default function Payroll() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      setIsAdmin(!!data && !error);
+    };
+    
+    checkAdminStatus();
+  }, [user]);
   
   // Generate last 12 months for month filter
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -74,22 +96,22 @@ export default function Payroll() {
         setLoading(false);
       });
     }
-  }, [user, isDemo, selectedMonth]);
+  }, [user, isDemo, selectedMonth, isAdmin]);
 
   // Realtime subscriptions
   useEffect(() => {
     if (!user) return;
 
+    // For admins, subscribe to all departments changes; for regular users, filter by user_id
+    const departmentSubscriptionConfig = isAdmin 
+      ? { event: '*' as const, schema: 'public', table: 'departments' }
+      : { event: '*' as const, schema: 'public', table: 'departments', filter: `user_id=eq.${user.id}` };
+
     const departmentsChannel = supabase
       .channel('payroll-departments-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'departments',
-          filter: `user_id=eq.${user.id}`
-        },
+        departmentSubscriptionConfig,
         () => {
           fetchDepartments();
         }
@@ -149,7 +171,7 @@ export default function Payroll() {
       supabase.removeChannel(payrollPaymentsChannel);
       supabase.removeChannel(profilesChannel);
     };
-  }, [user, selectedMonth]);
+  }, [user, selectedMonth, isAdmin]);
 
 
   const fetchAllEmployees = async () => {
@@ -304,11 +326,16 @@ export default function Payroll() {
       if (!user) return;
       
       setLoading(true);
-      const { data, error } = await supabase
+      // Admins see all departments, regular users see only their own
+      let query = supabase
         .from('departments')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name', { ascending: true });
+        .select('*');
+      
+      if (!isAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+      
+      const { data, error } = await query.order('name', { ascending: true });
 
       if (error) throw error;
       
