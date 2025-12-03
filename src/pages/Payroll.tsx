@@ -35,6 +35,7 @@ export default function Payroll() {
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
@@ -143,6 +144,7 @@ export default function Payroll() {
     const checkAdminStatus = async () => {
       if (!user) {
         setIsAdmin(false);
+        setAdminCheckComplete(true);
         return;
       }
       
@@ -154,6 +156,7 @@ export default function Payroll() {
         .maybeSingle();
       
       setIsAdmin(!!data && !error);
+      setAdminCheckComplete(true);
     };
     
     checkAdminStatus();
@@ -184,7 +187,8 @@ export default function Payroll() {
   }, [user, authLoading, isDemo, navigate]);
 
   useEffect(() => {
-    if (user) {
+    // Wait for admin check to complete before fetching data
+    if (user && adminCheckComplete) {
       fetchDepartments();
       fetchAllEmployees();
     } else if (isDemo) {
@@ -195,7 +199,7 @@ export default function Payroll() {
         setLoading(false);
       });
     }
-  }, [user, isDemo, selectedMonth, isAdmin]);
+  }, [user, isDemo, selectedMonth, isAdmin, adminCheckComplete]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -575,7 +579,7 @@ export default function Payroll() {
     departmentDialogPersistence.openDialog({ editDepartment: department });
   };
 
-  if (loading || authLoading) {
+  if (loading || authLoading || (!isDemo && user && !adminCheckComplete)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
