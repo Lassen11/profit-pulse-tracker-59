@@ -96,7 +96,12 @@ export default function Payroll() {
 
           if (!updateError) updatedCount++;
         } else {
-          // Insert new record
+          // Insert new record with fresh net_salary calculation
+          const whiteSalary = emp.white_salary || 0;
+          const graySalary = emp.gray_salary || 0;
+          const ndfl = emp.ndfl || 0;
+          const freshNetSalary = whiteSalary - ndfl + graySalary;
+          
           const { error: insertError } = await supabase
             .from('department_employees')
             .insert({
@@ -111,7 +116,7 @@ export default function Payroll() {
               bonus: 0,
               next_month_bonus: 0,
               cost: emp.cost,
-              net_salary: emp.net_salary,
+              net_salary: freshNetSalary,
               total_amount: emp.total_amount,
               month: selectedMonth,
               user_id: user.id
@@ -319,23 +324,31 @@ export default function Payroll() {
       if (!skipAutoSync && (!departmentEmployeesData || departmentEmployeesData.length === 0) && previousMonthData && previousMonthData.length > 0) {
         console.log('Auto-syncing salary data from previous month...');
         
-        const recordsToInsert = previousMonthData.map(emp => ({
-          department_id: emp.department_id,
-          employee_id: emp.employee_id,
-          company: emp.company,
-          white_salary: emp.white_salary,
-          gray_salary: emp.gray_salary,
-          ndfl: emp.ndfl,
-          contributions: emp.contributions,
-          advance: 0,
-          bonus: 0,
-          next_month_bonus: 0,
-          cost: emp.cost,
-          net_salary: emp.net_salary,
-          total_amount: emp.total_amount,
-          month: selectedMonth,
-          user_id: user.id
-        }));
+        const recordsToInsert = previousMonthData.map(emp => {
+          // Calculate fresh net_salary based on white + gray salary for new month
+          const whiteSalary = emp.white_salary || 0;
+          const graySalary = emp.gray_salary || 0;
+          const ndfl = emp.ndfl || 0;
+          const freshNetSalary = whiteSalary - ndfl + graySalary;
+          
+          return {
+            department_id: emp.department_id,
+            employee_id: emp.employee_id,
+            company: emp.company,
+            white_salary: emp.white_salary,
+            gray_salary: emp.gray_salary,
+            ndfl: emp.ndfl,
+            contributions: emp.contributions,
+            advance: 0,
+            bonus: 0,
+            next_month_bonus: 0,
+            cost: emp.cost,
+            net_salary: freshNetSalary,
+            total_amount: emp.total_amount,
+            month: selectedMonth,
+            user_id: user.id
+          };
+        });
 
         const { error: insertError } = await supabase
           .from('department_employees')
