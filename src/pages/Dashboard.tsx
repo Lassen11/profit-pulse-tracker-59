@@ -194,12 +194,21 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Get the effective month based on period filter
+  const effectiveMonth = useMemo(() => {
+    if (periodFilter === "specific-month") {
+      return selectedMonth;
+    }
+    // For "month" filter, use current month
+    return new Date();
+  }, [periodFilter, selectedMonth]);
+
   // Fetch receivables data (Дебиторка)
   const fetchReceivablesData = useCallback(async () => {
     if (!user) return;
     try {
       // План: пробуем взять из kpi_targets (синхронизируемого из bankrot-helper), иначе fallback на сумму monthly_payment
-      const endOfSelectedMonthReceivables = endOfMonth(selectedMonth);
+      const endOfSelectedMonthReceivables = endOfMonth(effectiveMonth);
       const monthStrReceivables = endOfSelectedMonthReceivables.toISOString().split('T')[0];
       const {
         data: kpiData,
@@ -230,8 +239,8 @@ export default function Dashboard() {
       }
 
       // Fact: Get sum of transactions with category "Дебиторка" for selected month
-      const startOfSelectedMonth = startOfMonth(selectedMonth);
-      const endOfSelectedMonth = endOfMonth(selectedMonth);
+      const startOfSelectedMonth = startOfMonth(effectiveMonth);
+      const endOfSelectedMonth = endOfMonth(effectiveMonth);
       const {
         data: transactionsData,
         error: transactionsError
@@ -242,15 +251,15 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching receivables data:', error);
     }
-  }, [user, selectedMonth]);
+  }, [user, effectiveMonth]);
 
   // Fetch sales data (Новые продажи)
   const fetchSalesData = useCallback(async () => {
     if (!user) return;
     try {
       // Plan: Get from kpi_targets table for selected month
-      const startOfSelectedMonth = startOfMonth(selectedMonth);
-      const endOfSelectedMonth = endOfMonth(selectedMonth);
+      const startOfSelectedMonth = startOfMonth(effectiveMonth);
+      const endOfSelectedMonth = endOfMonth(effectiveMonth);
       const {
         data: targetData,
         error: targetError
@@ -285,14 +294,14 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching sales data:', error);
     }
-  }, [user, selectedMonth]);
+  }, [user, effectiveMonth]);
 
   // Fetch bankrot clients data from kpi_targets (synced from bankrot-helper)
   const fetchBankrotClientsData = useCallback(async () => {
     if (!user) return;
     try {
-      // Use selectedMonth for date filtering
-      const lastDayOfMonth = endOfMonth(selectedMonth);
+      // Use effectiveMonth for date filtering
+      const lastDayOfMonth = endOfMonth(effectiveMonth);
       const monthStr = format(lastDayOfMonth, 'yyyy-MM-dd');
 
       // Get new clients count from kpi_targets
@@ -353,7 +362,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
-  }, [user, selectedMonth]);
+  }, [user, effectiveMonth]);
 
   // Load balance adjustments on mount
   useEffect(() => {
