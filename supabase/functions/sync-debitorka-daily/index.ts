@@ -16,20 +16,49 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('Starting daily debitorka sync...');
+    console.log('Starting debitorka sync...');
 
-    // Get current month (last day of current month for kpi_targets format)
-    const now = new Date();
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const monthString = `${lastDayOfMonth.getFullYear()}-${String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth.getDate()).padStart(2, '0')}`; // YYYY-MM-DD format (last day)
-
-    console.log(`Syncing debitorka for month: ${monthString}`);
-
-    // Call external API to get payment summary
-    const apiKey = Deno.env.get('BANKROT_HELPER_API_KEY');
-    const apiUrl = 'https://gidvpxxfgvivjbzfpxcg.supabase.co/functions/v1/get-payment-summary';
+    // Parse request body for optional month parameter
+    let targetMonth: string | null = null;
     
-    console.log('Calling external API for payment summary...');
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        // Accept month in format YYYY-MM or YYYY-MM-DD
+        if (body.month) {
+          targetMonth = body.month;
+          console.log(`Custom month requested: ${targetMonth}`);
+        }
+      } catch (e) {
+        console.log('No body or invalid JSON, using current month');
+      }
+    }
+
+    // Calculate month string for kpi_targets (last day of month)
+    let monthString: string;
+    let apiMonth: string;
+    
+    if (targetMonth) {
+      // Parse the target month
+      const [year, month] = targetMonth.split('-').map(Number);
+      const lastDayOfMonth = new Date(year, month, 0); // Last day of the specified month
+      monthString = `${lastDayOfMonth.getFullYear()}-${String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
+      apiMonth = `${year}-${String(month).padStart(2, '0')}`; // Format for API: YYYY-MM
+    } else {
+      // Use current month
+      const now = new Date();
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      monthString = `${lastDayOfMonth.getFullYear()}-${String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
+      apiMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    console.log(`Syncing debitorka for month: ${monthString}, API month: ${apiMonth}`);
+
+    // Call external API to get payment summary with optional month parameter
+    const apiKey = Deno.env.get('BANKROT_HELPER_API_KEY');
+    const apiUrl = `https://gidvpxxfgvivjbzfpxcg.supabase.co/functions/v1/get-payment-summary?month=${apiMonth}`;
+    
+    console.log(`Calling external API: ${apiUrl}`);
     const apiResponse = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -85,12 +114,14 @@ Deno.serve(async (req) => {
       throw error;
     }
 
-    console.log('Debitorka synced successfully:', { totalPayments, userId });
+    console.log('Debitorka synced successfully:', { totalPayments, userId, month: monthString });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         total_payments: totalPayments,
+        month: monthString,
+        api_month: apiMonth,
         updated_kpi: true 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
