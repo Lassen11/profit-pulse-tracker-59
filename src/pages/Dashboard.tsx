@@ -291,9 +291,9 @@ export default function Dashboard() {
   const fetchBankrotClientsData = useCallback(async () => {
     if (!user) return;
     try {
-      const now = new Date();
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const monthStr = `${lastDayOfMonth.getFullYear()}-${String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth.getDate()).padStart(2, '0')}`;
+      // Use selectedMonth for date filtering
+      const lastDayOfMonth = endOfMonth(selectedMonth);
+      const monthStr = format(lastDayOfMonth, 'yyyy-MM-dd');
 
       // Get new clients count from kpi_targets
       const { data: newClientsData, error: newClientsError } = await supabase
@@ -353,7 +353,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
-  }, [user]);
+  }, [user, selectedMonth]);
 
   // Load balance adjustments on mount
   useEffect(() => {
