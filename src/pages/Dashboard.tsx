@@ -248,13 +248,13 @@ export default function Dashboard() {
   const fetchSalesData = useCallback(async () => {
     if (!user) return;
     try {
-      // Plan: Get from kpi_targets table
-      const now = new Date();
-      const currentMonth = startOfMonth(now);
+      // Plan: Get from kpi_targets table for selected month
+      const startOfSelectedMonth = startOfMonth(selectedMonth);
+      const endOfSelectedMonth = endOfMonth(selectedMonth);
       const {
         data: targetData,
         error: targetError
-      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', currentMonth.toISOString().split('T')[0]).maybeSingle();
+      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', startOfSelectedMonth.toISOString().split('T')[0]).maybeSingle();
       if (targetError && targetError.code !== 'PGRST116') throw targetError;
 
       // If no target exists, create default one
@@ -266,7 +266,7 @@ export default function Dashboard() {
           company: 'Спасение',
           kpi_name: 'new_sales',
           target_value: 350000,
-          month: currentMonth.toISOString().split('T')[0]
+          month: startOfSelectedMonth.toISOString().split('T')[0]
         });
         if (insertError) throw insertError;
         setSalesPlan(350000);
@@ -274,19 +274,18 @@ export default function Dashboard() {
         setSalesPlan(targetData.target_value);
       }
 
-      // Fact: Get sum of transactions with category "Продажи" for current month
-      const endOfCurrentMonth = endOfMonth(now);
+      // Fact: Get sum of transactions with category "Продажи" for selected month
       const {
         data: transactionsData,
         error: transactionsError
-      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Продажи').gte('date', currentMonth.toISOString().split('T')[0]).lte('date', endOfCurrentMonth.toISOString().split('T')[0]);
+      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Продажи').gte('date', startOfSelectedMonth.toISOString().split('T')[0]).lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
       if (transactionsError) throw transactionsError;
       const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
       setSalesFact(fact);
     } catch (error) {
       console.error('Error fetching sales data:', error);
     }
-  }, [user]);
+  }, [user, selectedMonth]);
 
   // Fetch bankrot clients data from kpi_targets (synced from bankrot-helper)
   const fetchBankrotClientsData = useCallback(async () => {
