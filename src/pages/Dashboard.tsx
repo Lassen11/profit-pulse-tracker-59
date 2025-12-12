@@ -300,9 +300,11 @@ export default function Dashboard() {
   const fetchBankrotClientsData = useCallback(async () => {
     if (!user) return;
     try {
-      // Use effectiveMonth for date filtering
-      const lastDayOfMonth = endOfMonth(effectiveMonth);
-      const monthStr = format(lastDayOfMonth, 'yyyy-MM-dd');
+      // Use effectiveMonth for date filtering - search by month range since dates may vary
+      const monthStart = startOfMonth(effectiveMonth);
+      const monthEnd = endOfMonth(effectiveMonth);
+      const monthStartStr = format(monthStart, 'yyyy-MM-dd');
+      const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
       // Get new clients count from kpi_targets
       const { data: newClientsData, error: newClientsError } = await supabase
@@ -310,7 +312,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'new_clients_count')
-        .eq('month', monthStr)
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
         .maybeSingle();
 
       if (newClientsError && newClientsError.code !== 'PGRST116') {
@@ -324,7 +327,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'new_clients_monthly_payment_sum')
-        .eq('month', monthStr)
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
         .maybeSingle();
 
       if (newClientsSumError && newClientsSumError.code !== 'PGRST116') {
@@ -338,7 +342,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'completed_cases_count')
-        .eq('month', monthStr)
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
         .maybeSingle();
 
       if (completedCasesError && completedCasesError.code !== 'PGRST116') {
@@ -352,7 +357,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'completed_cases_monthly_payment_sum')
-        .eq('month', monthStr)
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
         .maybeSingle();
 
       if (completedCasesSumError && completedCasesSumError.code !== 'PGRST116') {
