@@ -172,9 +172,20 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     }).format(amount);
   };
 
+  // Источники, для которых начисляется премия 4.5%
+  const bonusSources = ['Авито', 'Сайт', 'Квиз', 'Рекомендация менеджера', 'Рекомендация клиента'];
+  
+  const calculateBonus = (client: BankrotClient): number => {
+    if (client.source && bonusSources.includes(client.source)) {
+      return client.contract_amount * 0.045;
+    }
+    return 0;
+  };
+
   const totalContractAmount = clients.reduce((sum, c) => sum + c.contract_amount, 0);
   const totalPaid = clients.reduce((sum, c) => sum + (c.total_paid || 0), 0);
   const totalMonthlyPayments = clients.reduce((sum, c) => sum + c.monthly_payment, 0);
+  const totalBonuses = clients.reduce((sum, c) => sum + calculateBonus(c), 0);
 
   if (loading) {
     return (
@@ -205,7 +216,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="p-4 bg-muted rounded-lg">
             <div className="text-sm text-muted-foreground">Количество клиентов</div>
             <div className="text-2xl font-bold">{clients.length}</div>
@@ -221,6 +232,10 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
           <div className="p-4 bg-muted rounded-lg">
             <div className="text-sm text-muted-foreground">Ежемесячные платежи</div>
             <div className="text-2xl font-bold">{formatCurrency(totalMonthlyPayments)}</div>
+          </div>
+          <div className="p-4 bg-muted rounded-lg">
+            <div className="text-sm text-muted-foreground">Премии (4.5%)</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalBonuses)}</div>
           </div>
         </div>
 
@@ -238,12 +253,13 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                 <TableHead className="text-right">Оплачено</TableHead>
                 <TableHead className="text-right">Срок рассрочки</TableHead>
                 <TableHead className="text-right">Ежемес. платеж</TableHead>
+                <TableHead className="text-right">Премия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground">
                     Нет данных за выбранный период
                   </TableCell>
                 </TableRow>
@@ -265,6 +281,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell className="text-right">{formatCurrency(client.total_paid)}</TableCell>
                     <TableCell className="text-right">{client.installment_period} мес.</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.monthly_payment)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(calculateBonus(client))}</TableCell>
                   </TableRow>
                 ))
               )}
