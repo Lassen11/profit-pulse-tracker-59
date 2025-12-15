@@ -199,11 +199,12 @@ Deno.serve(async (req) => {
       }
 
       // Проверяем существует ли уже транзакция для этого клиента с таким же первым платежом
+      // Проверяем обе категории: "Продажа" (старая) и "Продажи" (новая)
       const { data: existingTransaction } = await supabase
         .from('transactions')
         .select('id')
         .eq('client_name', payload.client_name)
-        .eq('category', 'Продажа')
+        .in('category', ['Продажа', 'Продажи'])
         .eq('amount', payload.first_payment)
         .eq('company', payload.company)
         .maybeSingle();
@@ -229,7 +230,7 @@ Deno.serve(async (req) => {
         .insert({
           user_id: payload.user_id,
           type: 'income',
-          category: 'Продажа',
+          category: 'Продажи',
           subcategory: 'БФЛ',
           amount: payload.first_payment,
           contract_amount: payload.contract_amount,
