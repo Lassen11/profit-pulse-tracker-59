@@ -107,6 +107,7 @@ interface SyncClientsFullPayload {
     source?: string;
     city?: string;
     manager?: string;
+    created_by?: string; // Имя сотрудника, создавшего сделку
     total_paid?: number;
     deposit_paid?: number;
     deposit_target?: number;
@@ -772,6 +773,21 @@ Deno.serve(async (req) => {
             .eq('full_name', client.full_name)
             .maybeSingle();
 
+          // Находим employee_id по имени сотрудника (created_by)
+          let employeeId: string | null = null;
+          if (client.created_by) {
+            const nameParts = client.created_by.trim().split(/\s+/);
+            if (nameParts.length >= 2) {
+              const { data: employee } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('last_name', nameParts[0])
+                .eq('first_name', nameParts[1])
+                .maybeSingle();
+              employeeId = employee?.id || null;
+            }
+          }
+
           const clientData = {
             full_name: client.full_name,
             contract_amount: client.contract_amount || 0,
@@ -782,6 +798,7 @@ Deno.serve(async (req) => {
             source: client.source || null,
             city: client.city || null,
             manager: client.manager || null,
+            employee_id: employeeId,
             total_paid: client.total_paid || 0,
             deposit_paid: client.deposit_paid || 0,
             deposit_target: client.deposit_target || 70000,
