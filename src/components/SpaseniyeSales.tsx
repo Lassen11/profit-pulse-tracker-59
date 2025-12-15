@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { RefreshCw } from "lucide-react";
 
 interface BankrotClient {
   id: string;
@@ -30,8 +32,39 @@ interface SpaseniyeSalesProps {
 export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   const [clients, setClients] = useState<BankrotClient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-bankrot-clients', {
+        body: { month: selectedMonth }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Синхронизация завершена",
+        description: data.message || `Обновлено ${data.count || 0} клиентов`
+      });
+
+      // Refresh the list
+      fetchClients();
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast({
+        title: "Ошибка синхронизации",
+        description: error.message || "Не удалось синхронизировать данные",
+        variant: "destructive"
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -159,9 +192,20 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Продажи Спасение</h2>
-          <span className="text-muted-foreground">
-            {format(new Date(selectedMonth), 'LLLL yyyy', { locale: ru })}
-          </span>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSync}
+              disabled={syncing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Синхронизация...' : 'Обновить из bankrot-helper'}
+            </Button>
+            <span className="text-muted-foreground">
+              {format(new Date(selectedMonth), 'LLLL yyyy', { locale: ru })}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
