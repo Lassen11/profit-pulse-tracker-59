@@ -766,12 +766,25 @@ Deno.serve(async (req) => {
         let updatedCount = 0;
 
         for (const client of p.clients) {
-          // Ищем существующего клиента по имени
-          const { data: existingClient } = await supabase
+          const trimmedName = client.full_name.trim();
+          
+          // Ищем существующего клиента по имени (с trim для обоих значений)
+          const { data: existingClients } = await supabase
             .from('bankrot_clients')
-            .select('id')
-            .eq('full_name', client.full_name)
-            .maybeSingle();
+            .select('id, full_name')
+            .or(`full_name.eq.${trimmedName},full_name.eq.${trimmedName} `);
+          
+          // Если есть дубликаты, удаляем лишние
+          if (existingClients && existingClients.length > 1) {
+            const idsToDelete = existingClients.slice(1).map(c => c.id);
+            await supabase
+              .from('bankrot_clients')
+              .delete()
+              .in('id', idsToDelete);
+            console.log(`Deleted ${idsToDelete.length} duplicates for: ${trimmedName}`);
+          }
+          
+          const existingClient = existingClients?.[0] || null;
 
           // Находим employee_id по имени сотрудника (created_by)
           // Формат: "Имя Фамилия" или "Фамилия Имя"
