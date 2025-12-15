@@ -198,6 +198,31 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Проверяем существует ли уже транзакция для этого клиента с таким же первым платежом
+      const { data: existingTransaction } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('client_name', payload.client_name)
+        .eq('category', 'Продажа')
+        .eq('amount', payload.first_payment)
+        .eq('company', payload.company)
+        .maybeSingle();
+
+      if (existingTransaction) {
+        console.log('Transaction already exists for this client, skipping creation');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Транзакция уже существует для этого клиента',
+            skipped: true
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+
       // Создаем транзакцию для нового клиента
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
