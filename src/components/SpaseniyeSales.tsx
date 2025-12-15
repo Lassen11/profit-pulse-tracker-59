@@ -173,11 +173,27 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   };
 
   // Источники, для которых начисляется премия 4.5%
-  const bonusSources = ['Авито', 'Сайт', 'Квиз', 'Рекомендация менеджера', 'Рекомендация клиента'];
+  const percentBonusSources = ['Авито', 'Сайт', 'Квиз', 'Рекомендация менеджера', 'Рекомендация клиента'];
+  // Источники с фиксированной премией (1000 или 2000 если 6+ рекомендаций у менеджера)
+  const fixedBonusSources = ['Рекомендация Руководителя', 'Рекомендация ОЗ'];
+  
+  // Подсчитываем количество рекомендаций от фиксированных источников по менеджерам
+  const managerFixedRecommendationsCount = clients.reduce((acc, client) => {
+    if (client.manager && client.source && fixedBonusSources.includes(client.source)) {
+      acc[client.manager] = (acc[client.manager] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
   
   const calculateBonus = (client: BankrotClient): number => {
-    if (client.source && bonusSources.includes(client.source)) {
+    // Премия 4.5% для процентных источников
+    if (client.source && percentBonusSources.includes(client.source)) {
       return client.contract_amount * 0.045;
+    }
+    // Фиксированная премия для рекомендаций
+    if (client.source && fixedBonusSources.includes(client.source)) {
+      const managerCount = client.manager ? managerFixedRecommendationsCount[client.manager] || 0 : 0;
+      return managerCount >= 6 ? 2000 : 1000;
     }
     return 0;
   };
