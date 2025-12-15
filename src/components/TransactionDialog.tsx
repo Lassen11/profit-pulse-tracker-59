@@ -679,6 +679,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                       <SelectItem value="Авито">Авито</SelectItem>
                       <SelectItem value="Сайт">Сайт</SelectItem>
                       <SelectItem value="Квиз">Квиз</SelectItem>
+                      <SelectItem value="С улицы">С улицы</SelectItem>
                       <SelectItem value="Рекомендация Руководителя">Рекомендация Руководителя</SelectItem>
                       <SelectItem value="Рекомендация ОЗ">Рекомендация ОЗ</SelectItem>
                       <SelectItem value="Рекомендация менеджера">Рекомендация менеджера</SelectItem>
