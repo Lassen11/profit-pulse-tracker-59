@@ -532,6 +532,7 @@ export type Database = {
         Row: {
           city: string
           client_name: string
+          company: string
           contract_amount: number
           created_at: string
           employee_id: string
@@ -546,6 +547,7 @@ export type Database = {
         Insert: {
           city: string
           client_name: string
+          company?: string
           contract_amount?: number
           created_at?: string
           employee_id: string
@@ -560,6 +562,7 @@ export type Database = {
         Update: {
           city?: string
           client_name?: string
+          company?: string
           contract_amount?: number
           created_at?: string
           employee_id?: string

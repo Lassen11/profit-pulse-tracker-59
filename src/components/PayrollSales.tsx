@@ -67,6 +67,7 @@ export function PayrollSales() {
       const { data: salesData, error } = await supabase
         .from('sales')
         .select('*')
+        .eq('company', 'Дело Бизнеса')
         .gte('payment_date', startDateStr)
         .lte('payment_date', endDateStr)
         .order('payment_date', { ascending: false });

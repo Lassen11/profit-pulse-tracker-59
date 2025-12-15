@@ -300,8 +300,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       return;
     }
 
-    // Создаем запись в таблице sales если это продажа
-    if (formData.type === 'income' && formData.category === 'Продажи' && formData.salesEmployeeId && user) {
+    // Создаем запись в таблице sales если это продажа для проекта "Дело Бизнеса"
+    if (formData.type === 'income' && formData.category === 'Продажи' && formData.company === 'Дело Бизнеса' && formData.salesEmployeeId && user) {
       try {
         // Рассчитываем премию 4.5% от суммы договора если установлен чекбокс
         const contractAmount = formData.contractAmount ? parseFloat(formData.contractAmount) : 0;
@@ -318,7 +318,8 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
             city: formData.city,
             lead_source: formData.leadSource,
             payment_date: formData.date,
-            manager_bonus: managerBonus
+            manager_bonus: managerBonus,
+            company: formData.company
           });
 
         if (salesError) {
