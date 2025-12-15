@@ -19,6 +19,7 @@ interface BankrotClient {
   total_paid: number | null;
   installment_period: number;
   monthly_payment: number;
+  created_at?: string;
   employee_name?: string;
 }
 
@@ -94,10 +95,29 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
         profilesData?.map(p => [p.id, `${p.last_name} ${p.first_name} ${p.middle_name || ''}`.trim()]) || []
       );
 
-      const formattedClients: BankrotClient[] = clientsData?.map(client => ({
-        ...client,
-        employee_name: client.employee_id ? profileMap.get(client.employee_id) || client.manager || 'Неизвестный' : client.manager || 'Неизвестный'
-      })) || [];
+      // Deduplicate clients by full_name and contract_date, keeping the record with most data
+      const uniqueClientsMap = new Map<string, BankrotClient>();
+      
+      clientsData?.forEach(client => {
+        const key = `${client.full_name}-${client.contract_date}`;
+        const existing = uniqueClientsMap.get(key);
+        
+        // Keep the record with more filled fields (source, city, manager, monthly_payment)
+        const existingScore = existing ? 
+          (existing.source ? 1 : 0) + (existing.city ? 1 : 0) + (existing.manager ? 1 : 0) + (existing.monthly_payment > 0 ? 1 : 0) + (existing.installment_period > 0 ? 1 : 0) : 0;
+        const newScore = 
+          (client.source ? 1 : 0) + (client.city ? 1 : 0) + (client.manager ? 1 : 0) + (client.monthly_payment > 0 ? 1 : 0) + (client.installment_period > 0 ? 1 : 0);
+        
+        if (!existing || newScore > existingScore || (newScore === existingScore && new Date(client.created_at) > new Date(existing.created_at || ''))) {
+          uniqueClientsMap.set(key, {
+            ...client,
+            employee_name: client.employee_id ? profileMap.get(client.employee_id) || client.manager || '—' : client.manager || '—'
+          });
+        }
+      });
+
+      const formattedClients = Array.from(uniqueClientsMap.values())
+        .sort((a, b) => new Date(b.contract_date || '').getTime() - new Date(a.contract_date || '').getTime());
 
       setClients(formattedClients);
     } catch (error) {
