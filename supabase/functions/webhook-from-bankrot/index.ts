@@ -774,22 +774,37 @@ Deno.serve(async (req) => {
             .maybeSingle();
 
           // Находим employee_id по имени сотрудника (created_by)
+          // Формат: "Имя Фамилия" или "Фамилия Имя"
           let employeeId: string | null = null;
           if (client.created_by) {
             const nameParts = client.created_by.trim().split(/\s+/);
             if (nameParts.length >= 2) {
-              const { data: employee } = await supabase
+              // Пробуем сначала как "Имя Фамилия"
+              let { data: employee } = await supabase
                 .from('profiles')
                 .select('id')
-                .eq('last_name', nameParts[0])
-                .eq('first_name', nameParts[1])
+                .eq('first_name', nameParts[0])
+                .eq('last_name', nameParts[1])
                 .maybeSingle();
+              
+              // Если не нашли, пробуем как "Фамилия Имя"
+              if (!employee) {
+                const { data: employee2 } = await supabase
+                  .from('profiles')
+                  .select('id')
+                  .eq('last_name', nameParts[0])
+                  .eq('first_name', nameParts[1])
+                  .maybeSingle();
+                employee = employee2;
+              }
+              
               employeeId = employee?.id || null;
+              console.log(`Looking for employee "${client.created_by}": found ${employeeId ? 'YES' : 'NO'}`);
             }
           }
 
           const clientData = {
-            full_name: client.full_name,
+            full_name: client.full_name.trim(),
             contract_amount: client.contract_amount || 0,
             first_payment: client.first_payment || 0,
             installment_period: client.installment_period || 0,

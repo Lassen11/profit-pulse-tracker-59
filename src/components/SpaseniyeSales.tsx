@@ -141,7 +141,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
         if (!existing || newScore > existingScore || (newScore === existingScore && new Date(client.created_at) > new Date(existing.created_at || ''))) {
           uniqueClientsMap.set(key, {
             ...client,
-            employee_name: client.employee_id ? profileMap.get(client.employee_id) || client.manager || '—' : client.manager || '—'
+            employee_name: client.employee_id ? profileMap.get(client.employee_id) || '—' : '—'
           });
         }
       });
@@ -233,7 +233,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                 <TableHead>Источник</TableHead>
                 <TableHead>Город</TableHead>
                 <TableHead>Менеджер</TableHead>
-                <TableHead>Сотрудник</TableHead>
+                <TableHead>Сотрудник ОЗ</TableHead>
                 <TableHead className="text-right">Сумма договора</TableHead>
                 <TableHead className="text-right">Оплачено</TableHead>
                 <TableHead className="text-right">Срок рассрочки</TableHead>
