@@ -92,7 +92,30 @@ interface DashboardMetricsPayload {
   month: string;
 }
 
-type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload | SyncClientsStatsPayload | DashboardMetricsPayload;
+interface SyncClientsFullPayload {
+  event_type: 'sync_clients_full';
+  month: string; // формат YYYY-MM
+  company: string;
+  user_id: string;
+  clients: Array<{
+    full_name: string;
+    contract_amount: number;
+    first_payment: number;
+    installment_period: number;
+    monthly_payment: number;
+    contract_date: string;
+    source?: string;
+    city?: string;
+    manager?: string;
+    total_paid?: number;
+    deposit_paid?: number;
+    deposit_target?: number;
+    remaining_amount?: number;
+    payment_day?: number;
+  }>;
+}
+
+type WebhookPayload = NewClientPayload | NewPaymentPayload | UpdateClientPayload | SyncSummaryPayload | SyncClientsStatsPayload | DashboardMetricsPayload | SyncClientsFullPayload;
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -678,6 +701,135 @@ Deno.serve(async (req) => {
         console.error('dashboard_metrics handler error:', e);
         return new Response(
           JSON.stringify({ success: false, error: 'dashboard_metrics failed', details: (e as Error).message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+    } else if (payload.event_type === 'sync_clients_full') {
+      // Полная синхронизация клиентов за месяц
+      try {
+        const p = payload as SyncClientsFullPayload;
+        const company = p.company || 'Спасение';
+        const month = p.month; // формат YYYY-MM
+        
+        console.log(`Full clients sync for month: ${month}, received ${p.clients?.length || 0} clients`);
+        
+        if (!p.clients || !Array.isArray(p.clients)) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'No clients array provided' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+
+        // Парсим месяц для определения диапазона дат
+        const [year, monthNum] = month.split('-').map(Number);
+        const monthStart = new Date(year, monthNum - 1, 1);
+        const monthEnd = new Date(year, monthNum, 0);
+        const startDateStr = monthStart.toISOString().split('T')[0];
+        const endDateStr = monthEnd.toISOString().split('T')[0];
+
+        console.log(`Processing clients for date range: ${startDateStr} to ${endDateStr}`);
+
+        // Получаем существующих клиентов за этот месяц
+        const { data: existingClients, error: fetchError } = await supabase
+          .from('bankrot_clients')
+          .select('id, full_name, contract_date')
+          .gte('contract_date', startDateStr)
+          .lte('contract_date', endDateStr);
+
+        if (fetchError) {
+          console.error('Error fetching existing clients:', fetchError);
+          throw fetchError;
+        }
+
+        console.log(`Found ${existingClients?.length || 0} existing clients in this month`);
+
+        // Создаем Set имен клиентов из bankrot-helper для быстрого поиска
+        const bankrotClientNames = new Set(p.clients.map(c => c.full_name));
+
+        // Удаляем клиентов, которых больше нет в bankrot-helper за этот месяц
+        let deletedCount = 0;
+        for (const existing of (existingClients || [])) {
+          if (!bankrotClientNames.has(existing.full_name)) {
+            console.log(`Deleting client no longer in bankrot-helper: ${existing.full_name}`);
+            const { error: deleteError } = await supabase
+              .from('bankrot_clients')
+              .delete()
+              .eq('id', existing.id);
+            
+            if (!deleteError) deletedCount++;
+          }
+        }
+
+        // Обновляем/добавляем клиентов
+        let syncedCount = 0;
+        let updatedCount = 0;
+
+        for (const client of p.clients) {
+          // Ищем существующего клиента по имени
+          const { data: existingClient } = await supabase
+            .from('bankrot_clients')
+            .select('id')
+            .eq('full_name', client.full_name)
+            .maybeSingle();
+
+          const clientData = {
+            full_name: client.full_name,
+            contract_amount: client.contract_amount || 0,
+            first_payment: client.first_payment || 0,
+            installment_period: client.installment_period || 0,
+            monthly_payment: client.monthly_payment || 0,
+            contract_date: client.contract_date,
+            source: client.source || null,
+            city: client.city || null,
+            manager: client.manager || null,
+            total_paid: client.total_paid || 0,
+            deposit_paid: client.deposit_paid || 0,
+            deposit_target: client.deposit_target || 70000,
+            remaining_amount: client.remaining_amount || 0,
+            payment_day: client.payment_day || 1,
+            user_id: p.user_id,
+            updated_at: new Date().toISOString()
+          };
+
+          if (existingClient) {
+            const { error: updateError } = await supabase
+              .from('bankrot_clients')
+              .update(clientData)
+              .eq('id', existingClient.id);
+
+            if (!updateError) {
+              updatedCount++;
+              console.log(`Updated client: ${client.full_name}`);
+            }
+          } else {
+            const { error: insertError } = await supabase
+              .from('bankrot_clients')
+              .insert(clientData);
+
+            if (!insertError) {
+              syncedCount++;
+              console.log(`Inserted new client: ${client.full_name}`);
+            }
+          }
+        }
+
+        console.log(`Sync complete: ${syncedCount} new, ${updatedCount} updated, ${deletedCount} deleted`);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: `Синхронизировано: ${syncedCount} новых, ${updatedCount} обновлено, ${deletedCount} удалено`,
+            synced: syncedCount,
+            updated: updatedCount,
+            deleted: deletedCount,
+            total: p.clients.length
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      } catch (e) {
+        console.error('sync_clients_full handler error:', e);
+        return new Response(
+          JSON.stringify({ success: false, error: 'sync_clients_full failed', details: (e as Error).message }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
