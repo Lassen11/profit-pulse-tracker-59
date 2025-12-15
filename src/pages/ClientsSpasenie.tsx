@@ -174,10 +174,10 @@ export default function ClientsSpasenie() {
         const clientName = transaction.client_name!;
         
         if (!clientsMap.has(clientName)) {
-          // Ищем первую транзакцию с данными договора (категория "Продажа")
+          // Ищем первую транзакцию с данными договора (категория "Продажа" или "Продажи")
           const contractTransaction = transactions?.find(t => 
             t.client_name === clientName && 
-            t.category === 'Продажа' &&
+            (t.category === 'Продажа' || t.category === 'Продажи') &&
             t.contract_amount
           ) as any;
 
