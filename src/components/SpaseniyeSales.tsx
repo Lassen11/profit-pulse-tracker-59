@@ -233,6 +233,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                 <TableHead>Источник</TableHead>
                 <TableHead>Город</TableHead>
                 <TableHead>Менеджер</TableHead>
+                <TableHead>Сотрудник</TableHead>
                 <TableHead className="text-right">Сумма договора</TableHead>
                 <TableHead className="text-right">Оплачено</TableHead>
                 <TableHead className="text-right">Срок рассрочки</TableHead>
@@ -242,7 +243,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     Нет данных за выбранный период
                   </TableCell>
                 </TableRow>
@@ -258,6 +259,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell className="font-medium">{client.full_name}</TableCell>
                     <TableCell>{client.source || '—'}</TableCell>
                     <TableCell>{client.city || '—'}</TableCell>
+                    <TableCell>{client.manager || '—'}</TableCell>
                     <TableCell>{client.employee_name}</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.contract_amount)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.total_paid)}</TableCell>
