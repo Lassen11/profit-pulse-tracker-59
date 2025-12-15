@@ -5,10 +5,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const BANKROT_HELPER_URL = 'https://bankrot-helper.lovable.app';
+// URL приложения bankrot-helper
+const BANKROT_HELPER_API_URL = 'https://cpxxrjspmxmkzedlalxj.supabase.co/functions/v1';
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -22,16 +22,14 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse request body for optional month filter
     let month: string | undefined;
     try {
       const body = await req.json();
       month = body.month;
     } catch {
-      // No body or invalid JSON, use current month
+      // No body, use current month
     }
 
-    // Calculate month dates
     const now = new Date();
     const targetMonth = month ? new Date(month) : now;
     const monthStart = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
@@ -42,26 +40,56 @@ Deno.serve(async (req) => {
 
     console.log(`Syncing clients for period: ${startDateStr} to ${endDateStr}`);
 
-    // Try to fetch clients from bankrot-helper's Supabase directly
-    // Using their project URL and the service role key if available
-    const bankrotSupabaseUrl = 'https://cpxxrjspmxmkzedlalxj.supabase.co';
+    // Попробуем вызвать edge function get-clients на bankrot-helper
+    let bankrotClients: any[] = [];
     
-    // Create a client for bankrot-helper's Supabase
-    const bankrotSupabase = createClient(bankrotSupabaseUrl, bankrotApiKey || '');
-    
-    // Fetch clients from bankrot-helper
-    const { data: bankrotClients, error: fetchError } = await bankrotSupabase
-      .from('clients')
-      .select('*')
-      .gte('contract_date', startDateStr)
-      .lte('contract_date', endDateStr);
+    try {
+      const apiUrl = `${BANKROT_HELPER_API_URL}/get-clients`;
+      console.log(`Fetching from: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${bankrotApiKey}`,
+          'apikey': bankrotApiKey || '',
+        },
+        body: JSON.stringify({ 
+          month: startDateStr,
+          startDate: startDateStr,
+          endDate: endDateStr
+        })
+      });
 
-    if (fetchError) {
-      console.error('Error fetching from bankrot-helper:', fetchError);
-      throw new Error(`Failed to fetch from bankrot-helper: ${fetchError.message}`);
+      console.log(`Response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error response: ${errorText}`);
+        throw new Error(`API returned ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      bankrotClients = data.clients || data.data || data || [];
+      console.log(`Fetched ${bankrotClients.length} clients from bankrot-helper`);
+      
+    } catch (fetchError) {
+      console.error('Error fetching from bankrot-helper API:', fetchError);
+      
+      // Если не удалось получить данные через API, возвращаем информацию
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Не удалось подключиться к bankrot-helper',
+          details: (fetchError as Error).message,
+          note: 'Данные синхронизируются автоматически через webhook при изменении клиентов в bankrot-helper. Попробуйте сохранить клиента в bankrot-helper заново.'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
     }
-
-    console.log(`Fetched ${bankrotClients?.length || 0} clients from bankrot-helper`);
 
     if (!bankrotClients || bankrotClients.length === 0) {
       return new Response(
@@ -77,7 +105,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get current user_id from existing records or use a default
+    // Get user_id from existing records
     const { data: existingRecord } = await supabase
       .from('bankrot_clients')
       .select('user_id')
@@ -86,12 +114,10 @@ Deno.serve(async (req) => {
 
     const defaultUserId = existingRecord?.user_id || '00000000-0000-0000-0000-000000000000';
 
-    // Sync each client
     let syncedCount = 0;
     let updatedCount = 0;
 
     for (const client of bankrotClients) {
-      // Check if client already exists
       const { data: existing } = await supabase
         .from('bankrot_clients')
         .select('id')
@@ -118,32 +144,22 @@ Deno.serve(async (req) => {
       };
 
       if (existing) {
-        // Update existing client
         const { error: updateError } = await supabase
           .from('bankrot_clients')
           .update(clientData)
           .eq('id', existing.id);
 
-        if (updateError) {
-          console.error(`Error updating client ${client.full_name}:`, updateError);
-        } else {
-          updatedCount++;
-        }
+        if (!updateError) updatedCount++;
       } else {
-        // Insert new client
         const { error: insertError } = await supabase
           .from('bankrot_clients')
           .insert(clientData);
 
-        if (insertError) {
-          console.error(`Error inserting client ${client.full_name}:`, insertError);
-        } else {
-          syncedCount++;
-        }
+        if (!insertError) syncedCount++;
       }
     }
 
-    console.log(`Synced ${syncedCount} new clients, updated ${updatedCount} existing clients`);
+    console.log(`Synced ${syncedCount} new, updated ${updatedCount} existing`);
 
     return new Response(
       JSON.stringify({ 
