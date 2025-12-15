@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-to-pnltracker]
 verify_jwt = false
+
+[functions.sync-bankrot-clients]
+verify_jwt = false
