@@ -114,35 +114,64 @@ Deno.serve(async (req) => {
       // Создаем транзакцию для нового клиента
       console.log('Processing new client:', payload.client_name);
 
+      // Проверяем существует ли уже клиент с таким именем и датой договора
+      const contractDate = payload.contract_date || payload.date;
+      const { data: existingClient } = await supabase
+        .from('bankrot_clients')
+        .select('id')
+        .eq('full_name', payload.client_name)
+        .eq('contract_date', contractDate)
+        .maybeSingle();
+
       // Сохраняем клиента в таблицу bankrot_clients
       const monthlyPayment = payload.monthly_payment || 
         (payload.installment_period ? (payload.contract_amount - payload.first_payment) / payload.installment_period : 0);
       
-      const { error: clientError } = await supabase
-        .from('bankrot_clients')
-        .insert({
-          full_name: payload.client_name,
-          contract_amount: payload.contract_amount,
-          installment_period: payload.installment_period || 0,
-          first_payment: payload.first_payment,
-          monthly_payment: monthlyPayment,
-          remaining_amount: payload.contract_amount - (payload.total_paid || payload.first_payment),
-          total_paid: payload.total_paid || payload.first_payment,
-          deposit_paid: 0,
-          deposit_target: 70000,
-          payment_day: payload.payment_day || 1,
-          employee_id: payload.user_id,
-          contract_date: payload.contract_date || payload.date,
-          city: payload.city,
-          source: payload.source,
-          manager: payload.manager,
-          user_id: payload.user_id
-        });
+      const clientData = {
+        full_name: payload.client_name,
+        contract_amount: payload.contract_amount,
+        installment_period: payload.installment_period || 0,
+        first_payment: payload.first_payment,
+        monthly_payment: monthlyPayment,
+        remaining_amount: payload.contract_amount - (payload.total_paid || payload.first_payment),
+        total_paid: payload.total_paid || payload.first_payment,
+        deposit_paid: 0,
+        deposit_target: 70000,
+        payment_day: payload.payment_day || 1,
+        employee_id: payload.user_id,
+        contract_date: contractDate,
+        city: payload.city,
+        source: payload.source,
+        manager: payload.manager,
+        user_id: payload.user_id
+      };
 
-      if (clientError) {
-        console.error('Error saving client to bankrot_clients:', clientError);
+      if (existingClient) {
+        // Обновляем существующего клиента
+        const { error: updateError } = await supabase
+          .from('bankrot_clients')
+          .update({
+            ...clientData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingClient.id);
+
+        if (updateError) {
+          console.error('Error updating client in bankrot_clients:', updateError);
+        } else {
+          console.log('Client updated in bankrot_clients successfully');
+        }
       } else {
-        console.log('Client saved to bankrot_clients successfully');
+        // Создаем нового клиента
+        const { error: clientError } = await supabase
+          .from('bankrot_clients')
+          .insert(clientData);
+
+        if (clientError) {
+          console.error('Error saving client to bankrot_clients:', clientError);
+        } else {
+          console.log('Client saved to bankrot_clients successfully');
+        }
       }
 
       // Создаем транзакцию для нового клиента
