@@ -283,11 +283,11 @@ export default function Dashboard() {
         setSalesPlan(targetData.target_value);
       }
 
-      // Fact: Get sum of transactions with category "Продажи" for selected month
+      // Fact: Get sum of income transactions with category "Продажа" for selected month
       const {
         data: transactionsData,
         error: transactionsError
-      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Продажи').gte('date', startOfSelectedMonth.toISOString().split('T')[0]).lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
+      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('type', 'income').eq('category', 'Продажа').gte('date', startOfSelectedMonth.toISOString().split('T')[0]).lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
       if (transactionsError) throw transactionsError;
       const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
       setSalesFact(fact);
