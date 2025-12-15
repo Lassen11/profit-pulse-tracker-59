@@ -7,9 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { SalesDialog } from "./SalesDialog";
+import { SpaseniyeSales } from "./SpaseniyeSales";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Sale {
   id: string;
@@ -31,22 +34,41 @@ export function PayrollSales() {
   const [editSale, setEditSale] = useState<Sale | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Generate last 12 months for month filter
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - i);
+    return format(startOfMonth(date), 'yyyy-MM-dd');
+  });
 
   useEffect(() => {
     if (user) {
       fetchSales();
     }
-  }, [user]);
+  }, [user, selectedMonth]);
 
   const fetchSales = async () => {
     try {
       setLoading(true);
       
+      // Parse selected month to get start and end dates
+      const monthStart = new Date(selectedMonth);
+      const monthEnd = new Date(selectedMonth);
+      monthEnd.setMonth(monthEnd.getMonth() + 1);
+      monthEnd.setDate(0);
+      
+      const startDateStr = format(monthStart, 'yyyy-MM-dd');
+      const endDateStr = format(monthEnd, 'yyyy-MM-dd');
+      
       const { data: salesData, error } = await supabase
         .from('sales')
         .select('*')
+        .gte('payment_date', startDateStr)
+        .lte('payment_date', endDateStr)
         .order('payment_date', { ascending: false });
 
       if (error) throw error;
@@ -174,7 +196,9 @@ export function PayrollSales() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
-      currency: 'RUB'
+      currency: 'RUB',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
@@ -182,107 +206,134 @@ export function PayrollSales() {
   const totalContracts = sales.reduce((sum, s) => sum + s.contract_amount, 0);
   const totalBonuses = sales.reduce((sum, s) => sum + s.manager_bonus, 0);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Отчетность по продажам</h2>
-          <Button onClick={() => {
-            setEditSale(null);
-            setDialogOpen(true);
-          }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить продажу
-          </Button>
-        </div>
+      {/* Month filter for both tabs */}
+      <div className="flex justify-end">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Выберите месяц" />
+          </SelectTrigger>
+          <SelectContent position="popper" className="max-h-[300px]">
+            {months.map((month) => (
+              <SelectItem key={month} value={month}>
+                {format(new Date(month), 'LLLL yyyy', { locale: ru })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 bg-muted rounded-lg">
-            <div className="text-sm text-muted-foreground">Сумма платежей</div>
-            <div className="text-2xl font-bold">{formatCurrency(totalPayments)}</div>
-          </div>
-          <div className="p-4 bg-muted rounded-lg">
-            <div className="text-sm text-muted-foreground">Сумма договоров</div>
-            <div className="text-2xl font-bold">{formatCurrency(totalContracts)}</div>
-          </div>
-          <div className="p-4 bg-muted rounded-lg">
-            <div className="text-sm text-muted-foreground">Премии менеджерам</div>
-            <div className="text-2xl font-bold">{formatCurrency(totalBonuses)}</div>
-          </div>
-        </div>
+      <Tabs defaultValue="spasenie" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="spasenie">Спасение</TabsTrigger>
+          <TabsTrigger value="delo-biznesa">Дело Бизнеса</TabsTrigger>
+        </TabsList>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Дата</TableHead>
-              <TableHead>Менеджер</TableHead>
-              <TableHead>Клиент</TableHead>
-              <TableHead>Город</TableHead>
-              <TableHead>Источник</TableHead>
-              <TableHead className="text-right">Платеж</TableHead>
-              <TableHead className="text-right">Договор</TableHead>
-              <TableHead className="text-right">Премия</TableHead>
-              <TableHead className="text-right">Действия</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sales.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
-                  Нет данных для отображения
-                </TableCell>
-              </TableRow>
-            ) : (
-              sales.map(sale => (
-                <TableRow key={sale.id}>
-                  <TableCell>
-                    {format(new Date(sale.payment_date), 'dd MMM yyyy', { locale: ru })}
-                  </TableCell>
-                  <TableCell>{sale.employee_name}</TableCell>
-                  <TableCell>{sale.client_name}</TableCell>
-                  <TableCell>{sale.city}</TableCell>
-                  <TableCell>{sale.lead_source}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(sale.payment_amount)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(sale.contract_amount)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(sale.manager_bonus)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditSale(sale);
-                          setDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSaleToDelete(sale.id);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+        <TabsContent value="spasenie">
+          <SpaseniyeSales selectedMonth={selectedMonth} />
+        </TabsContent>
+
+        <TabsContent value="delo-biznesa">
+          {loading ? (
+            <div className="flex items-center justify-center p-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Отчетность по продажам</h2>
+                <Button onClick={() => {
+                  setEditSale(null);
+                  setDialogOpen(true);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Добавить продажу
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Сумма платежей</div>
+                  <div className="text-2xl font-bold">{formatCurrency(totalPayments)}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Сумма договоров</div>
+                  <div className="text-2xl font-bold">{formatCurrency(totalContracts)}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Премии менеджерам</div>
+                  <div className="text-2xl font-bold">{formatCurrency(totalBonuses)}</div>
+                </div>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Дата</TableHead>
+                    <TableHead>Менеджер</TableHead>
+                    <TableHead>Клиент</TableHead>
+                    <TableHead>Город</TableHead>
+                    <TableHead>Источник</TableHead>
+                    <TableHead className="text-right">Платеж</TableHead>
+                    <TableHead className="text-right">Договор</TableHead>
+                    <TableHead className="text-right">Премия</TableHead>
+                    <TableHead className="text-right">Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sales.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                        Нет данных для отображения
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sales.map(sale => (
+                      <TableRow key={sale.id}>
+                        <TableCell>
+                          {format(new Date(sale.payment_date), 'dd MMM yyyy', { locale: ru })}
+                        </TableCell>
+                        <TableCell>{sale.employee_name}</TableCell>
+                        <TableCell>{sale.client_name}</TableCell>
+                        <TableCell>{sale.city}</TableCell>
+                        <TableCell>{sale.lead_source}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(sale.payment_amount)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(sale.contract_amount)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(sale.manager_bonus)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditSale(sale);
+                                setDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSaleToDelete(sale.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <SalesDialog
         open={dialogOpen}
