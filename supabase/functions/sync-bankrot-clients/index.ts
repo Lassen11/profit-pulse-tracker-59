@@ -16,8 +16,6 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const bankrotApiKey = Deno.env.get('BANKROT_HELPER_API_KEY');
-    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse request body for optional month filter
@@ -38,119 +36,32 @@ Deno.serve(async (req) => {
     const startDateStr = monthStart.toISOString().split('T')[0];
     const endDateStr = monthEnd.toISOString().split('T')[0];
 
-    console.log(`Syncing clients for period: ${startDateStr} to ${endDateStr}`);
+    console.log(`Checking clients for period: ${startDateStr} to ${endDateStr}`);
 
-    // Call bankrot-helper API to get clients
-    const bankrotHelperUrl = 'https://bankrot-helper.lovable.app';
-    
-    const response = await fetch(`${bankrotHelperUrl}/api/clients?start_date=${startDateStr}&end_date=${endDateStr}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bankrotApiKey}`,
-      },
-    });
+    // Count existing clients for the selected month
+    const { data: clients, error } = await supabase
+      .from('bankrot_clients')
+      .select('id, full_name, contract_date')
+      .gte('contract_date', startDateStr)
+      .lte('contract_date', endDateStr);
 
-    if (!response.ok) {
-      console.log('Bankrot-helper API response not OK, trying edge function approach');
-      
-      // Alternative: Call the get-clients edge function directly
-      const edgeFunctionResponse = await fetch(`${bankrotHelperUrl}/functions/v1/get-clients`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${bankrotApiKey}`,
-        },
-        body: JSON.stringify({
-          start_date: startDateStr,
-          end_date: endDateStr,
-        }),
-      });
-
-      if (!edgeFunctionResponse.ok) {
-        const errorText = await edgeFunctionResponse.text();
-        console.error('Edge function error:', errorText);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Failed to fetch clients from bankrot-helper',
-            details: errorText 
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500 
-          }
-        );
-      }
-
-      const clientsData = await edgeFunctionResponse.json();
-      console.log(`Received ${clientsData.clients?.length || 0} clients from edge function`);
-
-      if (clientsData.clients && clientsData.clients.length > 0) {
-        let upsertedCount = 0;
-        
-        for (const client of clientsData.clients) {
-          // Check if client exists
-          const { data: existing } = await supabase
-            .from('bankrot_clients')
-            .select('id')
-            .eq('full_name', client.full_name)
-            .eq('contract_date', client.contract_date)
-            .maybeSingle();
-
-          const clientData = {
-            full_name: client.full_name,
-            contract_amount: client.contract_amount || 0,
-            installment_period: client.installment_period || 0,
-            first_payment: client.first_payment || 0,
-            monthly_payment: client.monthly_payment || 0,
-            remaining_amount: client.remaining_amount || 0,
-            total_paid: client.total_paid || 0,
-            deposit_paid: client.deposit_paid || 0,
-            deposit_target: client.deposit_target || 70000,
-            payment_day: client.payment_day || 1,
-            contract_date: client.contract_date,
-            city: client.city,
-            source: client.source,
-            manager: client.manager,
-            user_id: client.user_id,
-            employee_id: client.employee_id || client.user_id,
-          };
-
-          if (existing) {
-            await supabase
-              .from('bankrot_clients')
-              .update({ ...clientData, updated_at: new Date().toISOString() })
-              .eq('id', existing.id);
-          } else {
-            await supabase.from('bankrot_clients').insert(clientData);
-          }
-          upsertedCount++;
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: `Синхронизировано ${upsertedCount} клиентов`,
-            count: upsertedCount
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200 
-          }
-        );
-      }
+    if (error) {
+      console.error('Error fetching clients:', error);
+      throw error;
     }
 
-    // Process direct API response if available
-    const clientsData = await response.json();
-    console.log(`Received ${clientsData.length || 0} clients from API`);
+    const count = clients?.length || 0;
+    console.log(`Found ${count} clients for the period`);
+
+    // Note: Actual sync happens via webhook from bankrot-helper when clients are created there
+    // This function just confirms the data is accessible and returns count
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Синхронизация завершена',
-        count: clientsData.length || 0
+        message: `Найдено ${count} клиентов за выбранный период`,
+        count,
+        note: 'Данные синхронизируются автоматически через webhook при создании клиентов в bankrot-helper'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

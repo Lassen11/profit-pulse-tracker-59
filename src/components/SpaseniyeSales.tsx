@@ -39,26 +39,16 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-bankrot-clients', {
-        body: { month: selectedMonth }
-      });
-
-      if (error) {
-        throw error;
-      }
-
+      await fetchClients();
       toast({
-        title: "Синхронизация завершена",
-        description: data.message || `Обновлено ${data.count || 0} клиентов`
+        title: "Данные обновлены",
+        description: "Список клиентов обновлён"
       });
-
-      // Refresh the list
-      fetchClients();
     } catch (error: any) {
       console.error('Sync error:', error);
       toast({
-        title: "Ошибка синхронизации",
-        description: error.message || "Не удалось синхронизировать данные",
+        title: "Ошибка обновления",
+        description: error.message || "Не удалось обновить данные",
         variant: "destructive"
       });
     } finally {
