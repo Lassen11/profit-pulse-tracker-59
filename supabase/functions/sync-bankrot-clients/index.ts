@@ -40,12 +40,15 @@ Deno.serve(async (req) => {
 
     console.log(`Syncing clients for period: ${startDateStr} to ${endDateStr}`);
 
-    // Попробуем вызвать edge function get-clients на bankrot-helper
+    // Вызываем edge function get-clients на bankrot-helper
     let bankrotClients: any[] = [];
+    
+    // Формат месяца YYYY-MM для API bankrot-helper
+    const monthParam = `${targetMonth.getFullYear()}-${String(targetMonth.getMonth() + 1).padStart(2, '0')}`;
     
     try {
       const apiUrl = `${BANKROT_HELPER_API_URL}/get-clients`;
-      console.log(`Fetching from: ${apiUrl}`);
+      console.log(`Fetching from: ${apiUrl} with month=${monthParam}`);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -55,9 +58,9 @@ Deno.serve(async (req) => {
           'apikey': bankrotApiKey || '',
         },
         body: JSON.stringify({ 
-          month: startDateStr,
-          startDate: startDateStr,
-          endDate: endDateStr
+          month: monthParam,
+          include_terminated: false,
+          include_suspended: false
         })
       });
 
