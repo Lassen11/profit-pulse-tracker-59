@@ -386,7 +386,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                 total_budget: newTotalBudget,
                 user_id: user.id
               }, {
-                onConflict: 'department_id,month,user_id'
+                onConflict: 'department_id,month'
               });
 
             if (budgetError) {
@@ -438,7 +438,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
                   total_budget: newBflTotalBudget,
                   user_id: user.id
                 }, {
-                  onConflict: 'department_id,month,user_id'
+                  onConflict: 'department_id,month'
                 });
 
               if (bflBudgetError) {
