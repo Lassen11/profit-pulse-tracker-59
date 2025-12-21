@@ -501,6 +501,21 @@ export default function Payroll() {
         ])
       );
 
+      // Fetch next month data to get "next month bonus" values
+      const nextMonth = new Date(selectedMonth);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      const nextMonthStr = format(nextMonth, 'yyyy-MM-dd');
+
+      const { data: nextMonthData, error: nextError } = await supabase
+        .from('department_employees')
+        .select('employee_id, bonus')
+        .eq('month', nextMonthStr);
+
+      // Create a map of next month bonus by employee_id
+      const nextMonthBonusMap = new Map(
+        (nextMonthData || []).map(record => [record.employee_id, record.bonus || 0])
+      );
+
       // Create a map of employee records by employee_id
       const deptEmployeesMap = new Map(
         (departmentEmployeesData || []).map(de => [de.employee_id, de])
@@ -569,7 +584,7 @@ export default function Payroll() {
           gray_salary: deptRecord?.gray_salary || previousData?.gray_salary || 0,
           advance: deptRecord?.advance || 0,
           bonus: deptRecord?.bonus || 0,
-          next_month_bonus: deptRecord?.next_month_bonus || 0,
+          next_month_bonus: nextMonthBonusMap.get(profile.id) || 0,
           ndfl: deptRecord?.ndfl || previousData?.ndfl || 0,
           contributions: deptRecord?.contributions || previousData?.contributions || 0,
           net_salary: deptRecord?.net_salary || 0,
