@@ -18,6 +18,89 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, startOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 
+// Helper function to calculate manager bonuses from bankrot_clients
+const calculateManagerBonuses = async (previousMonthStr: string) => {
+  // Источники, для которых начисляется премия 4.5%
+  const percentBonusSources = ['Авито', 'Сайт', 'Квиз', 'С улицы', 'Рекомендация менеджера', 'Рекомендация клиента'];
+  // Источники с фиксированной премией (1000 или 2000 если 6+ рекомендаций у менеджера)
+  const fixedBonusSources = ['Рекомендация Руководителя', 'Рекомендация ОЗ'];
+
+  // Get start and end dates for the previous month
+  const monthStart = new Date(previousMonthStr);
+  const monthEnd = new Date(previousMonthStr);
+  monthEnd.setMonth(monthEnd.getMonth() + 1);
+  monthEnd.setDate(0);
+
+  const startDateStr = format(monthStart, 'yyyy-MM-dd');
+  const endDateStr = format(monthEnd, 'yyyy-MM-dd');
+
+  // Fetch clients for the previous month
+  const { data: clients, error } = await supabase
+    .from('bankrot_clients')
+    .select('*')
+    .gte('contract_date', startDateStr)
+    .lte('contract_date', endDateStr);
+
+  if (error || !clients) {
+    console.error('Error fetching bankrot_clients for bonuses:', error);
+    return new Map<string, number>();
+  }
+
+  // Count fixed recommendations per manager
+  const managerFixedRecommendationsCount = clients.reduce((acc, client) => {
+    if (client.manager && client.source && fixedBonusSources.includes(client.source)) {
+      acc[client.manager] = (acc[client.manager] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Calculate bonuses per manager
+  const managerBonuses = new Map<string, number>();
+
+  clients.forEach(client => {
+    if (!client.manager) return;
+
+    let bonus = 0;
+    
+    // Премия 4.5% для процентных источников
+    if (client.source && percentBonusSources.includes(client.source)) {
+      bonus = client.contract_amount * 0.045;
+    }
+    // Фиксированная премия для рекомендаций
+    else if (client.source && fixedBonusSources.includes(client.source)) {
+      const managerCount = managerFixedRecommendationsCount[client.manager] || 0;
+      bonus = managerCount >= 6 ? 2000 : 1000;
+    }
+
+    if (bonus > 0) {
+      const currentBonus = managerBonuses.get(client.manager) || 0;
+      managerBonuses.set(client.manager, currentBonus + bonus);
+    }
+  });
+
+  return managerBonuses;
+};
+
+// Helper to match manager name to employee profile
+const findEmployeeByManagerName = (managerName: string, profiles: any[]) => {
+  // Manager name format could be "Фамилия Имя Отчество" or "Имя Фамилия"
+  const normalizedManagerName = managerName.toLowerCase().trim();
+  
+  for (const profile of profiles) {
+    const fullName1 = `${profile.last_name} ${profile.first_name} ${profile.middle_name || ''}`.toLowerCase().trim();
+    const fullName2 = `${profile.first_name} ${profile.last_name}`.toLowerCase().trim();
+    const fullName3 = `${profile.last_name} ${profile.first_name}`.toLowerCase().trim();
+    
+    if (normalizedManagerName === fullName1 || 
+        normalizedManagerName === fullName2 || 
+        normalizedManagerName === fullName3 ||
+        normalizedManagerName.includes(profile.last_name.toLowerCase())) {
+      return profile;
+    }
+  }
+  return null;
+};
+
 export interface Department {
   id: string;
   name: string;
@@ -69,38 +152,60 @@ export default function Payroll() {
         return;
       }
 
+      // Get all profiles for matching manager names
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('is_active', true);
+
+      // Calculate manager bonuses from previous month's sales
+      const managerBonuses = await calculateManagerBonuses(previousMonth);
+      
+      // Create a map of employee_id to bonus amount
+      const employeeBonusMap = new Map<string, number>();
+      for (const [managerName, bonus] of managerBonuses) {
+        const employee = findEmployeeByManagerName(managerName, allProfiles || []);
+        if (employee) {
+          employeeBonusMap.set(employee.id, bonus);
+        }
+      }
+
       let updatedCount = 0;
       let insertedCount = 0;
 
       for (const emp of sourceEmployees) {
+        // Get bonus from manager sales in previous month
+        const salesBonus = employeeBonusMap.get(emp.employee_id) || 0;
+        
         // Check if record exists for target month
         const { data: existingRecord } = await supabase
           .from('department_employees')
-          .select('id')
+          .select('id, bonus')
           .eq('department_id', emp.department_id)
           .eq('employee_id', emp.employee_id)
           .eq('month', selectedMonth)
           .maybeSingle();
 
         if (existingRecord) {
-          // Update existing record
+          // Update existing record, adding sales bonus to existing bonus
           const { error: updateError } = await supabase
             .from('department_employees')
             .update({
               white_salary: emp.white_salary,
               gray_salary: emp.gray_salary,
               ndfl: emp.ndfl,
-              contributions: emp.contributions
+              contributions: emp.contributions,
+              bonus: (existingRecord.bonus || 0) + salesBonus
             })
             .eq('id', existingRecord.id);
 
           if (!updateError) updatedCount++;
         } else {
-          // Insert new record with fresh net_salary calculation
+          // Insert new record with fresh net_salary calculation including bonus
           const whiteSalary = emp.white_salary || 0;
           const graySalary = emp.gray_salary || 0;
           const ndfl = emp.ndfl || 0;
-          const freshNetSalary = whiteSalary - ndfl + graySalary;
+          const freshNetSalary = whiteSalary - ndfl + graySalary + salesBonus;
           
           const { error: insertError } = await supabase
             .from('department_employees')
@@ -113,7 +218,7 @@ export default function Payroll() {
               ndfl: emp.ndfl,
               contributions: emp.contributions,
               advance: 0,
-              bonus: 0,
+              bonus: salesBonus,
               next_month_bonus: 0,
               cost: emp.cost,
               net_salary: freshNetSalary,
@@ -324,12 +429,32 @@ export default function Payroll() {
       if (!skipAutoSync && (!departmentEmployeesData || departmentEmployeesData.length === 0) && previousMonthData && previousMonthData.length > 0) {
         console.log('Auto-syncing salary data from previous month...');
         
+        // Calculate manager bonuses from previous month's sales (to be added to this month)
+        const managerBonuses = await calculateManagerBonuses(previousMonthStr);
+        console.log('Manager bonuses from previous month:', Object.fromEntries(managerBonuses));
+        
+        // Create a map of employee_id to bonus amount
+        const employeeBonusMap = new Map<string, number>();
+        for (const [managerName, bonus] of managerBonuses) {
+          const employee = findEmployeeByManagerName(managerName, allProfiles);
+          if (employee) {
+            employeeBonusMap.set(employee.id, bonus);
+            console.log(`Matched manager "${managerName}" to employee ${employee.last_name} ${employee.first_name}, bonus: ${bonus}`);
+          } else {
+            console.log(`Could not match manager "${managerName}" to any employee`);
+          }
+        }
+        
         const recordsToInsert = previousMonthData.map(emp => {
           // Calculate fresh net_salary based on white + gray salary for new month
           const whiteSalary = emp.white_salary || 0;
           const graySalary = emp.gray_salary || 0;
           const ndfl = emp.ndfl || 0;
-          const freshNetSalary = whiteSalary - ndfl + graySalary;
+          
+          // Get bonus from manager sales in previous month
+          const salesBonus = employeeBonusMap.get(emp.employee_id) || 0;
+          
+          const freshNetSalary = whiteSalary - ndfl + graySalary + salesBonus;
           
           return {
             department_id: emp.department_id,
@@ -340,7 +465,7 @@ export default function Payroll() {
             ndfl: emp.ndfl,
             contributions: emp.contributions,
             advance: 0,
-            bonus: 0,
+            bonus: salesBonus,
             next_month_bonus: 0,
             cost: emp.cost,
             net_salary: freshNetSalary,
