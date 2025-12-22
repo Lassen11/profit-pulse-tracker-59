@@ -512,20 +512,17 @@ export default function Payroll() {
         ])
       );
 
-      // Fetch next month data to get "next month bonus" values
-      const nextMonth = new Date(selectedMonth);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-      const nextMonthStr = format(nextMonth, 'yyyy-MM-dd');
-
-      const { data: nextMonthData, error: nextError } = await supabase
-        .from('department_employees')
-        .select('employee_id, bonus')
-        .eq('month', nextMonthStr);
-
-      // Create a map of next month bonus by employee_id
-      const nextMonthBonusMap = new Map(
-        (nextMonthData || []).map(record => [record.employee_id, record.bonus || 0])
-      );
+      // Calculate manager bonuses from current month's sales for "next month bonus" display
+      const currentMonthBonuses = await calculateManagerBonuses(selectedMonth);
+      
+      // Create a map of next month bonus by employee_id (bonuses earned this month, paid next month)
+      const nextMonthBonusMap = new Map<string, number>();
+      for (const [managerName, bonus] of currentMonthBonuses) {
+        const employee = findEmployeeByManagerName(managerName, allProfiles);
+        if (employee) {
+          nextMonthBonusMap.set(employee.id, bonus);
+        }
+      }
 
       // Create a map of employee records by employee_id
       const deptEmployeesMap = new Map(
