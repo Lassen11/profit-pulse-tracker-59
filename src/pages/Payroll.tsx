@@ -61,7 +61,7 @@ const calculateManagerBonuses = async (previousMonthStr: string) => {
     if (!client.manager) return;
 
     let bonus = 0;
-    
+
     // Премия 4.5% для процентных источников
     if (client.source && percentBonusSources.includes(client.source)) {
       bonus = client.contract_amount * 0.045;
@@ -81,20 +81,53 @@ const calculateManagerBonuses = async (previousMonthStr: string) => {
   return managerBonuses;
 };
 
+// Helper function to calculate sales bonuses (from `sales.manager_bonus`) by employee_id
+const calculateSalesBonuses = async (monthStr: string) => {
+  const monthStart = new Date(monthStr);
+  const monthEnd = new Date(monthStr);
+  monthEnd.setMonth(monthEnd.getMonth() + 1);
+  monthEnd.setDate(0);
+
+  const startDateStr = format(monthStart, 'yyyy-MM-dd');
+  const endDateStr = format(monthEnd, 'yyyy-MM-dd');
+
+  const { data: sales, error } = await supabase
+    .from('sales')
+    .select('employee_id, manager_bonus, payment_date')
+    .gte('payment_date', startDateStr)
+    .lte('payment_date', endDateStr);
+
+  if (error || !sales) {
+    console.error('Error fetching sales for bonuses:', error);
+    return new Map<string, number>();
+  }
+
+  const bonusesByEmployee = new Map<string, number>();
+  sales.forEach(sale => {
+    const bonus = Number(sale.manager_bonus || 0);
+    if (!sale.employee_id || bonus <= 0) return;
+    bonusesByEmployee.set(sale.employee_id, (bonusesByEmployee.get(sale.employee_id) || 0) + bonus);
+  });
+
+  return bonusesByEmployee;
+};
+
 // Helper to match manager name to employee profile
 const findEmployeeByManagerName = (managerName: string, profiles: any[]) => {
   // Manager name format could be "Фамилия Имя Отчество" or "Имя Фамилия"
   const normalizedManagerName = managerName.toLowerCase().trim();
-  
+
   for (const profile of profiles) {
     const fullName1 = `${profile.last_name} ${profile.first_name} ${profile.middle_name || ''}`.toLowerCase().trim();
     const fullName2 = `${profile.first_name} ${profile.last_name}`.toLowerCase().trim();
     const fullName3 = `${profile.last_name} ${profile.first_name}`.toLowerCase().trim();
-    
-    if (normalizedManagerName === fullName1 || 
-        normalizedManagerName === fullName2 || 
-        normalizedManagerName === fullName3 ||
-        normalizedManagerName.includes(profile.last_name.toLowerCase())) {
+
+    if (
+      normalizedManagerName === fullName1 ||
+      normalizedManagerName === fullName2 ||
+      normalizedManagerName === fullName3 ||
+      normalizedManagerName.includes(profile.last_name.toLowerCase())
+    ) {
       return profile;
     }
   }
@@ -512,15 +545,20 @@ export default function Payroll() {
         ])
       );
 
-      // Calculate manager bonuses from current month's sales for "next month bonus" display
-      const currentMonthBonuses = await calculateManagerBonuses(selectedMonth);
-      
-      // Create a map of next month bonus by employee_id (bonuses earned this month, paid next month)
-      const nextMonthBonusMap = new Map<string, number>();
-      for (const [managerName, bonus] of currentMonthBonuses) {
+      // Calculate "next month bonus" for current payroll month:
+      // - bonuses from bankrot_clients ("Спасение" sales bonuses 4.5%)
+      // - bonuses from sales.manager_bonus ("Дело Бизнеса" sales)
+      const salesBonusesByEmployee = await calculateSalesBonuses(selectedMonth);
+      const bankrotManagerBonuses = await calculateManagerBonuses(selectedMonth);
+
+      // Start with direct bonuses keyed by employee_id
+      const nextMonthBonusMap = new Map<string, number>(salesBonusesByEmployee);
+
+      // Add bonuses keyed by manager full name (bankrot_clients.manager)
+      for (const [managerName, bonus] of bankrotManagerBonuses) {
         const employee = findEmployeeByManagerName(managerName, allProfiles);
         if (employee) {
-          nextMonthBonusMap.set(employee.id, bonus);
+          nextMonthBonusMap.set(employee.id, (nextMonthBonusMap.get(employee.id) || 0) + bonus);
         }
       }
 
