@@ -24,6 +24,7 @@ interface DepartmentCardProps {
   onEdit: (department: Department) => void;
   onDelete: (id: string) => void;
   selectedMonth: string;
+  nextMonthBonuses?: Record<string, number>;
 }
 
 export interface DepartmentEmployee {
@@ -57,7 +58,7 @@ export interface DepartmentEmployee {
   paid_net_salary?: number;
 }
 
-export function DepartmentCard({ department, onEdit, onDelete, selectedMonth }: DepartmentCardProps) {
+export function DepartmentCard({ department, onEdit, onDelete, selectedMonth, nextMonthBonuses }: DepartmentCardProps) {
   const [employees, setEmployees] = useState<DepartmentEmployee[]>([]);
   const [loading, setLoading] = useState(true);
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
@@ -165,7 +166,7 @@ export function DepartmentCard({ department, onEdit, onDelete, selectedMonth }: 
           ndfl: deptRecord?.ndfl || 0,
           contributions: deptRecord?.contributions || 0,
           bonus: deptRecord?.bonus || 0,
-          next_month_bonus: deptRecord?.next_month_bonus || 0,
+          next_month_bonus: nextMonthBonuses?.[profile.id] ?? deptRecord?.next_month_bonus ?? 0,
           cost: deptRecord?.cost || 0,
           net_salary: deptRecord?.net_salary || 0,
           total_amount: deptRecord?.total_amount || 0,
