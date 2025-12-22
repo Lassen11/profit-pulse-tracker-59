@@ -272,12 +272,24 @@ export default function Payroll() {
     checkAdminStatus();
   }, [user]);
   
-  // Generate last 12 months for month filter
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - i);
-    return format(startOfMonth(date), 'yyyy-MM-dd');
-  });
+  // Generate month and year options for separate selectors
+  const currentDate = new Date();
+  const [selectedMonthNum, setSelectedMonthNum] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+
+  // Update selectedMonth when month or year changes
+  useEffect(() => {
+    const newMonth = new Date(selectedYear, selectedMonthNum, 1);
+    setSelectedMonth(format(startOfMonth(newMonth), 'yyyy-MM-dd'));
+  }, [selectedMonthNum, selectedYear]);
+
+  const monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
+
+  // Generate last 5 years
+  const years = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i + 1);
 
   // Dialog persistence hook
   const departmentDialogPersistence = usePersistedDialog<{ editDepartment?: Department }>({
@@ -762,14 +774,27 @@ export default function Payroll() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Месяц:</span>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[200px]">
+            <Select value={selectedMonthNum.toString()} onValueChange={(val) => setSelectedMonthNum(parseInt(val))}>
+              <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {months.map((month) => (
-                  <SelectItem key={month} value={month}>
-                    {format(new Date(month), 'LLLL yyyy', { locale: ru })}
+                {monthNames.map((name, index) => (
+                  <SelectItem key={index} value={index.toString()}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">Год:</span>
+            <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
                   </SelectItem>
                 ))}
               </SelectContent>
