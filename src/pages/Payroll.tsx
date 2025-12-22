@@ -111,11 +111,14 @@ export interface Department {
 }
 
 export default function Payroll() {
+  const currentDate = new Date();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
+  const [selectedMonthNum, setSelectedMonthNum] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminCheckComplete, setAdminCheckComplete] = useState(false);
@@ -123,6 +126,20 @@ export default function Payroll() {
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Update selectedMonth when month or year changes
+  useEffect(() => {
+    const newMonth = new Date(selectedYear, selectedMonthNum, 1);
+    setSelectedMonth(format(startOfMonth(newMonth), 'yyyy-MM-dd'));
+  }, [selectedMonthNum, selectedYear]);
+
+  const monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
+
+  // Generate last 5 years
+  const years = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i + 1);
 
   // Sync salary data from previous month to current month
   const handleSyncFromPreviousMonth = async () => {
@@ -272,24 +289,6 @@ export default function Payroll() {
     checkAdminStatus();
   }, [user]);
   
-  // Generate month and year options for separate selectors
-  const currentDate = new Date();
-  const [selectedMonthNum, setSelectedMonthNum] = useState(currentDate.getMonth());
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-
-  // Update selectedMonth when month or year changes
-  useEffect(() => {
-    const newMonth = new Date(selectedYear, selectedMonthNum, 1);
-    setSelectedMonth(format(startOfMonth(newMonth), 'yyyy-MM-dd'));
-  }, [selectedMonthNum, selectedYear]);
-
-  const monthNames = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-  ];
-
-  // Generate last 5 years
-  const years = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i + 1);
 
   // Dialog persistence hook
   const departmentDialogPersistence = usePersistedDialog<{ editDepartment?: Department }>({
