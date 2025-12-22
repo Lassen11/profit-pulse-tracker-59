@@ -147,6 +147,7 @@ export default function Payroll() {
   const currentDate = new Date();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
+  const [nextMonthBonuses, setNextMonthBonuses] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDepartment, setEditDepartment] = useState<Department | null>(null);
@@ -562,6 +563,9 @@ export default function Payroll() {
         }
       }
 
+      // Keep a plain object version for components that rely on DB rows (DepartmentCard)
+      setNextMonthBonuses(Object.fromEntries(nextMonthBonusMap));
+
       // Create a map of employee records by employee_id
       const deptEmployeesMap = new Map(
         (departmentEmployeesData || []).map(de => [de.employee_id, de])
@@ -959,6 +963,7 @@ export default function Payroll() {
                     onEdit={handleEditDepartment}
                     onDelete={handleDeleteDepartment}
                     selectedMonth={selectedMonth}
+                    nextMonthBonuses={nextMonthBonuses}
                   />
                 ))}
               </div>
