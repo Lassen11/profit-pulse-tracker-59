@@ -19,7 +19,7 @@ import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const accountOptions = [
   "Зайнаб карта",
-  "Касса офис Диана",
+  "Касса офис",
   "Мариана Карта - депозит",
   "Карта Visa/Т-Банк (КИ)",
   "Наличные Сейф (КИ)",
