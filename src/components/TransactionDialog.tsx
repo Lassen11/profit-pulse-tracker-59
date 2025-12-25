@@ -398,56 +398,56 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         console.error('Error processing legal department bonus:', error);
       }
 
-      // Начисляем премии в фонд ЮД БФЛ если включен чекбокс
+      // Начисляем премии в фонд Отдела Арбитражного Управляющего если включен чекбокс ЮД БФЛ
       if (enableLegalBflBonus) {
         try {
-          // Находим ID департамента ЮД БФЛ
-          const { data: bflDeptData, error: bflDeptError } = await supabase
+          // Находим ID Отдела Арбитражного Управляющего
+          const { data: auDeptData, error: auDeptError } = await supabase
             .from('departments')
             .select('id')
-            .eq('name', 'ЮД БФЛ')
+            .eq('name', 'Отдел Арбитражного Управляющего')
             .eq('user_id', user.id)
             .maybeSingle();
 
-          if (bflDeptError) {
-            console.error('Error finding ЮД БФЛ department:', bflDeptError);
-          } else if (bflDeptData) {
+          if (auDeptError) {
+            console.error('Error finding Отдел Арбитражного Управляющего department:', auDeptError);
+          } else if (auDeptData) {
             const amount = parseFloat(formData.amount);
             const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
             
-            const bflBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
-            const bflBonusAmount = amount * (bflBonusPercentValue / 100);
+            const auBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
+            const auBonusAmount = amount * (auBonusPercentValue / 100);
 
-            if (bflBonusAmount > 0) {
+            if (auBonusAmount > 0) {
               // Получаем текущий бюджет
-              const { data: currentBflBudget } = await supabase
+              const { data: currentAuBudget } = await supabase
                 .from('department_bonus_budget')
                 .select('total_budget')
-                .eq('department_id', bflDeptData.id)
+                .eq('department_id', auDeptData.id)
                 .eq('month', currentMonth)
                 .maybeSingle();
 
-              const newBflTotalBudget = (currentBflBudget?.total_budget || 0) + bflBonusAmount;
+              const newAuTotalBudget = (currentAuBudget?.total_budget || 0) + auBonusAmount;
 
               // Обновляем или создаем запись бюджета
-              const { error: bflBudgetError } = await supabase
+              const { error: auBudgetError } = await supabase
                 .from('department_bonus_budget')
                 .upsert({
-                  department_id: bflDeptData.id,
+                  department_id: auDeptData.id,
                   month: currentMonth,
-                  total_budget: newBflTotalBudget,
+                  total_budget: newAuTotalBudget,
                   user_id: user.id
                 }, {
                   onConflict: 'department_id,month'
                 });
 
-              if (bflBudgetError) {
-                console.error('Error updating ЮД БФЛ bonus budget:', bflBudgetError);
+              if (auBudgetError) {
+                console.error('Error updating Отдел Арбитражного Управляющего bonus budget:', auBudgetError);
               }
             }
           }
         } catch (error) {
-          console.error('Error processing ЮД БФЛ bonus:', error);
+          console.error('Error processing Отдел Арбитражного Управляющего bonus:', error);
         }
       }
     }
