@@ -579,6 +579,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          au_department_bonus: number | null
           category: string
           city: string | null
           client_name: string | null
@@ -607,6 +608,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          au_department_bonus?: number | null
           category: string
           city?: string | null
           client_name?: string | null
@@ -635,6 +637,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          au_department_bonus?: number | null
           category?: string
           city?: string | null
           client_name?: string | null

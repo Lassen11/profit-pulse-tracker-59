@@ -330,6 +330,9 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
     }
 
+    // Переменная для хранения премии АУ
+    let auDepartmentBonusToSave: number | undefined = undefined;
+
     // Начисляем премии в фонд юридического департамента если это доход в Дело Бизнеса
     if (formData.type === 'income' && formData.company === 'Дело Бизнеса' && user) {
       try {
@@ -399,10 +402,19 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
 
       // Начисляем премии в фонд Отдела Арбитражного Управляющего если включен чекбокс ЮД БФЛ
-      // Только для новых операций, не для редактирования (при редактировании премия уже была добавлена)
       const isEditMode = transaction && !copyMode;
+      const amount = parseFloat(formData.amount);
+      const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+      const auBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
+      const newAuBonusAmount = enableLegalBflBonus ? amount * (auBonusPercentValue / 100) : 0;
       
-      if (enableLegalBflBonus && !isEditMode) {
+      // Получаем старое значение премии из транзакции (если редактируем)
+      const oldAuBonusAmount = isEditMode ? (transaction.au_department_bonus || 0) : 0;
+      
+      // Вычисляем дельту: новая премия минус старая
+      const bonusDelta = newAuBonusAmount - oldAuBonusAmount;
+      
+      if (bonusDelta !== 0) {
         try {
           // Находим ID Отдела Арбитражного Управляющего
           const { data: auDeptData, error: auDeptError } = await supabase
@@ -415,44 +427,40 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           if (auDeptError) {
             console.error('Error finding Отдел Арбитражного Управляющего department:', auDeptError);
           } else if (auDeptData) {
-            const amount = parseFloat(formData.amount);
-            const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
-            
-            const auBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
-            const auBonusAmount = amount * (auBonusPercentValue / 100);
+            // Получаем текущий бюджет
+            const { data: currentAuBudget } = await supabase
+              .from('department_bonus_budget')
+              .select('total_budget')
+              .eq('department_id', auDeptData.id)
+              .eq('month', currentMonth)
+              .maybeSingle();
 
-            if (auBonusAmount > 0) {
-              // Получаем текущий бюджет
-              const { data: currentAuBudget } = await supabase
-                .from('department_bonus_budget')
-                .select('total_budget')
-                .eq('department_id', auDeptData.id)
-                .eq('month', currentMonth)
-                .maybeSingle();
+            // Применяем дельту к текущему бюджету
+            const newAuTotalBudget = Math.max(0, (currentAuBudget?.total_budget || 0) + bonusDelta);
 
-              const newAuTotalBudget = (currentAuBudget?.total_budget || 0) + auBonusAmount;
+            // Обновляем или создаем запись бюджета
+            const { error: auBudgetError } = await supabase
+              .from('department_bonus_budget')
+              .upsert({
+                department_id: auDeptData.id,
+                month: currentMonth,
+                total_budget: newAuTotalBudget,
+                user_id: user.id
+              }, {
+                onConflict: 'department_id,month'
+              });
 
-              // Обновляем или создаем запись бюджета
-              const { error: auBudgetError } = await supabase
-                .from('department_bonus_budget')
-                .upsert({
-                  department_id: auDeptData.id,
-                  month: currentMonth,
-                  total_budget: newAuTotalBudget,
-                  user_id: user.id
-                }, {
-                  onConflict: 'department_id,month'
-                });
-
-              if (auBudgetError) {
-                console.error('Error updating Отдел Арбитражного Управляющего bonus budget:', auBudgetError);
-              }
+            if (auBudgetError) {
+              console.error('Error updating Отдел Арбитражного Управляющего bonus budget:', auBudgetError);
             }
           }
         } catch (error) {
           console.error('Error processing Отдел Арбитражного Управляющего bonus:', error);
         }
       }
+
+      // Сохраняем новое значение премии АУ для записи в транзакцию
+      auDepartmentBonusToSave = newAuBonusAmount;
     }
 
     const mainTransaction = {
@@ -468,6 +476,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       ...(formData.type === 'income' && formData.incomeAccount && { income_account: formData.incomeAccount }),
       ...(formData.type === 'expense' && formData.expenseAccount && { expense_account: formData.expenseAccount }),
       ...(formData.organizationName && { organization_name: formData.organizationName }),
+      ...(auDepartmentBonusToSave !== undefined && { au_department_bonus: auDepartmentBonusToSave }),
       ...(formData.type === 'income' && formData.category === 'Продажи' && {
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
         first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
