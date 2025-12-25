@@ -596,6 +596,7 @@ export type Database = {
           income_account: string | null
           installment_period: number | null
           lead_source: string | null
+          legal_department_bonus: number | null
           lump_sum: number | null
           manager: string | null
           organization_name: string | null
@@ -625,6 +626,7 @@ export type Database = {
           income_account?: string | null
           installment_period?: number | null
           lead_source?: string | null
+          legal_department_bonus?: number | null
           lump_sum?: number | null
           manager?: string | null
           organization_name?: string | null
@@ -654,6 +656,7 @@ export type Database = {
           income_account?: string | null
           installment_period?: number | null
           lead_source?: string | null
+          legal_department_bonus?: number | null
           lump_sum?: number | null
           manager?: string | null
           organization_name?: string | null

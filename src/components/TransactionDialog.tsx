@@ -330,8 +330,11 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
     }
 
-    // Переменная для хранения премии АУ
+    // Переменная для хранения премий
     let auDepartmentBonusToSave: number | undefined = undefined;
+    let legalDepartmentBonusToSave: number | undefined = undefined;
+
+    const isEditMode = transaction && !copyMode;
 
     // Начисляем премии в фонд юридического департамента если это доход в Дело Бизнеса
     if (formData.type === 'income' && formData.company === 'Дело Бизнеса' && user) {
@@ -350,26 +353,35 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           const amount = parseFloat(formData.amount);
           const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
           
-          // Рассчитываем общую сумму премии
-          let totalBonusToAdd = 0;
+          // Рассчитываем новую сумму премии
+          let newLegalBonus = 0;
           
           // Основная премия
           const bonusPercentValue = parseFloat(legalBonusPercent) || 0;
           let mainBonusAmount = 0;
           if (bonusPercentValue > 0) {
             mainBonusAmount = amount * (bonusPercentValue / 100);
-            totalBonusToAdd += mainBonusAmount;
+            newLegalBonus += mainBonusAmount;
           }
           
           // Дополнительная премия (считается от основной премии)
           if (enableAdditionalBonus && mainBonusAmount > 0) {
             const additionalBonusValue = parseFloat(additionalBonusPercent) || 0;
             if (additionalBonusValue > 0) {
-              totalBonusToAdd += mainBonusAmount * (additionalBonusValue / 100);
+              newLegalBonus += mainBonusAmount * (additionalBonusValue / 100);
             }
           }
 
-          if (totalBonusToAdd > 0) {
+          // Получаем старое значение премии из транзакции (если редактируем)
+          const oldLegalBonus = isEditMode ? (transaction.legal_department_bonus || 0) : 0;
+          
+          // Вычисляем дельту: новая премия минус старая
+          const bonusDelta = newLegalBonus - oldLegalBonus;
+          
+          // Сохраняем новое значение премии для записи в транзакцию
+          legalDepartmentBonusToSave = newLegalBonus;
+
+          if (bonusDelta !== 0) {
             // Получаем текущий бюджет
             const { data: currentBudget } = await supabase
               .from('department_bonus_budget')
@@ -378,7 +390,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               .eq('month', currentMonth)
               .maybeSingle();
 
-            const newTotalBudget = (currentBudget?.total_budget || 0) + totalBonusToAdd;
+            const newTotalBudget = Math.max(0, (currentBudget?.total_budget || 0) + bonusDelta);
 
             // Обновляем или создаем запись бюджета
             const { error: budgetError } = await supabase
@@ -402,11 +414,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
 
       // Начисляем премии в фонд Отдела Арбитражного Управляющего если включен чекбокс ЮД БФЛ
-      const isEditMode = transaction && !copyMode;
-      const amount = parseFloat(formData.amount);
-      const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+      const auAmount = parseFloat(formData.amount);
+      const auCurrentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
       const auBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
-      const newAuBonusAmount = enableLegalBflBonus ? amount * (auBonusPercentValue / 100) : 0;
+      const newAuBonusAmount = enableLegalBflBonus ? auAmount * (auBonusPercentValue / 100) : 0;
       
       // Получаем старое значение премии из транзакции (если редактируем)
       const oldAuBonusAmount = isEditMode ? (transaction.au_department_bonus || 0) : 0;
@@ -432,7 +443,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               .from('department_bonus_budget')
               .select('total_budget')
               .eq('department_id', auDeptData.id)
-              .eq('month', currentMonth)
+              .eq('month', auCurrentMonth)
               .maybeSingle();
 
             // Применяем дельту к текущему бюджету
@@ -443,7 +454,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
               .from('department_bonus_budget')
               .upsert({
                 department_id: auDeptData.id,
-                month: currentMonth,
+                month: auCurrentMonth,
                 total_budget: newAuTotalBudget,
                 user_id: user.id
               }, {
@@ -477,6 +488,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       ...(formData.type === 'expense' && formData.expenseAccount && { expense_account: formData.expenseAccount }),
       ...(formData.organizationName && { organization_name: formData.organizationName }),
       ...(auDepartmentBonusToSave !== undefined && { au_department_bonus: auDepartmentBonusToSave }),
+      ...(legalDepartmentBonusToSave !== undefined && { legal_department_bonus: legalDepartmentBonusToSave }),
       ...(formData.type === 'income' && formData.category === 'Продажи' && {
         contract_amount: formData.contractAmount ? parseFloat(formData.contractAmount) : undefined,
         first_payment: formData.firstPayment ? parseFloat(formData.firstPayment) : undefined,
