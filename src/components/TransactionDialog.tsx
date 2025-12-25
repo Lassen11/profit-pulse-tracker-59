@@ -399,7 +399,10 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
       }
 
       // Начисляем премии в фонд Отдела Арбитражного Управляющего если включен чекбокс ЮД БФЛ
-      if (enableLegalBflBonus) {
+      // Только для новых операций, не для редактирования (при редактировании премия уже была добавлена)
+      const isEditMode = transaction && !copyMode;
+      
+      if (enableLegalBflBonus && !isEditMode) {
         try {
           // Находим ID Отдела Арбитражного Управляющего
           const { data: auDeptData, error: auDeptError } = await supabase
