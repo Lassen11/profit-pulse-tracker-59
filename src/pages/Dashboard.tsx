@@ -971,6 +971,37 @@ export default function Dashboard() {
     }).format(Math.abs(transaction.amount))}?`);
     if (confirmed) {
       try {
+        // Subtract bonus from department budget if exists
+        if (transaction.au_department_bonus && transaction.au_department_bonus > 0 && transaction.company === 'Дело Бизнеса') {
+          const transactionDate = new Date(transaction.date);
+          const monthStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), 1).toISOString().split('T')[0];
+          
+          // Get AU department
+          const { data: auDept } = await supabase
+            .from('departments')
+            .select('id')
+            .eq('name', 'Отдел Арбитражного Управляющего')
+            .maybeSingle();
+          
+          if (auDept) {
+            // Get current budget
+            const { data: currentBudget } = await supabase
+              .from('department_bonus_budget')
+              .select('id, total_budget')
+              .eq('department_id', auDept.id)
+              .eq('month', monthStart)
+              .maybeSingle();
+            
+            if (currentBudget) {
+              const newBudget = Math.max(0, currentBudget.total_budget - transaction.au_department_bonus);
+              await supabase
+                .from('department_bonus_budget')
+                .update({ total_budget: newBudget })
+                .eq('id', currentBudget.id);
+            }
+          }
+        }
+
         const {
           error
         } = await supabase.from('transactions').delete().eq('id', id);
