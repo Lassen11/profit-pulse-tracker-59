@@ -27,6 +27,7 @@ export interface Transaction {
   income_account?: string | null;
   expense_account?: string | null;
   au_department_bonus?: number | null;
+  legal_department_bonus?: number | null;
 }
 
 interface TransactionTableProps {

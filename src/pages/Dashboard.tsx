@@ -971,12 +971,11 @@ export default function Dashboard() {
     }).format(Math.abs(transaction.amount))}?`);
     if (confirmed) {
       try {
-        // Subtract bonus from department budget if exists
+        const transactionDate = new Date(transaction.date);
+        const monthStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), 1).toISOString().split('T')[0];
+        
+        // Subtract AU bonus from department budget if exists
         if (transaction.au_department_bonus && transaction.au_department_bonus > 0 && transaction.company === 'Дело Бизнеса') {
-          const transactionDate = new Date(transaction.date);
-          const monthStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), 1).toISOString().split('T')[0];
-          
-          // Get AU department
           const { data: auDept } = await supabase
             .from('departments')
             .select('id')
@@ -984,7 +983,6 @@ export default function Dashboard() {
             .maybeSingle();
           
           if (auDept) {
-            // Get current budget
             const { data: currentBudget } = await supabase
               .from('department_bonus_budget')
               .select('id, total_budget')
@@ -998,6 +996,32 @@ export default function Dashboard() {
                 .from('department_bonus_budget')
                 .update({ total_budget: newBudget })
                 .eq('id', currentBudget.id);
+            }
+          }
+        }
+
+        // Subtract Legal Department bonus from department budget if exists
+        if (transaction.legal_department_bonus && transaction.legal_department_bonus > 0 && transaction.company === 'Дело Бизнеса') {
+          const { data: legalDept } = await supabase
+            .from('departments')
+            .select('id')
+            .eq('name', 'Юридический департамент')
+            .maybeSingle();
+          
+          if (legalDept) {
+            const { data: currentLegalBudget } = await supabase
+              .from('department_bonus_budget')
+              .select('id, total_budget')
+              .eq('department_id', legalDept.id)
+              .eq('month', monthStart)
+              .maybeSingle();
+            
+            if (currentLegalBudget) {
+              const newLegalBudget = Math.max(0, currentLegalBudget.total_budget - transaction.legal_department_bonus);
+              await supabase
+                .from('department_bonus_budget')
+                .update({ total_budget: newLegalBudget })
+                .eq('id', currentLegalBudget.id);
             }
           }
         }
