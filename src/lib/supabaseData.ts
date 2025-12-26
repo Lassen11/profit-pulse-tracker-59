@@ -2,7 +2,7 @@ import { Transaction } from "@/components/TransactionTable";
 
 export const calculateKPIs = (transactions: Transaction[]) => {
   const income = transactions
-    .filter(t => t.type === 'income')
+    .filter(t => t.type === 'income' && t.category !== 'Перевод между счетами')
     .reduce((sum, t) => sum + t.amount, 0);
   
   const withdrawals = transactions
@@ -10,7 +10,7 @@ export const calculateKPIs = (transactions: Transaction[]) => {
     .reduce((sum, t) => sum + t.amount, 0);
   
   const expenses = transactions
-    .filter(t => t.type === 'expense' && t.category !== 'Вывод средств')
+    .filter(t => t.type === 'expense' && t.category !== 'Вывод средств' && t.category !== 'Перевод между счетами')
     .reduce((sum, t) => sum + t.amount, 0);
   
   const taxUSN = transactions
