@@ -232,6 +232,39 @@ export function TransactionTable({ transactions, onEdit, onDelete, onCopy, showF
                 )}
               </TableRow>
             ))}
+            {/* Итоговая строка */}
+            {filteredTransactions.length > 0 && (
+              <TableRow className="bg-muted/50 font-semibold border-t-2">
+                <TableCell colSpan={6} className="text-right">
+                  Итого:
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="space-y-1">
+                    <div className="amount-positive">
+                      +{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(
+                        filteredTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)
+                      )}
+                    </div>
+                    <div className="amount-negative">
+                      -{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(
+                        filteredTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)
+                      )}
+                    </div>
+                    <div className={cn(
+                      filteredTransactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0) >= 0 
+                        ? 'amount-positive' 
+                        : 'amount-negative'
+                    )}>
+                      ={new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(
+                        Math.abs(filteredTransactions.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0))
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell></TableCell>
+                {(onEdit || onDelete || onCopy) && <TableCell></TableCell>}
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
