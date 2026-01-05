@@ -266,7 +266,7 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
             </thead>
             <tbody>
               {chartData.map((row) => (
-                <tr key={row.month} className="border-b last:border-0">
+                <tr key={row.month} className="border-b">
                   <td className="py-2 capitalize">{row.monthLabel}</td>
                   <td className="text-right py-2 text-green-600">{row.newClients}</td>
                   <td className="text-right py-2 text-red-600">{row.completedCases}</td>
@@ -279,6 +279,25 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="bg-muted/50 font-semibold">
+                <td className="py-2">Итого</td>
+                <td className="text-right py-2 text-green-600">
+                  {chartData.reduce((sum, row) => sum + row.newClients, 0)}
+                </td>
+                <td className="text-right py-2 text-red-600">
+                  {chartData.reduce((sum, row) => sum + row.completedCases, 0)}
+                </td>
+                <td className={`text-right py-2 ${chartData.reduce((sum, row) => sum + row.saldo, 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {chartData.reduce((sum, row) => sum + row.saldo, 0) > 0 ? '+' : ''}
+                  {chartData.reduce((sum, row) => sum + row.saldo, 0)}
+                </td>
+                <td className={`text-right py-2 ${chartData.reduce((sum, row) => sum + row.saldoSum, 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {chartData.reduce((sum, row) => sum + row.saldoSum, 0) > 0 ? '+' : ''}
+                  {formatCurrency(chartData.reduce((sum, row) => sum + row.saldoSum, 0))}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </CardContent>
