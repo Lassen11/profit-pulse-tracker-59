@@ -58,8 +58,14 @@ export default function Dashboard() {
   const [completedCasesCount, setCompletedCasesCount] = useState<number>(0);
   const [completedCasesMonthlyPaymentSum, setCompletedCasesMonthlyPaymentSum] = useState<number>(0);
   const [remainingPayments, setRemainingPayments] = useState<number>(0);
-  const [terminationsSum, setTerminationsSum] = useState<number>(0);
-  const [suspensionsSum, setSuspensionsSum] = useState<number>(0);
+  // Расторжения: количество / сумма договоров / сумма ежемесячных платежей
+  const [terminationsCount, setTerminationsCount] = useState<number>(0);
+  const [terminationsContractSum, setTerminationsContractSum] = useState<number>(0);
+  const [terminationsMonthlySum, setTerminationsMonthlySum] = useState<number>(0);
+  // Приостановки: количество / сумма договоров / сумма ежемесячных платежей
+  const [suspensionsCount, setSuspensionsCount] = useState<number>(0);
+  const [suspensionsContractSum, setSuspensionsContractSum] = useState<number>(0);
+  const [suspensionsMonthlySum, setSuspensionsMonthlySum] = useState<number>(0);
   const {
     toast
   } = useToast();
@@ -385,35 +391,25 @@ export default function Dashboard() {
       }
       setRemainingPayments(remainingPaymentsData?.target_value || 0);
 
-      // Get terminations sum from kpi_targets
-      const { data: terminationsSumData, error: terminationsSumError } = await supabase
-        .from('kpi_targets')
-        .select('target_value')
-        .eq('company', 'Спасение')
-        .eq('kpi_name', 'terminations_sum')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
-        .maybeSingle();
+      // Get terminations data from kpi_targets
+      const [terminationsCountRes, terminationsContractRes, terminationsMonthlyRes] = await Promise.all([
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_count').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_contract_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_monthly_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle()
+      ]);
+      setTerminationsCount(terminationsCountRes.data?.target_value || 0);
+      setTerminationsContractSum(terminationsContractRes.data?.target_value || 0);
+      setTerminationsMonthlySum(terminationsMonthlyRes.data?.target_value || 0);
 
-      if (terminationsSumError && terminationsSumError.code !== 'PGRST116') {
-        console.error('Error fetching terminations sum KPI:', terminationsSumError);
-      }
-      setTerminationsSum(terminationsSumData?.target_value || 0);
-
-      // Get suspensions sum from kpi_targets
-      const { data: suspensionsSumData, error: suspensionsSumError } = await supabase
-        .from('kpi_targets')
-        .select('target_value')
-        .eq('company', 'Спасение')
-        .eq('kpi_name', 'suspensions_sum')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
-        .maybeSingle();
-
-      if (suspensionsSumError && suspensionsSumError.code !== 'PGRST116') {
-        console.error('Error fetching suspensions sum KPI:', suspensionsSumError);
-      }
-      setSuspensionsSum(suspensionsSumData?.target_value || 0);
+      // Get suspensions data from kpi_targets
+      const [suspensionsCountRes, suspensionsContractRes, suspensionsMonthlyRes] = await Promise.all([
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_count').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_contract_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_monthly_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle()
+      ]);
+      setSuspensionsCount(suspensionsCountRes.data?.target_value || 0);
+      setSuspensionsContractSum(suspensionsContractRes.data?.target_value || 0);
+      setSuspensionsMonthlySum(suspensionsMonthlyRes.data?.target_value || 0);
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
@@ -1663,13 +1659,13 @@ export default function Dashboard() {
             />
             <KPICard 
               title="Сумма расторжений" 
-              value={formatCurrency(terminationsSum)} 
+              value={`${terminationsCount} / ${formatCurrency(terminationsContractSum)} / ${formatCurrency(terminationsMonthlySum)}`} 
               icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
               className="shadow-kpi" 
             />
             <KPICard 
               title="Сумма приостановок" 
-              value={formatCurrency(suspensionsSum)} 
+              value={`${suspensionsCount} / ${formatCurrency(suspensionsContractSum)} / ${formatCurrency(suspensionsMonthlySum)}`} 
               icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
               className="shadow-kpi" 
             />
