@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
@@ -21,9 +22,12 @@ interface MonthData {
   saldoSum: number;
 }
 
+type PeriodType = "2" | "3" | "6" | "12";
+
 export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartProps) {
   const [chartData, setChartData] = useState<MonthData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<PeriodType>("2");
 
   const fetchMonthData = useCallback(async (date: Date): Promise<MonthData | null> => {
     const monthStart = startOfMonth(date);
@@ -32,7 +36,6 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
     const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
     try {
-      // Fetch all KPI data for this month
       const { data: kpiData, error } = await supabase
         .from('kpi_targets')
         .select('kpi_name, target_value')
@@ -61,7 +64,7 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
 
       return {
         month: format(date, 'yyyy-MM'),
-        monthLabel: format(date, 'LLL yyyy', { locale: ru }),
+        monthLabel: format(date, 'LLL yy', { locale: ru }),
         newClients,
         completedCases,
         saldo: newClients - completedCases,
@@ -79,25 +82,24 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
     const loadData = async () => {
       setLoading(true);
       
-      // Get data for current month and previous month
-      const currentMonth = selectedMonth;
-      const previousMonth = subMonths(selectedMonth, 1);
+      const monthsCount = parseInt(period);
+      const monthPromises: Promise<MonthData | null>[] = [];
+      
+      // Generate dates for each month in the period (from oldest to newest)
+      for (let i = monthsCount - 1; i >= 0; i--) {
+        const monthDate = subMonths(selectedMonth, i);
+        monthPromises.push(fetchMonthData(monthDate));
+      }
 
-      const [prevData, currentData] = await Promise.all([
-        fetchMonthData(previousMonth),
-        fetchMonthData(currentMonth)
-      ]);
-
-      const data: MonthData[] = [];
-      if (prevData) data.push(prevData);
-      if (currentData) data.push(currentData);
+      const results = await Promise.all(monthPromises);
+      const data = results.filter((d): d is MonthData => d !== null);
 
       setChartData(data);
       setLoading(false);
     };
 
     loadData();
-  }, [selectedMonth, fetchMonthData]);
+  }, [selectedMonth, period, fetchMonthData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -106,11 +108,30 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
     }).format(value) + ' ₽';
   };
 
+  const periodOptions = [
+    { value: "2", label: "2 месяца" },
+    { value: "3", label: "3 месяца" },
+    { value: "6", label: "6 месяцев" },
+    { value: "12", label: "12 месяцев" },
+  ];
+
   if (loading) {
     return (
       <Card className="shadow-kpi">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Динамика сальдо клиентов</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">Динамика сальдо клиентов</CardTitle>
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periodOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] flex items-center justify-center text-muted-foreground">
@@ -125,7 +146,19 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
     return (
       <Card className="shadow-kpi">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Динамика сальдо клиентов</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">Динамика сальдо клиентов</CardTitle>
+            <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periodOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] flex items-center justify-center text-muted-foreground">
@@ -139,7 +172,19 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
   return (
     <Card className="shadow-kpi">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Динамика сальдо клиентов</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">Динамика сальдо клиентов</CardTitle>
+          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodType)}>
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {periodOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="h-[250px]">
@@ -149,7 +194,11 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
               <XAxis 
                 dataKey="monthLabel" 
                 className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                interval={0}
+                angle={chartData.length > 6 ? -45 : 0}
+                textAnchor={chartData.length > 6 ? "end" : "middle"}
+                height={chartData.length > 6 ? 60 : 30}
               />
               <YAxis 
                 className="text-xs"
@@ -173,8 +222,8 @@ export function ClientsSaldoChart({ selectedMonth, userId }: ClientsSaldoChartPr
               <Legend 
                 formatter={(value) => {
                   const labels: Record<string, string> = {
-                    newClients: 'Новых клиентов',
-                    completedCases: 'Завершенных дел',
+                    newClients: 'Новых',
+                    completedCases: 'Заверш.',
                     saldo: 'Сальдо'
                   };
                   return labels[value] || value;
