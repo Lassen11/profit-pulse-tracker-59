@@ -12,6 +12,7 @@ import { AccountTransferDialog, AccountTransfer } from "@/components/AccountTran
 import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
+import { ClientsSaldoChart } from "@/components/ClientsSaldoChart";
 import { DemoBanner } from "@/components/DemoBanner";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink, Settings } from "lucide-react";
@@ -1597,6 +1598,11 @@ export default function Dashboard() {
             />
           </>}
         </div>
+
+        {/* Clients Saldo Chart - only for Спасение */}
+        {selectedCompany === "Спасение" && (
+          <ClientsSaldoChart selectedMonth={effectiveMonth} userId={user?.id} />
+        )}
 
         {/* Receivables and New Sales KPIs for Спасение only */}
         {selectedCompany === "Спасение" && <>
