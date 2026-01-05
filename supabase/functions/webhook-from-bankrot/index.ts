@@ -1,5 +1,68 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
+/**
+ * Унифицированная функция для получения ключа месяца в формате YYYY-MM-lastDay
+ * Принимает:
+ * - "YYYY-MM" -> преобразует в YYYY-MM-lastDay
+ * - "YYYY-MM-DD" -> преобразует в YYYY-MM-lastDay того же месяца
+ * - Date объект -> преобразует в YYYY-MM-lastDay
+ */
+function getLastDayOfMonth(input: string | Date | undefined, fallbackDate?: Date): string {
+  let year: number;
+  let month: number; // 1-12
+
+  if (!input) {
+    const d = fallbackDate || new Date();
+    year = d.getFullYear();
+    month = d.getMonth() + 1;
+  } else if (input instanceof Date) {
+    year = input.getFullYear();
+    month = input.getMonth() + 1;
+  } else if (typeof input === 'string') {
+    const trimmed = input.trim();
+    
+    // Формат YYYY-MM-DD или YYYY-MM-DDTHH:mm:ss
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      const parts = trimmed.split('-');
+      year = Number(parts[0]);
+      month = Number(parts[1]);
+    }
+    // Формат YYYY-MM
+    else if (/^\d{4}-\d{2}$/.test(trimmed)) {
+      const [y, m] = trimmed.split('-').map(Number);
+      year = y;
+      month = m;
+    }
+    // Иначе пытаемся распарсить как дату
+    else {
+      const d = new Date(trimmed);
+      if (!isNaN(d.getTime())) {
+        year = d.getFullYear();
+        month = d.getMonth() + 1;
+      } else {
+        const fb = fallbackDate || new Date();
+        year = fb.getFullYear();
+        month = fb.getMonth() + 1;
+      }
+    }
+  } else {
+    const d = fallbackDate || new Date();
+    year = d.getFullYear();
+    month = d.getMonth() + 1;
+  }
+
+  // Вычисляем последний день месяца
+  // new Date(year, month, 0) дает последний день предыдущего месяца,
+  // поэтому new Date(year, month, 0) где month = 1-12 дает последний день этого месяца
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  
+  const yStr = String(year);
+  const mStr = String(month).padStart(2, '0');
+  const dStr = String(lastDay).padStart(2, '0');
+  
+  return `${yStr}-${mStr}-${dStr}`;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -426,16 +489,8 @@ Deno.serve(async (req) => {
       try {
         const p = payload as SyncSummaryPayload;
         
-        // Используем месяц из payload или вычисляем из date
-        let monthStr: string;
-        if (p.month) {
-          monthStr = p.month;
-        } else {
-          const baseDate = p.date ? new Date(p.date) : new Date();
-          // Используем последний день месяца для соответствия формату kpi_targets
-          const endOfMonthDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
-          monthStr = endOfMonthDate.toISOString().split('T')[0];
-        }
+        // Унифицированный ключ месяца: всегда последний день месяца
+        const monthStr = getLastDayOfMonth(p.month || p.date);
         
         const company = p.company || 'Спасение';
         
@@ -539,15 +594,8 @@ Deno.serve(async (req) => {
       try {
         const p = payload as SyncClientsStatsPayload;
         
-        // Определяем месяц
-        let monthStr: string;
-        if (p.month) {
-          monthStr = p.month;
-        } else {
-          const baseDate = p.date ? new Date(p.date) : new Date();
-          const endOfMonthDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
-          monthStr = endOfMonthDate.toISOString().split('T')[0];
-        }
+        // Унифицированный ключ месяца: всегда последний день месяца
+        const monthStr = getLastDayOfMonth(p.month || p.date);
         
         const company = p.company || 'Спасение';
         
@@ -655,31 +703,8 @@ Deno.serve(async (req) => {
       try {
         const p = payload as DashboardMetricsPayload;
         
-        // Определяем месяц из payload
-        // Поддерживаем:
-        // - p.month: "YYYY-MM" (предпочтительно)
-        // - p.month: "YYYY-MM-DD"
-        // - fallback: p.date
-        const toIsoDate = (d: Date) => d.toISOString().split('T')[0];
-        const monthStr = (() => {
-          if (p.month) {
-            // Если уже пришла полная дата
-            if (/^\d{4}-\d{2}-\d{2}/.test(p.month)) return p.month.slice(0, 10);
-
-            // Если пришло "YYYY-MM" — используем 30-е число (как было),
-            // но для коротких месяцев берем последний доступный день.
-            const [yStr, mStr] = p.month.split('-');
-            const y = Number(yStr);
-            const m = Number(mStr);
-            if (Number.isFinite(y) && Number.isFinite(m) && m >= 1 && m <= 12) {
-              const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-              const day = Math.min(30, lastDay);
-              return toIsoDate(new Date(Date.UTC(y, m - 1, day)));
-            }
-          }
-
-          return toIsoDate(new Date(p.date));
-        })();
+        // Унифицированный ключ месяца: всегда последний день месяца
+        const monthStr = getLastDayOfMonth(p.month || p.date);
 
         const company = p.company || 'Спасение';
         
