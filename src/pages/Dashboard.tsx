@@ -205,14 +205,32 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Get the effective month based on period filter
-  const effectiveMonth = useMemo(() => {
-    if (periodFilter === "specific-month") {
-      return selectedMonth;
+  // Get the effective date range based on period filter
+  const effectiveDateRange = useMemo(() => {
+    const now = new Date();
+    switch (periodFilter) {
+      case "month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "specific-month":
+        return { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
+      case "quarter":
+        return { start: startOfQuarter(now), end: endOfQuarter(now) };
+      case "year":
+        return { start: startOfYear(now), end: endOfYear(now) };
+      case "custom":
+        if (customDateFrom && customDateTo) {
+          return { start: customDateFrom, end: customDateTo };
+        }
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      default:
+        return { start: startOfMonth(now), end: endOfMonth(now) };
     }
-    // For "month" filter, use current month
-    return new Date();
-  }, [periodFilter, selectedMonth]);
+  }, [periodFilter, selectedMonth, customDateFrom, customDateTo]);
+
+  // For backward compatibility
+  const effectiveMonth = useMemo(() => {
+    return effectiveDateRange.start;
+  }, [effectiveDateRange]);
 
   // Fetch receivables data (Дебиторка)
   const fetchReceivablesData = useCallback(async () => {
@@ -311,11 +329,9 @@ export default function Dashboard() {
   const fetchBankrotClientsData = useCallback(async () => {
     if (!user) return;
     try {
-      // Use effectiveMonth for date filtering - search by month range since dates may vary
-      const monthStart = startOfMonth(effectiveMonth);
-      const monthEnd = endOfMonth(effectiveMonth);
-      const monthStartStr = format(monthStart, 'yyyy-MM-dd');
-      const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
+      // Use effectiveDateRange for date filtering based on selected period
+      const dateStartStr = format(effectiveDateRange.start, 'yyyy-MM-dd');
+      const dateEndStr = format(effectiveDateRange.end, 'yyyy-MM-dd');
 
       // Get new clients count from kpi_targets
       const { data: newClientsData, error: newClientsError } = await supabase
@@ -323,8 +339,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'new_clients_count')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
+        .gte('month', dateStartStr)
+        .lte('month', dateEndStr)
         .maybeSingle();
 
       if (newClientsError && newClientsError.code !== 'PGRST116') {
@@ -338,8 +354,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'new_clients_monthly_payment_sum')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
+        .gte('month', dateStartStr)
+        .lte('month', dateEndStr)
         .maybeSingle();
 
       if (newClientsSumError && newClientsSumError.code !== 'PGRST116') {
@@ -353,8 +369,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'completed_cases_count')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
+        .gte('month', dateStartStr)
+        .lte('month', dateEndStr)
         .maybeSingle();
 
       if (completedCasesError && completedCasesError.code !== 'PGRST116') {
@@ -368,8 +384,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'completed_cases_monthly_payment_sum')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
+        .gte('month', dateStartStr)
+        .lte('month', dateEndStr)
         .maybeSingle();
 
       if (completedCasesSumError && completedCasesSumError.code !== 'PGRST116') {
@@ -383,8 +399,8 @@ export default function Dashboard() {
         .select('target_value')
         .eq('company', 'Спасение')
         .eq('kpi_name', 'remaining_payments')
-        .gte('month', monthStartStr)
-        .lte('month', monthEndStr)
+        .gte('month', dateStartStr)
+        .lte('month', dateEndStr)
         .maybeSingle();
 
       if (remainingPaymentsError && remainingPaymentsError.code !== 'PGRST116') {
@@ -394,9 +410,9 @@ export default function Dashboard() {
 
       // Get terminations data from kpi_targets
       const [terminationsCountRes, terminationsContractRes, terminationsMonthlyRes] = await Promise.all([
-        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_count').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
-        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_contract_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
-        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_monthly_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle()
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_count').gte('month', dateStartStr).lte('month', dateEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_contract_sum').gte('month', dateStartStr).lte('month', dateEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'terminations_monthly_sum').gte('month', dateStartStr).lte('month', dateEndStr).maybeSingle()
       ]);
       setTerminationsCount(terminationsCountRes.data?.target_value || 0);
       setTerminationsContractSum(terminationsContractRes.data?.target_value || 0);
@@ -404,9 +420,9 @@ export default function Dashboard() {
 
       // Get suspensions data from kpi_targets
       const [suspensionsCountRes, suspensionsContractRes, suspensionsMonthlyRes] = await Promise.all([
-        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_count').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
-        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_contract_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle(),
-        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_monthly_sum').gte('month', monthStartStr).lte('month', monthEndStr).maybeSingle()
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_count').gte('month', dateStartStr).lte('month', dateEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_contract_sum').gte('month', dateStartStr).lte('month', dateEndStr).maybeSingle(),
+        supabase.from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'suspensions_monthly_sum').gte('month', dateStartStr).lte('month', dateEndStr).maybeSingle()
       ]);
       setSuspensionsCount(suspensionsCountRes.data?.target_value || 0);
       setSuspensionsContractSum(suspensionsContractRes.data?.target_value || 0);
@@ -414,7 +430,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
-  }, [user, effectiveMonth]);
+  }, [user, effectiveDateRange]);
 
   // Load balance adjustments on mount
   useEffect(() => {
