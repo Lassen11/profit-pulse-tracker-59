@@ -1589,6 +1589,12 @@ export default function Dashboard() {
               icon={<Target className="w-5 h-5 sm:w-6 sm:h-6" />} 
               className="shadow-kpi" 
             />
+            <KPICard 
+              title="Сальдо новых/завершенных" 
+              value={`${newClientsCount - completedCasesCount} / ${formatNumberNoCurrency(newClientsMonthlyPaymentSum - completedCasesMonthlyPaymentSum)}`} 
+              icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
           </>}
         </div>
 
