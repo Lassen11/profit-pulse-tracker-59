@@ -717,7 +717,31 @@ Deno.serve(async (req) => {
         // Маппинг полей из bankrot-helper на наши KPI
         const toNumber = (v: unknown) => {
           if (typeof v === 'number') return v;
-          if (typeof v === 'string') return Number(v);
+          if (typeof v === 'string') {
+            // Поддержка строк вида "98 236 ₽", "98\u00A0236", "98,236" и т.п.
+            const raw = v.trim();
+            if (!raw) return 0;
+
+            // оставляем только цифры/знаки/разделители
+            let cleaned = raw.replace(/[^0-9.,\-]/g, '');
+
+            // если есть и "," и "." — считаем, что последний разделитель = десятичный
+            const lastComma = cleaned.lastIndexOf(',');
+            const lastDot = cleaned.lastIndexOf('.');
+            if (lastComma !== -1 && lastDot !== -1) {
+              if (lastComma > lastDot) {
+                cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+              } else {
+                cleaned = cleaned.replace(/,/g, '');
+              }
+            } else if (lastComma !== -1 && lastDot === -1) {
+              // если только запятая — трактуем как десятичный разделитель
+              cleaned = cleaned.replace(',', '.');
+            }
+
+            const n = Number(cleaned);
+            return Number.isFinite(n) ? n : 0;
+          }
           return 0;
         };
 
