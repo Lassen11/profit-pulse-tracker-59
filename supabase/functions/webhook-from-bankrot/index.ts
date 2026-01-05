@@ -86,15 +86,17 @@ interface DashboardMetricsPayload {
   new_clients_monthly_payment_sum: number;
   completed_clients_count: number;
   completed_clients_monthly_payment_sum: number;
-  remaining_payments?: number; // Остаток платежей
-  // Расторжения: количество / сумма договоров / сумма ежемесячных платежей
-  terminations_count?: number;
-  terminations_contract_sum?: number;
-  terminations_monthly_sum?: number;
-  // Приостановки: количество / сумма договоров / сумма ежемесячных платежей
-  suspensions_count?: number;
-  suspensions_contract_sum?: number;
-  suspensions_monthly_sum?: number;
+  // Поля из bankrot-helper (разные варианты названий для совместимости)
+  remaining_payments_sum?: number; // Остаток платежей (из bankrot-helper)
+  remaining_payments?: number; // Остаток платежей (альтернативное название)
+  // Расторжения
+  terminated_clients_count?: number; // из bankrot-helper
+  terminated_contract_amount?: number; // сумма договоров расторжений
+  terminated_monthly_payment_sum?: number; // сумма ежемесячных платежей расторжений
+  // Приостановки
+  suspended_clients_count?: number; // из bankrot-helper
+  suspended_contract_amount?: number; // сумма договоров приостановок
+  suspended_monthly_payment_sum?: number; // сумма ежемесячных платежей приостановок
   company: string;
   user_id: string;
   date: string;
@@ -688,20 +690,33 @@ Deno.serve(async (req) => {
         }
 
         // Сохраняем метрики в kpi_targets
+        // Маппинг полей из bankrot-helper на наши KPI
+        const remainingPayments = p.remaining_payments_sum ?? p.remaining_payments ?? 0;
+        const terminationsCount = p.terminated_clients_count ?? 0;
+        const terminationsContractSum = p.terminated_contract_amount ?? 0;
+        const terminationsMonthlySum = p.terminated_monthly_payment_sum ?? 0;
+        const suspensionsCount = p.suspended_clients_count ?? 0;
+        const suspensionsContractSum = p.suspended_contract_amount ?? 0;
+        const suspensionsMonthlySum = p.suspended_monthly_payment_sum ?? 0;
+        
+        console.log(`Remaining payments: ${remainingPayments}`);
+        console.log(`Terminations: count=${terminationsCount}, contracts=${terminationsContractSum}, monthly=${terminationsMonthlySum}`);
+        console.log(`Suspensions: count=${suspensionsCount}, contracts=${suspensionsContractSum}, monthly=${suspensionsMonthlySum}`);
+        
         const kpiData = [
           { kpi_name: 'new_clients_count', value: p.new_clients_count },
           { kpi_name: 'new_clients_monthly_payment_sum', value: p.new_clients_monthly_payment_sum },
           { kpi_name: 'completed_cases_count', value: p.completed_clients_count },
           { kpi_name: 'completed_cases_monthly_payment_sum', value: p.completed_clients_monthly_payment_sum },
-          { kpi_name: 'remaining_payments', value: p.remaining_payments ?? 0 },
+          { kpi_name: 'remaining_payments', value: remainingPayments },
           // Расторжения
-          { kpi_name: 'terminations_count', value: p.terminations_count ?? 0 },
-          { kpi_name: 'terminations_contract_sum', value: p.terminations_contract_sum ?? 0 },
-          { kpi_name: 'terminations_monthly_sum', value: p.terminations_monthly_sum ?? 0 },
+          { kpi_name: 'terminations_count', value: terminationsCount },
+          { kpi_name: 'terminations_contract_sum', value: terminationsContractSum },
+          { kpi_name: 'terminations_monthly_sum', value: terminationsMonthlySum },
           // Приостановки
-          { kpi_name: 'suspensions_count', value: p.suspensions_count ?? 0 },
-          { kpi_name: 'suspensions_contract_sum', value: p.suspensions_contract_sum ?? 0 },
-          { kpi_name: 'suspensions_monthly_sum', value: p.suspensions_monthly_sum ?? 0 }
+          { kpi_name: 'suspensions_count', value: suspensionsCount },
+          { kpi_name: 'suspensions_contract_sum', value: suspensionsContractSum },
+          { kpi_name: 'suspensions_monthly_sum', value: suspensionsMonthlySum }
         ];
 
         for (const kpi of kpiData) {
