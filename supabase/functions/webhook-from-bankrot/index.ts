@@ -655,8 +655,32 @@ Deno.serve(async (req) => {
       try {
         const p = payload as DashboardMetricsPayload;
         
-        // Определяем месяц из payload (формат "2025-11")
-        const monthStr = p.month ? `${p.month}-30` : new Date(p.date).toISOString().split('T')[0];
+        // Определяем месяц из payload
+        // Поддерживаем:
+        // - p.month: "YYYY-MM" (предпочтительно)
+        // - p.month: "YYYY-MM-DD"
+        // - fallback: p.date
+        const toIsoDate = (d: Date) => d.toISOString().split('T')[0];
+        const monthStr = (() => {
+          if (p.month) {
+            // Если уже пришла полная дата
+            if (/^\d{4}-\d{2}-\d{2}/.test(p.month)) return p.month.slice(0, 10);
+
+            // Если пришло "YYYY-MM" — используем 30-е число (как было),
+            // но для коротких месяцев берем последний доступный день.
+            const [yStr, mStr] = p.month.split('-');
+            const y = Number(yStr);
+            const m = Number(mStr);
+            if (Number.isFinite(y) && Number.isFinite(m) && m >= 1 && m <= 12) {
+              const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+              const day = Math.min(30, lastDay);
+              return toIsoDate(new Date(Date.UTC(y, m - 1, day)));
+            }
+          }
+
+          return toIsoDate(new Date(p.date));
+        })();
+
         const company = p.company || 'Спасение';
         
         console.log(`Processing dashboard metrics for company: ${company}, month: ${monthStr}`);
@@ -691,13 +715,37 @@ Deno.serve(async (req) => {
 
         // Сохраняем метрики в kpi_targets
         // Маппинг полей из bankrot-helper на наши KPI
-        const remainingPayments = p.remaining_payments_sum ?? p.remaining_payments ?? 0;
-        const terminationsCount = p.terminated_clients_count ?? 0;
-        const terminationsContractSum = p.terminated_contract_amount ?? 0;
-        const terminationsMonthlySum = p.terminated_monthly_payment_sum ?? 0;
-        const suspensionsCount = p.suspended_clients_count ?? 0;
-        const suspensionsContractSum = p.suspended_contract_amount ?? 0;
-        const suspensionsMonthlySum = p.suspended_monthly_payment_sum ?? 0;
+        const toNumber = (v: unknown) => {
+          if (typeof v === 'number') return v;
+          if (typeof v === 'string') return Number(v);
+          return 0;
+        };
+
+        const remainingPayments = toNumber(p.remaining_payments_sum ?? p.remaining_payments ?? (p as any).remainingPaymentsSum ?? (p as any).remainingPayments ?? 0);
+        const terminationsCount = toNumber(p.terminated_clients_count ?? (p as any).terminatedClientsCount ?? 0);
+        const terminationsContractSum = toNumber(p.terminated_contract_amount ?? (p as any).terminatedContractAmount ?? 0);
+        const terminationsMonthlySum = toNumber(
+          p.terminated_monthly_payment_sum ??
+            (p as any).terminated_monthly_sum ??
+            (p as any).terminated_monthly_payment ??
+            (p as any).terminated_monthly_payments_sum ??
+            (p as any).terminatedMonthlyPaymentSum ??
+            (p as any).terminatedMonthlySum ??
+            (p as any).terminatedMonthlyPayment ??
+            0
+        );
+        const suspensionsCount = toNumber(p.suspended_clients_count ?? (p as any).suspendedClientsCount ?? 0);
+        const suspensionsContractSum = toNumber(p.suspended_contract_amount ?? (p as any).suspendedContractAmount ?? 0);
+        const suspensionsMonthlySum = toNumber(
+          p.suspended_monthly_payment_sum ??
+            (p as any).suspended_monthly_sum ??
+            (p as any).suspended_monthly_payment ??
+            (p as any).suspended_monthly_payments_sum ??
+            (p as any).suspendedMonthlyPaymentSum ??
+            (p as any).suspendedMonthlySum ??
+            (p as any).suspendedMonthlyPayment ??
+            0
+        );
         
         console.log(`Remaining payments: ${remainingPayments}`);
         console.log(`Terminations: count=${terminationsCount}, contracts=${terminationsContractSum}, monthly=${terminationsMonthlySum}`);

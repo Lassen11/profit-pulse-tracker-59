@@ -1678,14 +1678,16 @@ export default function Dashboard() {
               <KPICard 
                 title="Сумма расторжений" 
                 value={`${terminationsCount} / ${formatCurrency(terminationsContractSum)} / ${formatCurrency(terminationsMonthlySum)}`} 
+                description="кол-во / договоры / ежемес."
                 icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
                 className="shadow-kpi" 
               />
               <KPICard 
                 title="Сумма приостановок" 
                 value={`${suspensionsCount} / ${formatCurrency(suspensionsContractSum)} / ${formatCurrency(suspensionsMonthlySum)}`} 
+                description="кол-во / договоры / ежемес."
                 icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
-                className="shadow-kpi" 
+                className="shadow-kpi"
               />
             </div>
 
