@@ -13,6 +13,7 @@ import { AccountActionsDialog } from "@/components/AccountActionsDialog";
 import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialog";
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { ClientsSaldoChart } from "@/components/ClientsSaldoChart";
+import { ClientMetricsChart } from "@/components/ClientMetricsChart";
 import { DemoBanner } from "@/components/DemoBanner";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink, Settings } from "lucide-react";
@@ -1650,26 +1651,31 @@ export default function Dashboard() {
 
         {/* Remaining Payments, Terminations, Suspensions KPIs - only for Спасение */}
         {selectedCompany === "Спасение" && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <KPICard 
-              title="Остаток платежей" 
-              value={formatCurrency(remainingPayments)} 
-              icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} 
-              className="shadow-kpi" 
-            />
-            <KPICard 
-              title="Сумма расторжений" 
-              value={`${terminationsCount} / ${formatCurrency(terminationsContractSum)} / ${formatCurrency(terminationsMonthlySum)}`} 
-              icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
-              className="shadow-kpi" 
-            />
-            <KPICard 
-              title="Сумма приостановок" 
-              value={`${suspensionsCount} / ${formatCurrency(suspensionsContractSum)} / ${formatCurrency(suspensionsMonthlySum)}`} 
-              icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
-              className="shadow-kpi" 
-            />
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <KPICard 
+                title="Остаток платежей" 
+                value={formatCurrency(remainingPayments)} 
+                icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} 
+                className="shadow-kpi" 
+              />
+              <KPICard 
+                title="Сумма расторжений" 
+                value={`${terminationsCount} / ${formatCurrency(terminationsContractSum)} / ${formatCurrency(terminationsMonthlySum)}`} 
+                icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
+                className="shadow-kpi" 
+              />
+              <KPICard 
+                title="Сумма приостановок" 
+                value={`${suspensionsCount} / ${formatCurrency(suspensionsContractSum)} / ${formatCurrency(suspensionsMonthlySum)}`} 
+                icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
+                className="shadow-kpi" 
+              />
+            </div>
+
+            {/* Client Metrics Chart */}
+            <ClientMetricsChart userId={user?.id} />
+          </>
         )}
 
         {/* Receivables and New Sales KPIs for Спасение only */}
