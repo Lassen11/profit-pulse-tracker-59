@@ -57,6 +57,9 @@ export default function Dashboard() {
   const [newClientsMonthlyPaymentSum, setNewClientsMonthlyPaymentSum] = useState<number>(0);
   const [completedCasesCount, setCompletedCasesCount] = useState<number>(0);
   const [completedCasesMonthlyPaymentSum, setCompletedCasesMonthlyPaymentSum] = useState<number>(0);
+  const [remainingPayments, setRemainingPayments] = useState<number>(0);
+  const [terminationsSum, setTerminationsSum] = useState<number>(0);
+  const [suspensionsSum, setSuspensionsSum] = useState<number>(0);
   const {
     toast
   } = useToast();
@@ -366,6 +369,51 @@ export default function Dashboard() {
         console.error('Error fetching completed cases monthly sum KPI:', completedCasesSumError);
       }
       setCompletedCasesMonthlyPaymentSum(completedCasesSumData?.target_value || 0);
+
+      // Get remaining payments from kpi_targets
+      const { data: remainingPaymentsData, error: remainingPaymentsError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'remaining_payments')
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
+        .maybeSingle();
+
+      if (remainingPaymentsError && remainingPaymentsError.code !== 'PGRST116') {
+        console.error('Error fetching remaining payments KPI:', remainingPaymentsError);
+      }
+      setRemainingPayments(remainingPaymentsData?.target_value || 0);
+
+      // Get terminations sum from kpi_targets
+      const { data: terminationsSumData, error: terminationsSumError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'terminations_sum')
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
+        .maybeSingle();
+
+      if (terminationsSumError && terminationsSumError.code !== 'PGRST116') {
+        console.error('Error fetching terminations sum KPI:', terminationsSumError);
+      }
+      setTerminationsSum(terminationsSumData?.target_value || 0);
+
+      // Get suspensions sum from kpi_targets
+      const { data: suspensionsSumData, error: suspensionsSumError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'suspensions_sum')
+        .gte('month', monthStartStr)
+        .lte('month', monthEndStr)
+        .maybeSingle();
+
+      if (suspensionsSumError && suspensionsSumError.code !== 'PGRST116') {
+        console.error('Error fetching suspensions sum KPI:', suspensionsSumError);
+      }
+      setSuspensionsSum(suspensionsSumData?.target_value || 0);
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
@@ -1602,6 +1650,30 @@ export default function Dashboard() {
         {/* Clients Saldo Chart - only for Спасение */}
         {selectedCompany === "Спасение" && (
           <ClientsSaldoChart selectedMonth={effectiveMonth} userId={user?.id} />
+        )}
+
+        {/* Remaining Payments, Terminations, Suspensions KPIs - only for Спасение */}
+        {selectedCompany === "Спасение" && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <KPICard 
+              title="Остаток платежей" 
+              value={formatCurrency(remainingPayments)} 
+              icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
+            <KPICard 
+              title="Сумма расторжений" 
+              value={formatCurrency(terminationsSum)} 
+              icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
+            <KPICard 
+              title="Сумма приостановок" 
+              value={formatCurrency(suspensionsSum)} 
+              icon={<TrendingDown className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
+          </div>
         )}
 
         {/* Receivables and New Sales KPIs for Спасение only */}

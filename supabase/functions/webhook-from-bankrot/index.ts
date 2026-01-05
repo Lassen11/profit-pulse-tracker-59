@@ -86,6 +86,9 @@ interface DashboardMetricsPayload {
   new_clients_monthly_payment_sum: number;
   completed_clients_count: number;
   completed_clients_monthly_payment_sum: number;
+  remaining_payments?: number; // Остаток платежей
+  terminations_sum?: number; // Сумма расторжений
+  suspensions_sum?: number; // Сумма приостановок
   company: string;
   user_id: string;
   date: string;
@@ -683,7 +686,10 @@ Deno.serve(async (req) => {
           { kpi_name: 'new_clients_count', value: p.new_clients_count },
           { kpi_name: 'new_clients_monthly_payment_sum', value: p.new_clients_monthly_payment_sum },
           { kpi_name: 'completed_cases_count', value: p.completed_clients_count },
-          { kpi_name: 'completed_cases_monthly_payment_sum', value: p.completed_clients_monthly_payment_sum }
+          { kpi_name: 'completed_cases_monthly_payment_sum', value: p.completed_clients_monthly_payment_sum },
+          { kpi_name: 'remaining_payments', value: p.remaining_payments ?? 0 },
+          { kpi_name: 'terminations_sum', value: p.terminations_sum ?? 0 },
+          { kpi_name: 'suspensions_sum', value: p.suspensions_sum ?? 0 }
         ];
 
         for (const kpi of kpiData) {
