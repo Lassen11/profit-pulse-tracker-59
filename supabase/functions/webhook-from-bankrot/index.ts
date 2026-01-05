@@ -87,8 +87,14 @@ interface DashboardMetricsPayload {
   completed_clients_count: number;
   completed_clients_monthly_payment_sum: number;
   remaining_payments?: number; // Остаток платежей
-  terminations_sum?: number; // Сумма расторжений
-  suspensions_sum?: number; // Сумма приостановок
+  // Расторжения: количество / сумма договоров / сумма ежемесячных платежей
+  terminations_count?: number;
+  terminations_contract_sum?: number;
+  terminations_monthly_sum?: number;
+  // Приостановки: количество / сумма договоров / сумма ежемесячных платежей
+  suspensions_count?: number;
+  suspensions_contract_sum?: number;
+  suspensions_monthly_sum?: number;
   company: string;
   user_id: string;
   date: string;
@@ -688,8 +694,14 @@ Deno.serve(async (req) => {
           { kpi_name: 'completed_cases_count', value: p.completed_clients_count },
           { kpi_name: 'completed_cases_monthly_payment_sum', value: p.completed_clients_monthly_payment_sum },
           { kpi_name: 'remaining_payments', value: p.remaining_payments ?? 0 },
-          { kpi_name: 'terminations_sum', value: p.terminations_sum ?? 0 },
-          { kpi_name: 'suspensions_sum', value: p.suspensions_sum ?? 0 }
+          // Расторжения
+          { kpi_name: 'terminations_count', value: p.terminations_count ?? 0 },
+          { kpi_name: 'terminations_contract_sum', value: p.terminations_contract_sum ?? 0 },
+          { kpi_name: 'terminations_monthly_sum', value: p.terminations_monthly_sum ?? 0 },
+          // Приостановки
+          { kpi_name: 'suspensions_count', value: p.suspensions_count ?? 0 },
+          { kpi_name: 'suspensions_contract_sum', value: p.suspensions_contract_sum ?? 0 },
+          { kpi_name: 'suspensions_monthly_sum', value: p.suspensions_monthly_sum ?? 0 }
         ];
 
         for (const kpi of kpiData) {
