@@ -67,6 +67,8 @@ export default function Dashboard() {
   const [suspensionsCount, setSuspensionsCount] = useState<number>(0);
   const [suspensionsContractSum, setSuspensionsContractSum] = useState<number>(0);
   const [suspensionsMonthlySum, setSuspensionsMonthlySum] = useState<number>(0);
+  // Общая сумма договоров (из bankrot-helper)
+  const [totalContractsSum, setTotalContractsSum] = useState<number>(0);
   const {
     toast
   } = useToast();
@@ -427,6 +429,21 @@ export default function Dashboard() {
       setSuspensionsCount(suspensionsCountRes.data?.target_value || 0);
       setSuspensionsContractSum(suspensionsContractRes.data?.target_value || 0);
       setSuspensionsMonthlySum(suspensionsMonthlyRes.data?.target_value || 0);
+
+      // Get total contracts sum from kpi_targets
+      const { data: totalContractsSumData, error: totalContractsSumError } = await supabase
+        .from('kpi_targets')
+        .select('target_value')
+        .eq('company', 'Спасение')
+        .eq('kpi_name', 'total_contracts_sum')
+        .gte('month', dateStartStr)
+        .lte('month', dateEndStr)
+        .maybeSingle();
+
+      if (totalContractsSumError && totalContractsSumError.code !== 'PGRST116') {
+        console.error('Error fetching total contracts sum KPI:', totalContractsSumError);
+      }
+      setTotalContractsSum(totalContractsSumData?.target_value || 0);
     } catch (error) {
       console.error('Error fetching bankrot clients data:', error);
     }
@@ -1637,6 +1654,16 @@ export default function Dashboard() {
                 <EditableKPICard title={`Деньги в ${company}`} value={formatCurrency(balance)} calculatedValue={calculatedBalance} company={company} icon={<Wallet className="w-5 h-5 sm:w-6 sm:h-6" />} className="shadow-kpi" onUpdate={fetchBalanceAdjustments} />
               </div>)}
           
+          {/* Общая сумма договоров - only for Спасение */}
+          {selectedCompany === "Спасение" && (
+            <KPICard 
+              title="Общая сумма договоров" 
+              value={formatCurrency(totalContractsSum)} 
+              icon={<DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />} 
+              className="shadow-kpi" 
+            />
+          )}
+
           {/* Bankrot Helper KPIs - only for Спасение */}
           {selectedCompany === "Спасение" && <>
             <KPICard 

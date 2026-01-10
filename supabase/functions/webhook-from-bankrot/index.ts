@@ -160,6 +160,8 @@ interface DashboardMetricsPayload {
   suspended_clients_count?: number; // из bankrot-helper
   suspended_contract_amount?: number; // сумма договоров приостановок
   suspended_monthly_payment_sum?: number; // сумма ежемесячных платежей приостановок
+  // Общая сумма договоров
+  total_contracts_sum?: number; // из bankrot-helper
   company: string;
   user_id: string;
   date: string;
@@ -796,9 +798,19 @@ Deno.serve(async (req) => {
             0
         );
         
+        // Общая сумма договоров
+        const totalContractsSum = toNumber(
+          p.total_contracts_sum ??
+            (p as any).totalContractsSum ??
+            (p as any).total_contract_sum ??
+            (p as any).totalContractSum ??
+            0
+        );
+
         console.log(`Remaining payments: ${remainingPayments}`);
         console.log(`Terminations: count=${terminationsCount}, contracts=${terminationsContractSum}, monthly=${terminationsMonthlySum}`);
         console.log(`Suspensions: count=${suspensionsCount}, contracts=${suspensionsContractSum}, monthly=${suspensionsMonthlySum}`);
+        console.log(`Total contracts sum: ${totalContractsSum}`);
         
         const kpiData = [
           { kpi_name: 'new_clients_count', value: p.new_clients_count },
@@ -813,7 +825,9 @@ Deno.serve(async (req) => {
           // Приостановки
           { kpi_name: 'suspensions_count', value: suspensionsCount },
           { kpi_name: 'suspensions_contract_sum', value: suspensionsContractSum },
-          { kpi_name: 'suspensions_monthly_sum', value: suspensionsMonthlySum }
+          { kpi_name: 'suspensions_monthly_sum', value: suspensionsMonthlySum },
+          // Общая сумма договоров
+          { kpi_name: 'total_contracts_sum', value: totalContractsSum }
         ];
 
         for (const kpi of kpiData) {
