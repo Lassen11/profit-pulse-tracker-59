@@ -704,13 +704,18 @@ Deno.serve(async (req) => {
       // Обработка метрик дашборда из bankrot-helper
       try {
         const p = payload as DashboardMetricsPayload;
-        
+
         // Унифицированный ключ месяца: всегда последний день месяца
         const monthStr = getLastDayOfMonth(p.month || p.date);
 
         const company = p.company || 'Спасение';
-        
-        console.log(`Processing dashboard metrics for company: ${company}, month: ${monthStr}`);
+        const rawPeriod = (p as any).period as string | undefined;
+        const isAllTime = rawPeriod === 'all_time';
+
+        console.log(
+          `Processing dashboard metrics for company: ${company}, month: ${monthStr}` +
+            (rawPeriod ? `, period: ${rawPeriod}` : '')
+        );
         console.log(`New clients count: ${p.new_clients_count}, payment sum: ${p.new_clients_monthly_payment_sum}`);
         console.log(`Completed cases count: ${p.completed_clients_count}, payment sum: ${p.completed_clients_monthly_payment_sum}`);
 
@@ -772,7 +777,62 @@ Deno.serve(async (req) => {
           return 0;
         };
 
-        const remainingPayments = toNumber(p.remaining_payments_sum ?? p.remaining_payments ?? (p as any).remainingPaymentsSum ?? (p as any).remainingPayments ?? 0);
+        const upsertKpi = async (kpiName: string, value: number) => {
+          const { data: existing } = await supabase
+            .from('kpi_targets')
+            .select('id')
+            .eq('company', company)
+            .eq('kpi_name', kpiName)
+            .eq('month', monthStr)
+            .maybeSingle();
+
+          if (existing) {
+            await supabase
+              .from('kpi_targets')
+              .update({ target_value: value, updated_at: new Date().toISOString() })
+              .eq('id', existing.id);
+          } else {
+            await supabase
+              .from('kpi_targets')
+              .insert({
+                user_id: userId,
+                company,
+                kpi_name: kpiName,
+                target_value: value,
+                month: monthStr,
+              });
+          }
+        };
+
+        const remainingPayments = toNumber(
+          p.remaining_payments_sum ??
+            p.remaining_payments ??
+            (p as any).remainingPaymentsSum ??
+            (p as any).remainingPayments ??
+            0
+        );
+
+        // Важно: payload с period=all_time периодически перезатирает «месячные» KPI.
+        // Чтобы не ломать дашборд за выбранный месяц, из all_time обновляем только общий остаток платежей.
+        if (isAllTime) {
+          console.log(
+            'dashboard_metrics received with period=all_time — updating only remaining_payments to avoid overwriting monthly KPIs'
+          );
+          await upsertKpi('remaining_payments', remainingPayments);
+          console.log('Dashboard metrics (all_time) saved successfully');
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'Метрики (all_time) обновлены частично',
+              company,
+              month: monthStr,
+              updated: ['remaining_payments'],
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+
         const terminationsCount = toNumber(p.terminated_clients_count ?? (p as any).terminatedClientsCount ?? 0);
         const terminationsContractSum = toNumber(p.terminated_contract_amount ?? (p as any).terminatedContractAmount ?? 0);
         const terminationsMonthlySum = toNumber(
@@ -797,7 +857,7 @@ Deno.serve(async (req) => {
             (p as any).suspendedMonthlyPayment ??
             0
         );
-        
+
         // Общая сумма договоров
         const totalContractsSum = toNumber(
           p.total_contracts_sum ??
@@ -808,10 +868,14 @@ Deno.serve(async (req) => {
         );
 
         console.log(`Remaining payments: ${remainingPayments}`);
-        console.log(`Terminations: count=${terminationsCount}, contracts=${terminationsContractSum}, monthly=${terminationsMonthlySum}`);
-        console.log(`Suspensions: count=${suspensionsCount}, contracts=${suspensionsContractSum}, monthly=${suspensionsMonthlySum}`);
+        console.log(
+          `Terminations: count=${terminationsCount}, contracts=${terminationsContractSum}, monthly=${terminationsMonthlySum}`
+        );
+        console.log(
+          `Suspensions: count=${suspensionsCount}, contracts=${suspensionsContractSum}, monthly=${suspensionsMonthlySum}`
+        );
         console.log(`Total contracts sum: ${totalContractsSum}`);
-        
+
         const kpiData = [
           { kpi_name: 'new_clients_count', value: p.new_clients_count },
           { kpi_name: 'new_clients_monthly_payment_sum', value: p.new_clients_monthly_payment_sum },
@@ -827,8 +891,24 @@ Deno.serve(async (req) => {
           { kpi_name: 'suspensions_contract_sum', value: suspensionsContractSum },
           { kpi_name: 'suspensions_monthly_sum', value: suspensionsMonthlySum },
           // Общая сумма договоров
-          { kpi_name: 'total_contracts_sum', value: totalContractsSum }
+          { kpi_name: 'total_contracts_sum', value: totalContractsSum },
         ];
+
+        for (const kpi of kpiData) {
+          await upsertKpi(kpi.kpi_name, kpi.value);
+        }
+
+        console.log('Dashboard metrics saved successfully');
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Метрики дашборда обновлены',
+            company,
+            month: monthStr,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
 
         for (const kpi of kpiData) {
           const { data: existing } = await supabase
