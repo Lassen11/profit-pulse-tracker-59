@@ -152,6 +152,9 @@ interface DashboardMetricsPayload {
   // Поля из bankrot-helper (разные варианты названий для совместимости)
   remaining_payments_sum?: number; // Остаток платежей (из bankrot-helper)
   remaining_payments?: number; // Остаток платежей (альтернативное название)
+  // Дебиторка: План и Факт
+  debitorka_plan?: number; // План по дебиторке (ожидаемые платежи)
+  debitorka_fact?: number; // Факт по дебиторке (собранные платежи)
   // Расторжения
   terminated_clients_count?: number; // из bankrot-helper
   terminated_contract_amount?: number; // сумма договоров расторжений
@@ -867,6 +870,22 @@ Deno.serve(async (req) => {
             0
         );
 
+        // Дебиторка: План и Факт (из bankrot-helper)
+        const debitorkaplan = toNumber(
+          p.debitorka_plan ??
+            (p as any).debitorkaPlan ??
+            (p as any).debitorka_plan_sum ??
+            0
+        );
+        const debitorkafact = toNumber(
+          p.debitorka_fact ??
+            (p as any).debitorkaFact ??
+            (p as any).debitorka_fact_sum ??
+            (p as any).collected_payments ??
+            (p as any).collectedPayments ??
+            0
+        );
+
         console.log(`Remaining payments: ${remainingPayments}`);
         console.log(
           `Terminations: count=${terminationsCount}, contracts=${terminationsContractSum}, monthly=${terminationsMonthlySum}`
@@ -875,6 +894,7 @@ Deno.serve(async (req) => {
           `Suspensions: count=${suspensionsCount}, contracts=${suspensionsContractSum}, monthly=${suspensionsMonthlySum}`
         );
         console.log(`Total contracts sum: ${totalContractsSum}`);
+        console.log(`Debitorka plan: ${debitorkaplan}, fact: ${debitorkafact}`);
 
         const kpiData = [
           { kpi_name: 'new_clients_count', value: p.new_clients_count },
@@ -892,6 +912,9 @@ Deno.serve(async (req) => {
           { kpi_name: 'suspensions_monthly_sum', value: suspensionsMonthlySum },
           // Общая сумма договоров
           { kpi_name: 'total_contracts_sum', value: totalContractsSum },
+          // Дебиторка (только если значения переданы)
+          ...(debitorkaplan > 0 ? [{ kpi_name: 'debitorka_plan', value: debitorkaplan }] : []),
+          ...(debitorkafact > 0 ? [{ kpi_name: 'debitorka_fact', value: debitorkafact }] : []),
         ];
 
         for (const kpi of kpiData) {

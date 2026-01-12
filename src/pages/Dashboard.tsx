@@ -240,7 +240,10 @@ export default function Dashboard() {
     try {
       // План: пробуем взять из kpi_targets (синхронизируемого из bankrot-helper), иначе fallback на сумму monthly_payment
       const endOfSelectedMonthReceivables = endOfMonth(effectiveMonth);
-      const monthStrReceivables = endOfSelectedMonthReceivables.toISOString().split('T')[0];
+      // Используем format вместо toISOString для корректной работы с часовыми поясами
+      const monthStrReceivables = format(endOfSelectedMonthReceivables, 'yyyy-MM-dd');
+      console.log('Fetching debitorka_plan for month:', monthStrReceivables);
+      
       const {
         data: kpiData,
         error: kpiError
@@ -248,10 +251,13 @@ export default function Dashboard() {
       if (kpiError) {
         console.error('Error fetching debitorka_plan KPI:', kpiError);
       }
+      console.log('debitorka_plan KPI data:', kpiData);
+      
       if (kpiData?.target_value != null) {
         setReceivablesPlan(kpiData.target_value);
       } else {
         // Fallback: Get sum of monthly_payment from bankrot_clients for current month
+        console.log('debitorka_plan not found, using fallback');
         const {
           data: clientsData,
           error: clientsError
@@ -269,16 +275,36 @@ export default function Dashboard() {
         setReceivablesPlan(plan);
       }
 
-      // Fact: Get sum of transactions with category "Дебиторка" for selected month
+      // Fact: Get from kpi_targets (debitorka_fact synced from bankrot-helper), fallback to transactions
       const startOfSelectedMonth = startOfMonth(effectiveMonth);
       const endOfSelectedMonth = endOfMonth(effectiveMonth);
+      const dateStartStr = format(startOfSelectedMonth, 'yyyy-MM-dd');
+      const dateEndStr = format(endOfSelectedMonth, 'yyyy-MM-dd');
+      
+      // Try to get fact from kpi_targets first
       const {
-        data: transactionsData,
-        error: transactionsError
-      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Дебиторка').gte('date', startOfSelectedMonth.toISOString().split('T')[0]).lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
-      if (transactionsError) throw transactionsError;
-      const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
-      setReceivablesFact(fact);
+        data: factKpiData,
+        error: factKpiError
+      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'debitorka_fact').eq('month', monthStrReceivables).maybeSingle();
+      
+      if (factKpiError) {
+        console.error('Error fetching debitorka_fact KPI:', factKpiError);
+      }
+      console.log('debitorka_fact KPI data:', factKpiData);
+      
+      if (factKpiData?.target_value != null) {
+        setReceivablesFact(factKpiData.target_value);
+      } else {
+        // Fallback: Get sum of transactions with category "Дебиторка" for selected month
+        console.log('debitorka_fact not found, using transactions fallback');
+        const {
+          data: transactionsData,
+          error: transactionsError
+        } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('category', 'Дебиторка').gte('date', dateStartStr).lte('date', dateEndStr);
+        if (transactionsError) throw transactionsError;
+        const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
+        setReceivablesFact(fact);
+      }
     } catch (error) {
       console.error('Error fetching receivables data:', error);
     }
