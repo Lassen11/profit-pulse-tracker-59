@@ -186,13 +186,18 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   }, {} as Record<string, number>);
   
   const calculateBonus = (client: BankrotClient): number => {
+    // Если менеджер не указан, премия не начисляется
+    if (!client.manager) {
+      return 0;
+    }
+    
     // Премия 4.5% для процентных источников
     if (client.source && percentBonusSources.includes(client.source)) {
       return client.contract_amount * 0.045;
     }
     // Фиксированная премия для рекомендаций
     if (client.source && fixedBonusSources.includes(client.source)) {
-      const managerCount = client.manager ? managerFixedRecommendationsCount[client.manager] || 0 : 0;
+      const managerCount = managerFixedRecommendationsCount[client.manager] || 0;
       return managerCount >= 6 ? 2000 : 1000;
     }
     return 0;
