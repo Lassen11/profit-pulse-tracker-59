@@ -158,6 +158,7 @@ export default function Payroll() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminCheckComplete, setAdminCheckComplete] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [recalculatingBonuses, setRecalculatingBonuses] = useState(false);
   const { toast } = useToast();
   const { user, isDemo, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -298,6 +299,103 @@ export default function Payroll() {
       });
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Recalculate bonuses from bankrot_clients for the current month
+  const handleRecalculateBonuses = async () => {
+    if (!user || isDemo) return;
+    
+    setRecalculatingBonuses(true);
+    try {
+      // Get previous month to calculate bonuses from
+      const currentMonthDate = new Date(selectedMonth);
+      const previousMonthDate = subMonths(currentMonthDate, 1);
+      const previousMonth = format(startOfMonth(previousMonthDate), 'yyyy-MM-dd');
+
+      // Get all profiles for matching manager names
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('is_active', true);
+
+      if (!allProfiles) {
+        throw new Error('Не удалось загрузить профили сотрудников');
+      }
+
+      // Calculate manager bonuses from previous month's sales
+      const managerBonuses = await calculateManagerBonuses(previousMonth);
+      
+      // Also get sales bonuses from the sales table
+      const salesBonuses = await calculateSalesBonuses(previousMonth);
+      
+      // Merge bonuses: map manager names to employee IDs
+      const employeeBonusMap = new Map<string, number>();
+      
+      // Add bonuses from bankrot_clients (by manager name)
+      for (const [managerName, bonus] of managerBonuses) {
+        const employee = findEmployeeByManagerName(managerName, allProfiles);
+        if (employee) {
+          employeeBonusMap.set(employee.id, (employeeBonusMap.get(employee.id) || 0) + bonus);
+        }
+      }
+      
+      // Add bonuses from sales table (by employee_id)
+      for (const [employeeId, bonus] of salesBonuses) {
+        employeeBonusMap.set(employeeId, (employeeBonusMap.get(employeeId) || 0) + bonus);
+      }
+
+      // Get existing department_employees for the current month
+      const { data: currentMonthEmployees, error: fetchError } = await supabase
+        .from('department_employees')
+        .select('*')
+        .eq('month', selectedMonth);
+
+      if (fetchError) throw fetchError;
+
+      let updatedCount = 0;
+
+      // Update each employee's bonus
+      for (const emp of currentMonthEmployees || []) {
+        const newBonus = employeeBonusMap.get(emp.employee_id) || 0;
+        
+        // Calculate new net_salary
+        const whiteSalary = emp.white_salary || 0;
+        const graySalary = emp.gray_salary || 0;
+        const ndfl = emp.ndfl || 0;
+        const advance = emp.advance || 0;
+        const newNetSalary = whiteSalary - ndfl + graySalary + newBonus - advance;
+
+        const { error: updateError } = await supabase
+          .from('department_employees')
+          .update({
+            bonus: newBonus,
+            net_salary: newNetSalary
+          })
+          .eq('id', emp.id);
+
+        if (!updateError) {
+          updatedCount++;
+        } else {
+          console.error('Error updating bonus:', updateError);
+        }
+      }
+
+      toast({
+        title: "Премии пересчитаны",
+        description: `Обновлено ${updatedCount} записей на основе продаж за ${format(previousMonthDate, 'LLLL yyyy', { locale: ru })}`
+      });
+
+      fetchAllEmployees(true);
+    } catch (error: any) {
+      console.error('Recalculate bonuses error:', error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось пересчитать премии",
+        variant: "destructive"
+      });
+    } finally {
+      setRecalculatingBonuses(false);
     }
   };
 
@@ -839,15 +937,27 @@ export default function Payroll() {
               </SelectContent>
             </Select>
             {!isDemo && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSyncFromPreviousMonth}
-                disabled={syncing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                Синхр. из пред. месяца
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRecalculateBonuses}
+                  disabled={recalculatingBonuses}
+                  title="Пересчитать премии на основе продаж за предыдущий месяц"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${recalculatingBonuses ? 'animate-spin' : ''}`} />
+                  Пересчитать премии
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncFromPreviousMonth}
+                  disabled={syncing}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                  Синхр. зарплат
+                </Button>
+              </>
             )}
           </div>
         </div>
