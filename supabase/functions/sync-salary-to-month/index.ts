@@ -33,17 +33,40 @@ serve(async (req) => {
 
     if (sourceError) throw sourceError;
 
-    if (!sourceEmployees || sourceEmployees.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No employees found in source month', updated: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Also get all active employee profiles to ensure we don't miss anyone
+    const { data: allProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, department, first_name, last_name')
+      .eq('is_active', true);
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
     }
+
+    // Get all departments
+    const { data: allDepartments, error: deptError } = await supabase
+      .from('departments')
+      .select('id, name, project_name, user_id');
+
+    if (deptError) {
+      console.error('Error fetching departments:', deptError);
+    }
+
+    // Create a map of department name to department
+    const deptByName = new Map(
+      (allDepartments || []).map(d => [d.name, d])
+    );
+
+    // Create a map of employee_id to source data
+    const sourceByEmployeeId = new Map(
+      (sourceEmployees || []).map(e => [e.employee_id, e])
+    );
 
     let updatedCount = 0;
     let insertedCount = 0;
 
-    for (const emp of sourceEmployees) {
+    // Process employees that have source month data
+    for (const emp of sourceEmployees || []) {
       // Check if record exists for target month
       const { data: existingRecord } = await supabase
         .from('department_employees')
@@ -71,7 +94,12 @@ serve(async (req) => {
           updatedCount++;
         }
       } else {
-        // Insert new record for target month
+        // Insert new record for target month with fresh net_salary calculation
+        const whiteSalary = emp.white_salary || 0;
+        const graySalary = emp.gray_salary || 0;
+        const ndfl = emp.ndfl || 0;
+        const freshNetSalary = whiteSalary - ndfl + graySalary;
+        
         const { error: insertError } = await supabase
           .from('department_employees')
           .insert({
@@ -86,7 +114,7 @@ serve(async (req) => {
             bonus: 0,
             next_month_bonus: 0,
             cost: emp.cost,
-            net_salary: emp.net_salary,
+            net_salary: freshNetSalary,
             total_amount: emp.total_amount,
             month: targetMonth,
             user_id: emp.user_id
@@ -96,6 +124,57 @@ serve(async (req) => {
           console.error('Insert error:', insertError);
         } else {
           insertedCount++;
+        }
+      }
+    }
+
+    // Also check for profiles that are in a department but don't have source month data
+    // This handles employees who were added after the source month was created
+    for (const profile of allProfiles || []) {
+      if (!profile.department) continue;
+      
+      // Skip if already processed from source month
+      if (sourceByEmployeeId.has(profile.id)) continue;
+      
+      const dept = deptByName.get(profile.department);
+      if (!dept) continue;
+      
+      // Check if record exists for target month
+      const { data: existingRecord } = await supabase
+        .from('department_employees')
+        .select('id')
+        .eq('department_id', dept.id)
+        .eq('employee_id', profile.id)
+        .eq('month', targetMonth)
+        .maybeSingle();
+      
+      if (!existingRecord) {
+        // Create new record with default values
+        const { error: insertError } = await supabase
+          .from('department_employees')
+          .insert({
+            department_id: dept.id,
+            employee_id: profile.id,
+            company: dept.project_name || 'Спасение',
+            white_salary: 0,
+            gray_salary: 0,
+            ndfl: 0,
+            contributions: 0,
+            advance: 0,
+            bonus: 0,
+            next_month_bonus: 0,
+            cost: 0,
+            net_salary: 0,
+            total_amount: 0,
+            month: targetMonth,
+            user_id: dept.user_id
+          });
+        
+        if (insertError) {
+          console.error('Insert error for new employee:', insertError);
+        } else {
+          insertedCount++;
+          console.log(`Created new record for employee ${profile.first_name} ${profile.last_name} in department ${profile.department}`);
         }
       }
     }
