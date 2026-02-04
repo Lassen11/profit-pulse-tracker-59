@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Pencil, Check, X } from "lucide-react";
 
 interface BankrotClient {
   id: string;
@@ -33,6 +34,8 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   const [clients, setClients] = useState<BankrotClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [editingManager, setEditingManager] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -159,6 +162,47 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditManager = (client: BankrotClient) => {
+    setEditingClientId(client.id);
+    setEditingManager(client.manager || "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingClientId(null);
+    setEditingManager("");
+  };
+
+  const handleSaveManager = async (clientId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bankrot_clients')
+        .update({ manager: editingManager.trim() || null })
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      // Обновляем локальное состояние
+      setClients(prev => prev.map(c => 
+        c.id === clientId ? { ...c, manager: editingManager.trim() || null } : c
+      ));
+
+      toast({
+        title: "Менеджер обновлён",
+        description: "Данные успешно сохранены"
+      });
+
+      setEditingClientId(null);
+      setEditingManager("");
+    } catch (error) {
+      console.error('Error updating manager:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить менеджера",
+        variant: "destructive"
+      });
     }
   };
 
@@ -296,7 +340,51 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell className="font-medium">{client.full_name}</TableCell>
                     <TableCell>{client.source || '—'}</TableCell>
                     <TableCell>{client.city || '—'}</TableCell>
-                    <TableCell>{client.manager || '—'}</TableCell>
+                    <TableCell>
+                      {editingClientId === client.id ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            value={editingManager}
+                            onChange={(e) => setEditingManager(e.target.value)}
+                            className="h-8 w-32"
+                            placeholder="Имя менеджера"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveManager(client.id);
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            autoFocus
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleSaveManager(client.id)}
+                          >
+                            <Check className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={handleCancelEdit}
+                          >
+                            <X className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 group">
+                          <span>{client.manager || '—'}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleEditManager(client)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>{client.employee_name}</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.contract_amount)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.total_paid)}</TableCell>
