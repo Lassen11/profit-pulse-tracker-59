@@ -110,6 +110,10 @@ interface UpdateClientPayload {
   deposit_paid: number;
   deposit_target: number;
   monthly_payment?: number;
+  installment_period?: number;
+  source?: string;
+  city?: string;
+  manager?: string;
   company: string;
   user_id: string;
   is_suspended?: boolean;
@@ -457,6 +461,20 @@ Deno.serve(async (req) => {
       // Добавляем monthly_payment если он есть
       if (payload.monthly_payment !== undefined) {
         updateData.monthly_payment = payload.monthly_payment;
+      }
+      
+      // Добавляем дополнительные поля если они есть
+      if (payload.installment_period !== undefined) {
+        updateData.installment_period = payload.installment_period;
+      }
+      if (payload.source !== undefined) {
+        updateData.source = payload.source;
+      }
+      if (payload.city !== undefined) {
+        updateData.city = payload.city;
+      }
+      if (payload.manager !== undefined) {
+        updateData.manager = payload.manager;
       }
 
       const { error: updateError } = await supabase
