@@ -2,13 +2,18 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { RefreshCw, Pencil, Check, X } from "lucide-react";
+import { RefreshCw, Pencil, X } from "lucide-react";
+
+interface SalesManager {
+  id: string;
+  name: string;
+}
 
 interface BankrotClient {
   id: string;
@@ -36,8 +41,28 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   const [syncing, setSyncing] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [editingManager, setEditingManager] = useState("");
+  const [salesManagers, setSalesManagers] = useState<SalesManager[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Загружаем менеджеров из отдела продаж
+  useEffect(() => {
+    const fetchSalesManagers = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('department', 'Отдел продаж')
+        .eq('is_active', true);
+
+      if (data) {
+        setSalesManagers(data.map(p => ({
+          id: p.id,
+          name: `${p.first_name} ${p.last_name}`.trim()
+        })));
+      }
+    };
+    fetchSalesManagers();
+  }, []);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -175,18 +200,21 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     setEditingManager("");
   };
 
-  const handleSaveManager = async (clientId: string) => {
+  const handleSaveManager = async (clientId: string, managerValue?: string) => {
+    const managerToSave = managerValue !== undefined ? managerValue : editingManager;
+    const finalManager = managerToSave === "__clear__" ? null : (managerToSave.trim() || null);
+    
     try {
       const { error } = await supabase
         .from('bankrot_clients')
-        .update({ manager: editingManager.trim() || null })
+        .update({ manager: finalManager })
         .eq('id', clientId);
 
       if (error) throw error;
 
       // Обновляем локальное состояние
       setClients(prev => prev.map(c => 
-        c.id === clientId ? { ...c, manager: editingManager.trim() || null } : c
+        c.id === clientId ? { ...c, manager: finalManager } : c
       ));
 
       toast({
@@ -343,32 +371,33 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell>
                       {editingClientId === client.id ? (
                         <div className="flex items-center gap-1">
-                          <Input
+                          <Select
                             value={editingManager}
-                            onChange={(e) => setEditingManager(e.target.value)}
-                            className="h-8 w-32"
-                            placeholder="Имя менеджера"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveManager(client.id);
-                              if (e.key === 'Escape') handleCancelEdit();
+                            onValueChange={(value) => {
+                              setEditingManager(value);
+                              // Сразу сохраняем при выборе
+                              handleSaveManager(client.id, value);
                             }}
-                            autoFocus
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleSaveManager(client.id)}
                           >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </Button>
+                            <SelectTrigger className="h-8 w-40">
+                              <SelectValue placeholder="Выберите менеджера" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              <SelectItem value="__clear__">— Очистить —</SelectItem>
+                              {salesManagers.map((manager) => (
+                                <SelectItem key={manager.id} value={manager.name}>
+                                  {manager.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
                             onClick={handleCancelEdit}
                           >
-                            <X className="h-4 w-4 text-red-600" />
+                            <X className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </div>
                       ) : (
