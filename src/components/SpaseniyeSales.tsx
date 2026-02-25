@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RefreshCw, Pencil, X } from "lucide-react";
+import { RefreshCw, Pencil, X, CheckCheck, XCircle } from "lucide-react";
 
 interface SalesManager {
   id: string;
@@ -263,6 +263,44 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     }
   };
 
+  // Clients with bonuses for bulk actions
+  const clientsWithBonus = clients.filter(c => calculateBonus(c) > 0);
+  const allConfirmed = clientsWithBonus.length > 0 && clientsWithBonus.every(c => c.bonus_confirmed);
+  const someConfirmed = clientsWithBonus.some(c => c.bonus_confirmed);
+
+  const handleBulkBonusConfirm = async (confirmed: boolean) => {
+    const idsToUpdate = clientsWithBonus
+      .filter(c => c.bonus_confirmed !== confirmed)
+      .map(c => c.id);
+
+    if (idsToUpdate.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('bankrot_clients')
+        .update({ bonus_confirmed: confirmed } as any)
+        .in('id', idsToUpdate);
+
+      if (error) throw error;
+
+      setClients(prev => prev.map(c =>
+        idsToUpdate.includes(c.id) ? { ...c, bonus_confirmed: confirmed } : c
+      ));
+
+      toast({
+        title: confirmed ? "Все премии подтверждены" : "Все подтверждения отменены",
+        description: `Обновлено записей: ${idsToUpdate.length}`
+      });
+    } catch (error) {
+      console.error('Error bulk updating bonus_confirmed:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить статусы премий",
+        variant: "destructive"
+      });
+    }
+  };
+
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return '—';
     return new Intl.NumberFormat('ru-RU', {
@@ -322,7 +360,32 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Продажи Спасение</h2>
-          <div className="flex items-center gap-4">
+           <div className="flex items-center gap-4">
+            {clientsWithBonus.length > 0 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkBonusConfirm(true)}
+                  disabled={allConfirmed}
+                  className="text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                >
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                  Подтвердить все
+                </Button>
+                {someConfirmed && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkBonusConfirm(false)}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Отменить все
+                  </Button>
+                )}
+              </>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -387,8 +450,16 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                   </TableCell>
                 </TableRow>
               ) : (
-                clients.map(client => (
-                  <TableRow key={client.id}>
+                clients.map(client => {
+                  const bonus = calculateBonus(client);
+                  const hasBonus = bonus > 0;
+                  const rowClass = hasBonus
+                    ? client.bonus_confirmed
+                      ? "bg-emerald-50/50 dark:bg-emerald-950/20"
+                      : "bg-amber-50/50 dark:bg-amber-950/20"
+                    : "";
+                  return (
+                  <TableRow key={client.id} className={rowClass}>
                     <TableCell>
                       {client.contract_date 
                         ? format(new Date(client.contract_date), 'dd MMM yyyy', { locale: ru })
@@ -451,7 +522,7 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell className="text-right">{formatCurrency(client.monthly_payment)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(calculateBonus(client))}</TableCell>
                     <TableCell className="text-center">
-                      {calculateBonus(client) > 0 && (
+                      {hasBonus && (
                         <Checkbox
                           checked={client.bonus_confirmed}
                           onCheckedChange={(checked) => handleToggleBonusConfirmed(client.id, !!checked)}
@@ -459,7 +530,8 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                       )}
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
