@@ -63,8 +63,12 @@ const calculateManagerBonuses = async (previousMonthStr: string) => {
 
     let bonus = 0;
 
+    // Если задана ручная премия, используем её
+    if (client.manual_bonus !== null && client.manual_bonus !== undefined) {
+      bonus = client.manual_bonus;
+    }
     // Премия 4.5% для процентных источников
-    if (client.source && percentBonusSources.includes(client.source)) {
+    else if (client.source && percentBonusSources.includes(client.source)) {
       bonus = client.contract_amount * 0.045;
     }
     // Фиксированная премия для рекомендаций
