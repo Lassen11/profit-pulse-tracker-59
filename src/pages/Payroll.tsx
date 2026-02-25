@@ -58,8 +58,8 @@ const calculateManagerBonuses = async (previousMonthStr: string) => {
   const managerBonuses = new Map<string, number>();
 
   clients.forEach(client => {
-    // Если менеджер не указан, премия не начисляется
-    if (!client.manager) return;
+    // Если менеджер не указан или премия не подтверждена, пропускаем
+    if (!client.manager || !client.bonus_confirmed) return;
 
     let bonus = 0;
 
