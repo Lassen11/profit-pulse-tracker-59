@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RefreshCw, Pencil, X } from "lucide-react";
 
 interface SalesManager {
@@ -27,6 +28,7 @@ interface BankrotClient {
   total_paid: number | null;
   installment_period: number;
   monthly_payment: number;
+  bonus_confirmed: boolean;
   created_at?: string;
   employee_name?: string;
 }
@@ -234,6 +236,33 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     }
   };
 
+  const handleToggleBonusConfirmed = async (clientId: string, confirmed: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('bankrot_clients')
+        .update({ bonus_confirmed: confirmed } as any)
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      setClients(prev => prev.map(c =>
+        c.id === clientId ? { ...c, bonus_confirmed: confirmed } : c
+      ));
+
+      toast({
+        title: confirmed ? "Премия подтверждена" : "Подтверждение отменено",
+        description: confirmed ? "Премия будет перенесена в ФОТ" : "Премия не будет перенесена в ФОТ"
+      });
+    } catch (error) {
+      console.error('Error updating bonus_confirmed:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить статус премии",
+        variant: "destructive"
+      });
+    }
+  };
+
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return '—';
     return new Intl.NumberFormat('ru-RU', {
@@ -347,12 +376,13 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                 <TableHead className="text-right">Срок рассрочки</TableHead>
                 <TableHead className="text-right">Ежемес. платеж</TableHead>
                 <TableHead className="text-right">Премия</TableHead>
+                <TableHead className="text-center">✓</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center text-muted-foreground">
+                  <TableCell colSpan={12} className="text-center text-muted-foreground">
                     Нет данных за выбранный период
                   </TableCell>
                 </TableRow>
@@ -420,6 +450,14 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell className="text-right">{client.installment_period} мес.</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.monthly_payment)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(calculateBonus(client))}</TableCell>
+                    <TableCell className="text-center">
+                      {calculateBonus(client) > 0 && (
+                        <Checkbox
+                          checked={client.bonus_confirmed}
+                          onCheckedChange={(checked) => handleToggleBonusConfirmed(client.id, !!checked)}
+                        />
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}

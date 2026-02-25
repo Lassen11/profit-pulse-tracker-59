@@ -49,6 +49,7 @@ export type Database = {
       }
       bankrot_clients: {
         Row: {
+          bonus_confirmed: boolean
           city: string | null
           contract_amount: number
           contract_date: string | null
@@ -70,6 +71,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bonus_confirmed?: boolean
           city?: string | null
           contract_amount: number
           contract_date?: string | null
@@ -91,6 +93,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bonus_confirmed?: boolean
           city?: string | null
           contract_amount?: number
           contract_date?: string | null
