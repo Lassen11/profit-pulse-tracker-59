@@ -3,13 +3,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RefreshCw, Pencil, X, CheckCheck, XCircle } from "lucide-react";
+import { RefreshCw, Pencil, X, CheckCheck, XCircle, Check, RotateCcw } from "lucide-react";
 
 interface SalesManager {
   id: string;
@@ -29,6 +30,7 @@ interface BankrotClient {
   installment_period: number;
   monthly_payment: number;
   bonus_confirmed: boolean;
+  manual_bonus: number | null;
   created_at?: string;
   employee_name?: string;
 }
@@ -44,6 +46,8 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [editingManager, setEditingManager] = useState("");
   const [salesManagers, setSalesManagers] = useState<SalesManager[]>([]);
+  const [editingBonusClientId, setEditingBonusClientId] = useState<string | null>(null);
+  const [editingBonusValue, setEditingBonusValue] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -263,6 +267,56 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     }
   };
 
+  const handleEditBonus = (client: BankrotClient) => {
+    setEditingBonusClientId(client.id);
+    const currentBonus = client.manual_bonus !== null ? client.manual_bonus : calculateAutoBonus(client);
+    setEditingBonusValue(Math.round(currentBonus).toString());
+  };
+
+  const handleSaveBonus = async (clientId: string) => {
+    const value = parseFloat(editingBonusValue);
+    if (isNaN(value) || value < 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('bankrot_clients')
+        .update({ manual_bonus: value } as any)
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      setClients(prev => prev.map(c =>
+        c.id === clientId ? { ...c, manual_bonus: value } : c
+      ));
+
+      toast({ title: "Премия обновлена" });
+      setEditingBonusClientId(null);
+    } catch (error) {
+      console.error('Error updating manual_bonus:', error);
+      toast({ title: "Ошибка", description: "Не удалось обновить премию", variant: "destructive" });
+    }
+  };
+
+  const handleResetBonus = async (clientId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bankrot_clients')
+        .update({ manual_bonus: null } as any)
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      setClients(prev => prev.map(c =>
+        c.id === clientId ? { ...c, manual_bonus: null } : c
+      ));
+
+      toast({ title: "Премия сброшена к авторасчёту" });
+      setEditingBonusClientId(null);
+    } catch (error) {
+      console.error('Error resetting manual_bonus:', error);
+      toast({ title: "Ошибка", description: "Не удалось сбросить премию", variant: "destructive" });
+    }
+  };
 
 
 
@@ -322,22 +376,23 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     return acc;
   }, {} as Record<string, number>);
   
-  const calculateBonus = (client: BankrotClient): number => {
-    // Если менеджер не указан, премия не начисляется
-    if (!client.manager) {
-      return 0;
-    }
-    
-    // Премия 4.5% для процентных источников
+  const calculateAutoBonus = (client: BankrotClient): number => {
+    if (!client.manager) return 0;
     if (client.source && percentBonusSources.includes(client.source)) {
       return client.contract_amount * 0.045;
     }
-    // Фиксированная премия для рекомендаций
     if (client.source && fixedBonusSources.includes(client.source)) {
       const managerCount = managerFixedRecommendationsCount[client.manager] || 0;
       return managerCount >= 6 ? 2000 : 1000;
     }
     return 0;
+  };
+
+  const calculateBonus = (client: BankrotClient): number => {
+    if (client.manual_bonus !== null && client.manual_bonus !== undefined) {
+      return client.manual_bonus;
+    }
+    return calculateAutoBonus(client);
   };
 
   // Clients with bonuses for bulk actions
@@ -523,7 +578,41 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
                     <TableCell className="text-right">{formatCurrency(client.total_paid)}</TableCell>
                     <TableCell className="text-right">{client.installment_period} мес.</TableCell>
                     <TableCell className="text-right">{formatCurrency(client.monthly_payment)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(calculateBonus(client))}</TableCell>
+                    <TableCell className="text-right">
+                      {editingBonusClientId === client.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            className="h-8 w-24 text-right"
+                            value={editingBonusValue}
+                            onChange={(e) => setEditingBonusValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveBonus(client.id);
+                              if (e.key === 'Escape') setEditingBonusClientId(null);
+                            }}
+                            autoFocus
+                          />
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSaveBonus(client.id)}>
+                            <Check className="h-3 w-3 text-emerald-600" />
+                          </Button>
+                          {client.manual_bonus !== null && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleResetBonus(client.id)} title="Сбросить к авторасчёту">
+                              <RotateCcw className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingBonusClientId(null)}>
+                            <X className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1 group cursor-pointer" onClick={() => handleEditBonus(client)}>
+                          <span className={client.manual_bonus !== null ? "text-primary font-medium" : ""}>
+                            {formatCurrency(calculateBonus(client))}
+                          </span>
+                          <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-center">
                       {hasBonus && (
                         <Checkbox

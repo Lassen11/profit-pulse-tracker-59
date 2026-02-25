@@ -62,6 +62,7 @@ export type Database = {
           id: string
           installment_period: number
           manager: string | null
+          manual_bonus: number | null
           monthly_payment: number
           payment_day: number | null
           remaining_amount: number | null
@@ -84,6 +85,7 @@ export type Database = {
           id?: string
           installment_period: number
           manager?: string | null
+          manual_bonus?: number | null
           monthly_payment: number
           payment_day?: number | null
           remaining_amount?: number | null
@@ -106,6 +108,7 @@ export type Database = {
           id?: string
           installment_period?: number
           manager?: string | null
+          manual_bonus?: number | null
           monthly_payment?: number
           payment_day?: number | null
           remaining_amount?: number | null
