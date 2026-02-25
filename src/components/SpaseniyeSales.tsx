@@ -263,10 +263,8 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     }
   };
 
-  // Clients with bonuses for bulk actions
-  const clientsWithBonus = clients.filter(c => calculateBonus(c) > 0);
-  const allConfirmed = clientsWithBonus.length > 0 && clientsWithBonus.every(c => c.bonus_confirmed);
-  const someConfirmed = clientsWithBonus.some(c => c.bonus_confirmed);
+
+
 
   const handleBulkBonusConfirm = async (confirmed: boolean) => {
     const idsToUpdate = clientsWithBonus
@@ -341,6 +339,11 @@ export function SpaseniyeSales({ selectedMonth }: SpaseniyeSalesProps) {
     }
     return 0;
   };
+
+  // Clients with bonuses for bulk actions
+  const clientsWithBonus = clients.filter(c => calculateBonus(c) > 0);
+  const allConfirmed = clientsWithBonus.length > 0 && clientsWithBonus.every(c => c.bonus_confirmed);
+  const someConfirmed = clientsWithBonus.some(c => c.bonus_confirmed);
 
   const totalContractAmount = clients.reduce((sum, c) => sum + c.contract_amount, 0);
   const totalPaid = clients.reduce((sum, c) => sum + (c.total_paid || 0), 0);
