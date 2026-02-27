@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePersistedDialog } from "@/hooks/useDialogPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Plus, ArrowLeft, RefreshCw } from "lucide-react";
+import { Plus, ArrowLeft, RefreshCw, FileDown } from "lucide-react";
 import { DepartmentDialog } from "@/components/DepartmentDialog";
 import { DepartmentCard } from "@/components/DepartmentCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +17,7 @@ import { DepartmentBonuses } from "@/components/DepartmentBonuses";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { ru } from "date-fns/locale";
+import { exportPayrollToPdf } from "@/lib/exportPayrollPdf";
 
 // Helper function to calculate manager bonuses from bankrot_clients
 const calculateManagerBonuses = async (previousMonthStr: string) => {
@@ -942,6 +943,47 @@ export default function Payroll() {
             </Select>
             {!isDemo && (
               <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const monthLabel = `${monthNames[selectedMonthNum]} ${selectedYear}`;
+                    const deptData = departments.map((dept) => {
+                      const deptEmployees = allEmployees.filter(
+                        (e: any) => e.department_id === dept.id
+                      );
+                      return {
+                        name: dept.name,
+                        employees: deptEmployees.map((e: any) => ({
+                          name: `${e.profiles?.last_name || ""} ${e.profiles?.first_name || ""}`.trim(),
+                          position: e.profiles?.position || "",
+                          company: e.company || "",
+                          total_amount: e.total_amount || 0,
+                          white_salary: e.white_salary || 0,
+                          gray_salary: e.gray_salary || 0,
+                          advance: e.advance || 0,
+                          ndfl: e.ndfl || 0,
+                          contributions: e.contributions || 0,
+                          bonus: e.bonus || 0,
+                          next_month_bonus: e.next_month_bonus || 0,
+                          cost: e.cost || 0,
+                          net_salary: e.net_salary || 0,
+                          paid_total:
+                            (e.paid_white || 0) +
+                            (e.paid_gray || 0) +
+                            (e.paid_advance || 0) +
+                            (e.paid_bonus || 0) +
+                            (e.paid_net_salary || 0),
+                        })),
+                      };
+                    });
+                    await exportPayrollToPdf(deptData, monthLabel);
+                  }}
+                  title="Экспорт в PDF"
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
