@@ -8,7 +8,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Wallet, History } from "lucide-react";
+import { Edit, Trash2, Wallet, History, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DepartmentEmployee } from "@/components/DepartmentCard";
 import { EmployeeDialog } from "@/components/EmployeeDialog";
 import { PaymentDialog } from "@/components/PaymentDialog";
@@ -26,6 +27,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// Helper component for table header with tooltip
+function ColumnHeader({ children, tooltip, className }: { children: React.ReactNode; tooltip: string; className?: string }) {
+  return (
+    <TableHead className={`text-right ${className || ""}`}>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-1 cursor-help">
+              {children}
+              <HelpCircle className="h-3 w-3 text-muted-foreground" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[220px] text-xs">
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </TableHead>
+  );
+}
 
 interface PayrollTableProps {
   employees: DepartmentEmployee[];
@@ -148,21 +170,21 @@ export function PayrollTable({ employees, departmentId, onRefresh, defaultCompan
     <>
       <div className="rounded-md border overflow-x-auto">
         <Table>
-          <TableHeader>
+           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[150px]">Сотрудник</TableHead>
               <TableHead className="min-w-[120px]">Проект</TableHead>
-              <TableHead className="text-right min-w-[120px]">Общая сумма</TableHead>
-              <TableHead className="text-right min-w-[100px]">Белая</TableHead>
-              <TableHead className="text-right min-w-[100px]">Серая</TableHead>
-              <TableHead className="text-right min-w-[100px]">Аванс</TableHead>
-              <TableHead className="text-right min-w-[100px]">НДФЛ</TableHead>
-              <TableHead className="text-right min-w-[100px]">Взносы</TableHead>
-              <TableHead className="text-right min-w-[100px]">Премия</TableHead>
-              <TableHead className="text-right min-w-[120px]">Премия сл. мес</TableHead>
-              <TableHead className="text-right min-w-[100px]">Стоимость</TableHead>
-              <TableHead className="text-right min-w-[100px]">На руки</TableHead>
-              <TableHead className="text-right min-w-[100px]">Выплачено</TableHead>
+              <ColumnHeader className="min-w-[120px]" tooltip="Белая + Серая + Взносы + Премия + Премия сл. мес">Общая сумма</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Официальная часть зарплаты до вычета НДФЛ">Белая</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Неофициальная часть зарплаты">Серая</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Предоплата, вычитается из суммы «На руки»">Аванс</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="13% от белой зарплаты">НДФЛ</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="30% от белой зарплаты (страховые взносы)">Взносы</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Премия за текущий месяц">Премия</ColumnHeader>
+              <ColumnHeader className="min-w-[120px]" tooltip="Премия, начисляемая в следующем месяце">Премия сл. мес</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Полная стоимость сотрудника для компании">Стоимость</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Белая − НДФЛ + Серая. Уменьшается при выплатах">На руки</ColumnHeader>
+              <ColumnHeader className="min-w-[100px]" tooltip="Сумма всех произведённых выплат">Выплачено</ColumnHeader>
               <TableHead className="text-right min-w-[150px]">Действия</TableHead>
             </TableRow>
           </TableHeader>
