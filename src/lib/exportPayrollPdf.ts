@@ -89,41 +89,78 @@ export async function exportPayrollToPdf(
 
   doc.setFont(fontName, "normal");
 
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // ===== HEADER =====
+  // Top accent line
+  doc.setFillColor(25, 60, 112);
+  doc.rect(0, 0, pageWidth, 2, "F");
+
+  // Title block
+  doc.setFontSize(20);
+  doc.setFont(fontName, "bold");
+  doc.setTextColor(25, 60, 112);
+  doc.text("ЗАРПЛАТНЫЙ ТАБЕЛЬ", 14, 14);
+
+  doc.setFontSize(13);
+  doc.setFont(fontName, "normal");
+  doc.setTextColor(80, 80, 80);
+  doc.text(monthLabel, 14, 21);
+
+  // Date of generation
+  const now = new Date();
+  const dateStr = `Сформировано: ${now.toLocaleDateString("ru-RU")} ${now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+  doc.setFontSize(8);
+  doc.setTextColor(140, 140, 140);
+  doc.text(dateStr, pageWidth - 14, 21, { align: "right" });
+
+  // Separator line
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(14, 24, pageWidth - 14, 24);
+
+  doc.setTextColor(0, 0, 0);
+
   const columns = [
     { header: "Сотрудник", dataKey: "name" },
     { header: "Должность", dataKey: "position" },
     { header: "Проект", dataKey: "company" },
-    { header: "Общая\nсумма", dataKey: "total_amount" },
+    { header: "Общая сумма", dataKey: "total_amount" },
     { header: "Белая", dataKey: "white_salary" },
     { header: "Серая", dataKey: "gray_salary" },
     { header: "Аванс", dataKey: "advance" },
     { header: "НДФЛ", dataKey: "ndfl" },
     { header: "Взносы", dataKey: "contributions" },
     { header: "Премия", dataKey: "bonus" },
-    { header: "Премия\nсл. мес", dataKey: "next_month_bonus" },
+    { header: "Премия сл.м.", dataKey: "next_month_bonus" },
     { header: "Стоимость", dataKey: "cost" },
     { header: "На руки", dataKey: "net_salary" },
     { header: "Выплачено", dataKey: "paid_total" },
   ];
 
-  doc.setFontSize(16);
-  doc.text(`Зарплатный табель — ${monthLabel}`, 14, 15);
+  let startY = 28;
 
-  let startY = 22;
+  for (let di = 0; di < departments.length; di++) {
+    const dept = departments[di];
 
-  for (const dept of departments) {
-    if (startY > 180) {
+    if (startY > 170) {
       doc.addPage();
-      startY = 15;
+      startY = 14;
     }
 
-    doc.setFontSize(12);
-    doc.text(dept.name, 14, startY);
-    startY += 4;
+    // Department header with accent
+    doc.setFillColor(25, 60, 112);
+    doc.roundedRect(14, startY - 1, pageWidth - 28, 7, 1, 1, "F");
+    doc.setFontSize(11);
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(dept.name.toUpperCase(), 18, startY + 4);
+    doc.setTextColor(0, 0, 0);
+    startY += 9;
 
     const body = dept.employees.map((e) => ({
       name: e.name,
-      position: e.position || "",
+      position: e.position || "—",
       company: e.company,
       total_amount: fmt(e.total_amount),
       white_salary: fmt(e.white_salary),
@@ -180,45 +217,72 @@ export async function exportPayrollToPdf(
       startY,
       columns,
       body,
+      margin: { left: 14, right: 14 },
+      tableWidth: "auto",
       styles: {
         font: fontName,
-        fontSize: 7,
-        cellPadding: 1.5,
+        fontSize: 9,
+        cellPadding: { top: 2.5, bottom: 2.5, left: 2, right: 2 },
+        textColor: [30, 30, 30],
+        lineColor: [200, 200, 200],
+        lineWidth: 0.2,
+        overflow: "linebreak",
       },
       headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontSize: 7,
+        fillColor: [44, 82, 130],
+        textColor: [255, 255, 255],
+        fontSize: 8,
         font: fontName,
         fontStyle: "bold",
+        cellPadding: { top: 3, bottom: 3, left: 2, right: 2 },
+        halign: "center",
       },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
+      bodyStyles: {
+        fontSize: 9,
+      },
+      alternateRowStyles: {
+        fillColor: [240, 245, 250],
+      },
       columnStyles: {
-        name: { cellWidth: 30 },
-        position: { cellWidth: 22 },
-        company: { cellWidth: 18 },
-        total_amount: { halign: "right", cellWidth: 18 },
-        white_salary: { halign: "right", cellWidth: 16 },
-        gray_salary: { halign: "right", cellWidth: 16 },
-        advance: { halign: "right", cellWidth: 16 },
-        ndfl: { halign: "right", cellWidth: 16 },
-        contributions: { halign: "right", cellWidth: 16 },
-        bonus: { halign: "right", cellWidth: 16 },
-        next_month_bonus: { halign: "right", cellWidth: 18 },
-        cost: { halign: "right", cellWidth: 18 },
-        net_salary: { halign: "right", cellWidth: 16 },
-        paid_total: { halign: "right", cellWidth: 18 },
+        name: { cellWidth: 32, fontStyle: "bold" },
+        position: { cellWidth: 24, textColor: [100, 100, 100], fontSize: 8 },
+        company: { cellWidth: 20 },
+        total_amount: { halign: "right", cellWidth: 19, fontStyle: "bold" },
+        white_salary: { halign: "right", cellWidth: 17 },
+        gray_salary: { halign: "right", cellWidth: 17 },
+        advance: { halign: "right", cellWidth: 17 },
+        ndfl: { halign: "right", cellWidth: 17 },
+        contributions: { halign: "right", cellWidth: 17 },
+        bonus: { halign: "right", cellWidth: 17 },
+        next_month_bonus: { halign: "right", cellWidth: 19 },
+        cost: { halign: "right", cellWidth: 19 },
+        net_salary: { halign: "right", cellWidth: 17, fontStyle: "bold", textColor: [0, 100, 0] },
+        paid_total: { halign: "right", cellWidth: 19 },
       },
       didParseCell: (data) => {
+        // Bold totals row with accent background
         if (data.row.index === body.length - 1) {
           data.cell.styles.fontStyle = "bold";
-          data.cell.styles.fillColor = [220, 230, 241];
+          data.cell.styles.fillColor = [25, 60, 112];
+          data.cell.styles.textColor = [255, 255, 255];
+          data.cell.styles.fontSize = 9;
         }
       },
     });
 
-    startY = (doc as any).lastAutoTable.finalY + 8;
+    startY = (doc as any).lastAutoTable.finalY + 10;
   }
+
+  // ===== FOOTER on last page =====
+  const pageHeight = doc.internal.pageSize.getHeight();
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(14, pageHeight - 12, pageWidth - 14, pageHeight - 12);
+  doc.setFontSize(7);
+  doc.setFont(fontName, "normal");
+  doc.setTextColor(160, 160, 160);
+  doc.text("Документ сформирован автоматически • PNL Tracker", 14, pageHeight - 8);
+  doc.text(`Страница ${doc.getNumberOfPages()}`, pageWidth - 14, pageHeight - 8, { align: "right" });
 
   doc.save(`Зарплатный_табель_${monthLabel.replace(/\s/g, "_")}.pdf`);
 }
