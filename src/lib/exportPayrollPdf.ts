@@ -29,7 +29,6 @@ const fmt = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
-// Convert ArrayBuffer to base64
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -39,24 +38,33 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-// Cache the font so we only fetch once
 let cachedFontBase64: string | null = null;
+let cachedBoldFontBase64: string | null = null;
 
-async function loadCyrillicFont(): Promise<string | null> {
-  if (cachedFontBase64) return cachedFontBase64;
+async function loadRobotoFont(): Promise<{ regular: string | null; bold: string | null }> {
+  if (cachedFontBase64 && cachedBoldFontBase64) {
+    return { regular: cachedFontBase64, bold: cachedBoldFontBase64 };
+  }
 
   try {
-    // Fetch PT Sans from Google Fonts (supports Cyrillic)
-    const response = await fetch(
-      "https://fonts.gstatic.com/s/ptsans/v17/jizaRExUiTo99u79D0KEwA.ttf"
-    );
-    if (!response.ok) throw new Error("Font fetch failed");
-    const buffer = await response.arrayBuffer();
-    cachedFontBase64 = arrayBufferToBase64(buffer);
-    return cachedFontBase64;
+    const [regularRes, boldRes] = await Promise.all([
+      fetch("https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf"),
+      fetch("https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuaabWmT.ttf"),
+    ]);
+
+    if (!regularRes.ok || !boldRes.ok) throw new Error("Font fetch failed");
+
+    const [regularBuf, boldBuf] = await Promise.all([
+      regularRes.arrayBuffer(),
+      boldRes.arrayBuffer(),
+    ]);
+
+    cachedFontBase64 = arrayBufferToBase64(regularBuf);
+    cachedBoldFontBase64 = arrayBufferToBase64(boldBuf);
+    return { regular: cachedFontBase64, bold: cachedBoldFontBase64 };
   } catch (e) {
-    console.warn("Could not load Cyrillic font:", e);
-    return null;
+    console.warn("Could not load Roboto font:", e);
+    return { regular: null, bold: null };
   }
 }
 
@@ -66,16 +74,20 @@ export async function exportPayrollToPdf(
 ) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-  // Load and register Cyrillic font
-  const fontBase64 = await loadCyrillicFont();
+  const fonts = await loadRobotoFont();
   let fontName = "helvetica";
 
-  if (fontBase64) {
-    doc.addFileToVFS("PTSans-Regular.ttf", fontBase64);
-    doc.addFont("PTSans-Regular.ttf", "PTSans", "normal");
-    doc.setFont("PTSans");
-    fontName = "PTSans";
+  if (fonts.regular) {
+    doc.addFileToVFS("Roboto-Regular.ttf", fonts.regular);
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    fontName = "Roboto";
   }
+  if (fonts.bold) {
+    doc.addFileToVFS("Roboto-Bold.ttf", fonts.bold);
+    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+  }
+
+  doc.setFont(fontName, "normal");
 
   const columns = [
     { header: "Сотрудник", dataKey: "name" },
@@ -94,7 +106,6 @@ export async function exportPayrollToPdf(
     { header: "Выплачено", dataKey: "paid_total" },
   ];
 
-  // Title
   doc.setFontSize(16);
   doc.text(`Зарплатный табель — ${monthLabel}`, 14, 15);
 
@@ -127,7 +138,6 @@ export async function exportPayrollToPdf(
       paid_total: fmt(e.paid_total),
     }));
 
-    // Totals row
     const totals = dept.employees.reduce(
       (acc, e) => ({
         total_amount: acc.total_amount + e.total_amount,
@@ -180,6 +190,7 @@ export async function exportPayrollToPdf(
         textColor: 255,
         fontSize: 7,
         font: fontName,
+        fontStyle: "bold",
       },
       alternateRowStyles: { fillColor: [245, 245, 245] },
       columnStyles: {
