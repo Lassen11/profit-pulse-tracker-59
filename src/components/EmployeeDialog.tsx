@@ -15,6 +15,7 @@ interface EmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   departmentId: string;
+  departmentName?: string;
   employee: DepartmentEmployee | null;
   onSave: () => void;
   defaultCompany?: string;
