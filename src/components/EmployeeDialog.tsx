@@ -32,7 +32,7 @@ interface Profile {
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
 
-export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onSave, defaultCompany = "Спасение", selectedMonth }: EmployeeDialogProps) {
+export function EmployeeDialog({ open, onOpenChange, departmentId, departmentName, employee, onSave, defaultCompany = "Спасение", selectedMonth }: EmployeeDialogProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(defaultCompany);
