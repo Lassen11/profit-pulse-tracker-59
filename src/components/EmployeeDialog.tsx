@@ -288,6 +288,18 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, departmentNam
         }
       }
 
+      // Обновляем поле department в профиле сотрудника
+      if (departmentName) {
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({ department: departmentName })
+          .eq('id', selectedEmployeeId);
+
+        if (profileUpdateError) {
+          console.error('Error updating profile department:', profileUpdateError);
+        }
+      }
+
       // Обновляем Белая и Серая зарплаты во ВСЕХ месяцах для этого сотрудника в этом отделе
       const { error: updateAllMonthsError } = await supabase
         .from('department_employees')
@@ -299,7 +311,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, departmentNam
         })
         .eq('department_id', departmentId)
         .eq('employee_id', selectedEmployeeId)
-        .neq('month', selectedMonth); // Обновляем все месяцы кроме текущего (текущий уже обновлен выше)
+        .neq('month', selectedMonth);
 
       if (updateAllMonthsError) {
         console.error('Error updating salary across months:', updateAllMonthsError);
