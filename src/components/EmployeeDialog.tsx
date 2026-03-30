@@ -15,6 +15,7 @@ interface EmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   departmentId: string;
+  departmentName?: string;
   employee: DepartmentEmployee | null;
   onSave: () => void;
   defaultCompany?: string;
@@ -31,7 +32,7 @@ interface Profile {
 
 const companies = ["Спасение", "Дело Бизнеса", "Кебаб Босс"] as const;
 
-export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onSave, defaultCompany = "Спасение", selectedMonth }: EmployeeDialogProps) {
+export function EmployeeDialog({ open, onOpenChange, departmentId, departmentName, employee, onSave, defaultCompany = "Спасение", selectedMonth }: EmployeeDialogProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedCompany, setSelectedCompany] = useState(defaultCompany);
@@ -287,6 +288,18 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         }
       }
 
+      // Обновляем поле department в профиле сотрудника
+      if (departmentName) {
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({ department: departmentName })
+          .eq('id', selectedEmployeeId);
+
+        if (profileUpdateError) {
+          console.error('Error updating profile department:', profileUpdateError);
+        }
+      }
+
       // Обновляем Белая и Серая зарплаты во ВСЕХ месяцах для этого сотрудника в этом отделе
       const { error: updateAllMonthsError } = await supabase
         .from('department_employees')
@@ -298,7 +311,7 @@ export function EmployeeDialog({ open, onOpenChange, departmentId, employee, onS
         })
         .eq('department_id', departmentId)
         .eq('employee_id', selectedEmployeeId)
-        .neq('month', selectedMonth); // Обновляем все месяцы кроме текущего (текущий уже обновлен выше)
+        .neq('month', selectedMonth);
 
       if (updateAllMonthsError) {
         console.error('Error updating salary across months:', updateAllMonthsError);

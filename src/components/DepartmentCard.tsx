@@ -282,6 +282,7 @@ export function DepartmentCard({ department, onEdit, onDelete, selectedMonth, ne
           if (!open) setEditEmployee(null);
         }}
         departmentId={department.id}
+        departmentName={department.name}
         employee={editEmployee}
         defaultCompany={department.project_name || "Спасение"}
         selectedMonth={selectedMonth}
