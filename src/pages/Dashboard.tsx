@@ -317,10 +317,11 @@ export default function Dashboard() {
       // Plan: Get from kpi_targets table for selected month
       const startOfSelectedMonth = startOfMonth(effectiveMonth);
       const endOfSelectedMonth = endOfMonth(effectiveMonth);
+      const monthStr = format(startOfSelectedMonth, 'yyyy-MM-dd');
       const {
         data: targetData,
         error: targetError
-      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', startOfSelectedMonth.toISOString().split('T')[0]).maybeSingle();
+      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', monthStr).maybeSingle();
       if (targetError && targetError.code !== 'PGRST116') throw targetError;
 
       // If no target exists, create default one
