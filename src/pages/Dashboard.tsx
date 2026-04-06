@@ -317,10 +317,11 @@ export default function Dashboard() {
       // Plan: Get from kpi_targets table for selected month
       const startOfSelectedMonth = startOfMonth(effectiveMonth);
       const endOfSelectedMonth = endOfMonth(effectiveMonth);
+      const monthStr = format(startOfSelectedMonth, 'yyyy-MM-dd');
       const {
         data: targetData,
         error: targetError
-      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', startOfSelectedMonth.toISOString().split('T')[0]).maybeSingle();
+      } = await (supabase as any).from('kpi_targets').select('target_value').eq('company', 'Спасение').eq('kpi_name', 'new_sales').eq('month', monthStr).maybeSingle();
       if (targetError && targetError.code !== 'PGRST116') throw targetError;
 
       // If no target exists, create default one
@@ -332,7 +333,7 @@ export default function Dashboard() {
           company: 'Спасение',
           kpi_name: 'new_sales',
           target_value: 350000,
-          month: startOfSelectedMonth.toISOString().split('T')[0]
+          month: monthStr
         });
         if (insertError) throw insertError;
         setSalesPlan(350000);
@@ -341,10 +342,12 @@ export default function Dashboard() {
       }
 
       // Fact: Get sum of income transactions with category "Продажи" for selected month
+      const dateStartStr = format(startOfSelectedMonth, 'yyyy-MM-dd');
+      const dateEndStr = format(endOfSelectedMonth, 'yyyy-MM-dd');
       const {
         data: transactionsData,
         error: transactionsError
-      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('type', 'income').in('category', ['Продажа', 'Продажи']).gte('date', startOfSelectedMonth.toISOString().split('T')[0]).lte('date', endOfSelectedMonth.toISOString().split('T')[0]);
+      } = await supabase.from('transactions').select('amount').eq('company', 'Спасение').eq('type', 'income').in('category', ['Продажа', 'Продажи']).gte('date', dateStartStr).lte('date', dateEndStr);
       if (transactionsError) throw transactionsError;
       const fact = transactionsData?.reduce((sum, t) => sum + t.amount, 0) || 0;
       setSalesFact(fact);
