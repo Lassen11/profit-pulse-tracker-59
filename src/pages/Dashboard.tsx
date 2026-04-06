@@ -333,7 +333,7 @@ export default function Dashboard() {
           company: 'Спасение',
           kpi_name: 'new_sales',
           target_value: 350000,
-          month: startOfSelectedMonth.toISOString().split('T')[0]
+          month: monthStr
         });
         if (insertError) throw insertError;
         setSalesPlan(350000);
