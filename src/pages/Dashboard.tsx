@@ -1525,13 +1525,15 @@ export default function Dashboard() {
                   </SelectItem>)}
               </SelectContent>
             </Select>
-            <Button variant="outline" asChild className="w-full sm:w-auto">
-              <a href="https://bflhelper.delobusiness-it.ru" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                <span className="hidden xs:inline">Кабинет дебиторки</span>
-                <span className="xs:hidden">Дебиторка</span>
-              </a>
-            </Button>
+            {!isManagerOz && (
+              <Button variant="outline" asChild className="w-full sm:w-auto">
+                <a href="https://bflhelper.delobusiness-it.ru" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  <span className="hidden xs:inline">Кабинет дебиторки</span>
+                  <span className="xs:hidden">Дебиторка</span>
+                </a>
+              </Button>
+            )}
             <Button onClick={handleAddNew} className="shadow-kpi" disabled={isDemo}>
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Добавить операцию</span>
