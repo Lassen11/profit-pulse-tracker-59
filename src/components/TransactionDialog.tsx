@@ -155,7 +155,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           subcategory: '',
           amount: '',
           description: '',
-          date: new Date().toISOString().split('T')[0],
+          date: format(new Date(), 'yyyy-MM-dd'),
           taxPercent: '',
           clientName: '',
           contractAmount: '',
