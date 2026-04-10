@@ -15,7 +15,7 @@ interface CreateUserRequest {
   middleName?: string;
   position?: string;
   department?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'manager_oz';
 }
 
 const handler = async (req: Request): Promise<Response> => {
