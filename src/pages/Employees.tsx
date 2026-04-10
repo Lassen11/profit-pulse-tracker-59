@@ -363,9 +363,10 @@ export default function Employees() {
         throw new Error(result.error || 'Failed to update role');
       }
 
+      const roleLabels: Record<string, string> = { admin: 'Администратор', user: 'Пользователь', manager_oz: 'Менеджер ОЗ' };
       toast({
         title: "Успешно",
-        description: `Роль сотрудника ${fullName} изменена на ${newRole === 'admin' ? 'Администратор' : 'Пользователь'}`,
+        description: `Роль сотрудника ${fullName} изменена на ${roleLabels[newRole] || newRole}`,
       });
 
       // Обновляем список
@@ -392,6 +393,8 @@ export default function Employees() {
     setEditPosition(employee.position || "");
     setEditDepartment(employee.department || "");
     setEditTerminationDate(employee.termination_date || "");
+    setEditEmail("");
+    setEditPassword("");
     setIsEditDialogOpen(true);
     editDialogPersistence.openDialog({ employee });
   };
