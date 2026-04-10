@@ -67,7 +67,7 @@ export function AccountTransferDialog({
         }
         setToAccount("");
         setAmount("");
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(format(new Date(), 'yyyy-MM-dd'));
         setDescription("");
       }
     }
