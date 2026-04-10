@@ -1875,7 +1875,7 @@ export default function Dashboard() {
               Список всех финансовых операций
             </p>
           </div>
-          <TransactionTable transactions={filteredTransactions} onEdit={isAdmin ? handleEditTransaction : undefined} onDelete={isAdmin ? handleDeleteTransaction : undefined} onCopy={isAdmin ? handleCopyTransaction : undefined} showFilters={true} />
+          <TransactionTable transactions={filteredTransactions} onEdit={isAdmin ? handleEditTransaction : undefined} onDelete={isAdmin ? handleDeleteTransaction : undefined} onCopy={isAdmin ? handleCopyTransaction : undefined} showFilters={!isManagerOz} />
         </div>
         {/* Transaction Dialog */}
         <TransactionDialog open={dialogOpen} onOpenChange={open => {
