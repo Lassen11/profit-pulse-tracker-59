@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
   const [isAdmin, setIsAdmin] = useState(false);
+  const { isManagerOz } = useAuth();
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedAccountForTransfer, setSelectedAccountForTransfer] = useState<string>();
   const [accountActionsDialogOpen, setAccountActionsDialogOpen] = useState(false);
