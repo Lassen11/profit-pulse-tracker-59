@@ -1538,26 +1538,32 @@ export default function Dashboard() {
               <span className="xs:hidden">Добавить</span>
             </Button>
             
-            <Button variant="outline" onClick={() => navigate("/all-projects")}>
-              <Building2 className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Все проекты</span>
-              <span className="xs:hidden">Проекты</span>
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/lead-generation")}>
-              <BarChart3 className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Лидогенерация</span>
-              <span className="xs:hidden">Лиды</span>
-            </Button>
+            {!isManagerOz && (
+              <Button variant="outline" onClick={() => navigate("/all-projects")}>
+                <Building2 className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Все проекты</span>
+                <span className="xs:hidden">Проекты</span>
+              </Button>
+            )}
+            {!isManagerOz && (
+              <Button variant="outline" onClick={() => navigate("/lead-generation")}>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Лидогенерация</span>
+                <span className="xs:hidden">Лиды</span>
+              </Button>
+            )}
             {isAdmin && <Button variant="outline" onClick={() => navigate("/employees")}>
                 <Users className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Сотрудники</span>
                 <span className="xs:hidden">Сотрудники</span>
               </Button>}
-            <Button variant="outline" onClick={() => navigate("/payroll")}>
-              <BanknoteIcon className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">ФОТ</span>
-              <span className="xs:hidden">ФОТ</span>
-            </Button>
+            {!isManagerOz && (
+              <Button variant="outline" onClick={() => navigate("/payroll")}>
+                <BanknoteIcon className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">ФОТ</span>
+                <span className="xs:hidden">ФОТ</span>
+              </Button>
+            )}
             {isAdmin && <Button variant="outline" onClick={() => navigate("/settings")}>
                 <Settings className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Настройки</span>
