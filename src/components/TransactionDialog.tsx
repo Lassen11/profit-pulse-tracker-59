@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { format } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,7 +92,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
     subcategory: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     taxPercent: '',
     clientName: '',
     contractAmount: '',
@@ -124,7 +125,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         subcategory: transaction.subcategory || '',
         amount: transaction.amount.toString(),
         description: transaction.description,
-        date: copyMode ? new Date().toISOString().split('T')[0] : transaction.date,
+        date: copyMode ? format(new Date(), 'yyyy-MM-dd') : transaction.date,
         taxPercent: '',
         clientName: transaction.client_name || '',
         contractAmount: transaction.contract_amount?.toString() || '',
@@ -154,7 +155,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           subcategory: '',
           amount: '',
           description: '',
-          date: new Date().toISOString().split('T')[0],
+          date: format(new Date(), 'yyyy-MM-dd'),
           taxPercent: '',
           clientName: '',
           contractAmount: '',
@@ -351,7 +352,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           console.error('Error finding legal department:', deptError);
         } else if (deptData) {
           const amount = parseFloat(formData.amount);
-          const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+          const currentMonth = format(new Date(formData.date + 'T12:00:00'), 'yyyy-MM') + '-01';
           
           // Рассчитываем новую сумму премии
           let newLegalBonus = 0;
@@ -415,7 +416,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
 
       // Начисляем премии в фонд Отдела Арбитражного Управляющего если включен чекбокс ЮД БФЛ
       const auAmount = parseFloat(formData.amount);
-      const auCurrentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+      const auCurrentMonth = format(new Date(formData.date + 'T12:00:00'), 'yyyy-MM') + '-01';
       const auBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
       const newAuBonusAmount = enableLegalBflBonus ? auAmount * (auBonusPercentValue / 100) : 0;
       

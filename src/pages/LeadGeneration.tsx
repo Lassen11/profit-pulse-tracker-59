@@ -89,7 +89,7 @@ export default function LeadGeneration() {
       const {
         data,
         error
-      } = await supabase.from('lead_generation').select('*').eq('company', selectedCompany).gte('date', customDateFrom.toISOString().split('T')[0]).lte('date', customDateTo.toISOString().split('T')[0]).order('date', {
+      } = await supabase.from('lead_generation').select('*').eq('company', selectedCompany).gte('date', format(customDateFrom, 'yyyy-MM-dd')).lte('date', format(customDateTo, 'yyyy-MM-dd')).order('date', {
         ascending: false
       });
       if (error) throw error;
@@ -261,7 +261,9 @@ export default function LeadGeneration() {
         for (const row of jsonData) {
           try {
             const rowData = row as any;
-            const date = new Date(rowData['Дата'] || rowData['date']).toISOString().split('T')[0];
+            const parsedDate = new Date(rowData['Дата'] || rowData['date']);
+            parsedDate.setHours(12, 0, 0, 0);
+            const date = format(parsedDate, 'yyyy-MM-dd');
             const company = rowData['Компания'] || rowData['company'] || selectedCompany;
             const total_leads = parseInt(rowData['Общее кол. лидов'] || rowData['total_leads'] || '0');
             const qualified_leads = parseInt(rowData['Квал. лиды'] || rowData['qualified_leads'] || '0');

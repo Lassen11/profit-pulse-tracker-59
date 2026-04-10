@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -475,7 +476,7 @@ export default function Employees() {
       // If archiving (setting to inactive), set termination date to today
       // If reactivating, clear termination date
       if (currentStatus) {
-        updateData.termination_date = new Date().toISOString().split('T')[0];
+        updateData.termination_date = format(new Date(), 'yyyy-MM-dd');
       } else {
         updateData.termination_date = null;
       }

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -71,7 +72,7 @@ export function PlanFactKPICard({
           company: company || 'Спасение',
           kpi_name: kpiName || '',
           target_value: newValue,
-          month: month.toISOString().split('T')[0]
+          month: format(month, 'yyyy-MM-dd')
         }, {
           onConflict: 'user_id,company,kpi_name,month'
         });

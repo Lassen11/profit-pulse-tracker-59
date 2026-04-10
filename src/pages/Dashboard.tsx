@@ -580,7 +580,7 @@ export default function Dashboard() {
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       const {
         data
-      } = await supabase.from('transactions').select('*').eq('company', selectedCompany).lt('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', {
+      } = await supabase.from('transactions').select('*').eq('company', selectedCompany).lt('date', format(threeMonthsAgo, 'yyyy-MM-dd')).order('date', {
         ascending: false
       });
       if (data && data.length > 0) {
@@ -1081,7 +1081,7 @@ export default function Dashboard() {
     if (confirmed) {
       try {
         const transactionDate = new Date(transaction.date);
-        const monthStart = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), 1).toISOString().split('T')[0];
+        const monthStart = format(new Date(transactionDate.getFullYear(), transactionDate.getMonth(), 1), 'yyyy-MM-dd');
         
         // Subtract AU bonus from department budget if exists
         if (transaction.au_department_bonus && transaction.au_department_bonus > 0 && transaction.company === 'Дело Бизнеса') {
