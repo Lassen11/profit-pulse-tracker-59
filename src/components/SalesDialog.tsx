@@ -41,7 +41,7 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
     city: "",
     lead_source: "",
     manager_bonus: 0,
-    payment_date: new Date().toISOString().split('T')[0]
+    payment_date: format(new Date(), 'yyyy-MM-dd')
   });
   const [salesEmployees, setSalesEmployees] = useState<SalesEmployee[]>([]);
 
@@ -99,7 +99,7 @@ export function SalesDialog({ open, onOpenChange, onSave, sale }: SalesDialogPro
             city: "",
             lead_source: "",
             manager_bonus: 0,
-            payment_date: new Date().toISOString().split('T')[0]
+            payment_date: format(new Date(), 'yyyy-MM-dd')
           });
         }
       }

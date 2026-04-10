@@ -352,7 +352,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
           console.error('Error finding legal department:', deptError);
         } else if (deptData) {
           const amount = parseFloat(formData.amount);
-          const currentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+          const currentMonth = format(new Date(formData.date + 'T12:00:00'), 'yyyy-MM') + '-01';
           
           // Рассчитываем новую сумму премии
           let newLegalBonus = 0;
@@ -416,7 +416,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
 
       // Начисляем премии в фонд Отдела Арбитражного Управляющего если включен чекбокс ЮД БФЛ
       const auAmount = parseFloat(formData.amount);
-      const auCurrentMonth = new Date(formData.date).toISOString().split('T')[0].slice(0, 7) + '-01';
+      const auCurrentMonth = format(new Date(formData.date + 'T12:00:00'), 'yyyy-MM') + '-01';
       const auBonusPercentValue = parseFloat(legalBflBonusPercent) || 0;
       const newAuBonusAmount = enableLegalBflBonus ? auAmount * (auBonusPercentValue / 100) : 0;
       

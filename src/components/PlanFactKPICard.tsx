@@ -72,7 +72,7 @@ export function PlanFactKPICard({
           company: company || 'Спасение',
           kpi_name: kpiName || '',
           target_value: newValue,
-          month: month.toISOString().split('T')[0]
+          month: format(month, 'yyyy-MM-dd')
         }, {
           onConflict: 'user_id,company,kpi_name,month'
         });
