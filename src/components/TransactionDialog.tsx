@@ -125,7 +125,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, onSave, cop
         subcategory: transaction.subcategory || '',
         amount: transaction.amount.toString(),
         description: transaction.description,
-        date: copyMode ? new Date().toISOString().split('T')[0] : transaction.date,
+        date: copyMode ? format(new Date(), 'yyyy-MM-dd') : transaction.date,
         taxPercent: '',
         clientName: transaction.client_name || '',
         contractAmount: transaction.contract_amount?.toString() || '',
