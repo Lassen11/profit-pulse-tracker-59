@@ -33,7 +33,7 @@ export function AccountTransferDialog({
   const [fromAccount, setFromAccount] = useState("");
   const [toAccount, setToAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [description, setDescription] = useState("");
 
   const formKey = 'account-transfer-dialog';
@@ -56,7 +56,7 @@ export function AccountTransferDialog({
         setFromAccount(restored.fromAccount || (selectedAccount || ""));
         setToAccount(restored.toAccount || "");
         setAmount(restored.amount || "");
-        setDate(restored.date || new Date().toISOString().split('T')[0]);
+        setDate(restored.date || format(new Date(), 'yyyy-MM-dd'));
         setDescription(restored.description || "");
       } else {
         if (selectedAccount) {
