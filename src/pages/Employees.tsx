@@ -420,6 +420,30 @@ export default function Employees() {
 
       if (error) throw error;
 
+      // Update email/password if provided
+      if (editEmail || editPassword) {
+        const { data: authData } = await supabase.auth.getSession();
+        if (!authData.session) throw new Error("Not authenticated");
+
+        const body: Record<string, string> = { userId: editingEmployee.user_id };
+        if (editEmail) body.email = editEmail;
+        if (editPassword) body.password = editPassword;
+
+        const response = await fetch(`https://rdpxbbddqxwbufzqozqz.supabase.co/functions/v1/update-user-credentials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.session.access_token}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to update credentials');
+        }
+      }
+
       toast({
         title: "Успешно",
         description: `Данные сотрудника ${editLastName} ${editFirstName} ${editMiddleName} обновлены`,
