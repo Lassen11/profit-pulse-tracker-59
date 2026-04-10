@@ -787,6 +787,11 @@ export default function Employees() {
                                 <Shield className="h-3 w-3 mr-1" />
                                 Администратор
                               </>
+                            ) : employee.role === 'manager_oz' ? (
+                              <>
+                                <User className="h-3 w-3 mr-1" />
+                                Менеджер ОЗ
+                              </>
                             ) : (
                               <>
                                 <User className="h-3 w-3 mr-1" />
@@ -797,7 +802,7 @@ export default function Employees() {
                         ) : (
                           <Select 
                             value={employee.role} 
-                            onValueChange={(value: 'admin' | 'user') => 
+                            onValueChange={(value: AppRole) => 
                               handleRoleChange(employee.user_id, value, `${employee.last_name} ${employee.first_name} ${employee.middle_name || ''}`)
                             }
                             disabled={updatingRoleUserId === employee.user_id}
@@ -816,6 +821,12 @@ export default function Employees() {
                                 <div className="flex items-center">
                                   <Shield className="h-3 w-3 mr-2" />
                                   Администратор
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="manager_oz">
+                                <div className="flex items-center">
+                                  <User className="h-3 w-3 mr-2" />
+                                  Менеджер ОЗ
                                 </div>
                               </SelectItem>
                             </SelectContent>
