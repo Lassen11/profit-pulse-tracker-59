@@ -336,7 +336,7 @@ export default function Employees() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'user', fullName: string) => {
+  const handleRoleChange = async (userId: string, newRole: AppRole, fullName: string) => {
     setUpdatingRoleUserId(userId);
 
     try {
