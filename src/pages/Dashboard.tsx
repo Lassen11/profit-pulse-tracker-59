@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [selectedCompany, setSelectedCompany] = useState<string>("Спасение");
   const [isAdmin, setIsAdmin] = useState(false);
+  const { isManagerOz } = useAuth();
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedAccountForTransfer, setSelectedAccountForTransfer] = useState<string>();
   const [accountActionsDialogOpen, setAccountActionsDialogOpen] = useState(false);
@@ -1524,39 +1525,47 @@ export default function Dashboard() {
                   </SelectItem>)}
               </SelectContent>
             </Select>
-            <Button variant="outline" asChild className="w-full sm:w-auto">
-              <a href="https://bflhelper.delobusiness-it.ru" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                <span className="hidden xs:inline">Кабинет дебиторки</span>
-                <span className="xs:hidden">Дебиторка</span>
-              </a>
-            </Button>
+            {!isManagerOz && (
+              <Button variant="outline" asChild className="w-full sm:w-auto">
+                <a href="https://bflhelper.delobusiness-it.ru" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  <span className="hidden xs:inline">Кабинет дебиторки</span>
+                  <span className="xs:hidden">Дебиторка</span>
+                </a>
+              </Button>
+            )}
             <Button onClick={handleAddNew} className="shadow-kpi" disabled={isDemo}>
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden xs:inline">Добавить операцию</span>
               <span className="xs:hidden">Добавить</span>
             </Button>
             
-            <Button variant="outline" onClick={() => navigate("/all-projects")}>
-              <Building2 className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Все проекты</span>
-              <span className="xs:hidden">Проекты</span>
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/lead-generation")}>
-              <BarChart3 className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">Лидогенерация</span>
-              <span className="xs:hidden">Лиды</span>
-            </Button>
+            {!isManagerOz && (
+              <Button variant="outline" onClick={() => navigate("/all-projects")}>
+                <Building2 className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Все проекты</span>
+                <span className="xs:hidden">Проекты</span>
+              </Button>
+            )}
+            {!isManagerOz && (
+              <Button variant="outline" onClick={() => navigate("/lead-generation")}>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Лидогенерация</span>
+                <span className="xs:hidden">Лиды</span>
+              </Button>
+            )}
             {isAdmin && <Button variant="outline" onClick={() => navigate("/employees")}>
                 <Users className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Сотрудники</span>
                 <span className="xs:hidden">Сотрудники</span>
               </Button>}
-            <Button variant="outline" onClick={() => navigate("/payroll")}>
-              <BanknoteIcon className="w-4 h-4 mr-2" />
-              <span className="hidden xs:inline">ФОТ</span>
-              <span className="xs:hidden">ФОТ</span>
-            </Button>
+            {!isManagerOz && (
+              <Button variant="outline" onClick={() => navigate("/payroll")}>
+                <BanknoteIcon className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">ФОТ</span>
+                <span className="xs:hidden">ФОТ</span>
+              </Button>
+            )}
             {isAdmin && <Button variant="outline" onClick={() => navigate("/settings")}>
                 <Settings className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Настройки</span>
@@ -1866,7 +1875,7 @@ export default function Dashboard() {
               Список всех финансовых операций
             </p>
           </div>
-          <TransactionTable transactions={filteredTransactions} onEdit={isAdmin ? handleEditTransaction : undefined} onDelete={isAdmin ? handleDeleteTransaction : undefined} onCopy={isAdmin ? handleCopyTransaction : undefined} showFilters={true} />
+          <TransactionTable transactions={filteredTransactions} onEdit={isAdmin ? handleEditTransaction : undefined} onDelete={isAdmin ? handleDeleteTransaction : undefined} onCopy={isAdmin ? handleCopyTransaction : undefined} showFilters={!isManagerOz} />
         </div>
         {/* Transaction Dialog */}
         <TransactionDialog open={dialogOpen} onOpenChange={open => {

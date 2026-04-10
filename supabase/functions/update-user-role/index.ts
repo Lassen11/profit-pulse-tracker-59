@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface UpdateRoleRequest {
   userId: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'manager_oz';
 }
 
 serve(async (req) => {
@@ -66,8 +66,8 @@ serve(async (req) => {
       throw new Error('userId and role are required');
     }
 
-    if (role !== 'admin' && role !== 'user') {
-      throw new Error('Invalid role. Must be "admin" or "user"');
+    if (role !== 'admin' && role !== 'user' && role !== 'manager_oz') {
+      throw new Error('Invalid role. Must be "admin", "user", or "manager_oz"');
     }
 
     console.log(`Updating role for user ${userId} to ${role}`);

@@ -2,11 +2,16 @@ import { useState, useEffect, createContext, useContext, useMemo, useRef } from 
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+type AppRole = 'admin' | 'user' | 'manager_oz';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isDemo: boolean;
+  role: AppRole | null;
+  isAdmin: boolean;
+  isManagerOz: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -15,6 +20,9 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   isDemo: false,
+  role: null,
+  isAdmin: false,
+  isManagerOz: false,
   signOut: async () => {},
 });
 
@@ -30,10 +38,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<AppRole | null>(null);
 
   // Prevent noisy re-renders on window refocus when Supabase emits duplicate auth events.
   const userIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+
+  const fetchRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        setRole(data.role as AppRole);
+      } else {
+        setRole('user');
+      }
+    } catch {
+      setRole('user');
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -70,6 +97,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (userIdRef.current !== nextUserId) {
         userIdRef.current = nextUserId;
         setUser(nextUser);
+        if (nextUserId) {
+          fetchRole(nextUserId);
+        } else {
+          setRole(null);
+        }
       }
 
       if (accessTokenRef.current !== nextAccessToken) {
@@ -121,9 +153,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       session,
       loading,
       isDemo: !user && !loading,
+      role,
+      isAdmin: role === 'admin',
+      isManagerOz: role === 'manager_oz',
       signOut,
     }),
-    [user, session, loading]
+    [user, session, loading, role]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -28,12 +28,14 @@ interface Profile {
   created_at: string;
 }
 
+type AppRole = 'admin' | 'user' | 'manager_oz';
+
 interface UserRole {
-  role: 'admin' | 'user';
+  role: AppRole;
 }
 
 export default function Employees() {
-  const [employees, setEmployees] = useState<(Profile & { role?: 'admin' | 'user' })[]>([]);
+  const [employees, setEmployees] = useState<(Profile & { role?: AppRole })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -46,7 +48,7 @@ export default function Employees() {
   const [middleName, setMiddleName] = useState("");
   const [position, setPosition] = useState("");
   const [department, setDepartment] = useState("");
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<AppRole>('user');
   const [submitting, setSubmitting] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
@@ -61,6 +63,8 @@ export default function Employees() {
   const [editPosition, setEditPosition] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editTerminationDate, setEditTerminationDate] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
   
   // Filter states
@@ -332,7 +336,7 @@ export default function Employees() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'user', fullName: string) => {
+  const handleRoleChange = async (userId: string, newRole: AppRole, fullName: string) => {
     setUpdatingRoleUserId(userId);
 
     try {
@@ -359,9 +363,10 @@ export default function Employees() {
         throw new Error(result.error || 'Failed to update role');
       }
 
+      const roleLabels: Record<string, string> = { admin: 'Администратор', user: 'Пользователь', manager_oz: 'Менеджер ОЗ' };
       toast({
         title: "Успешно",
-        description: `Роль сотрудника ${fullName} изменена на ${newRole === 'admin' ? 'Администратор' : 'Пользователь'}`,
+        description: `Роль сотрудника ${fullName} изменена на ${roleLabels[newRole] || newRole}`,
       });
 
       // Обновляем список
@@ -388,6 +393,8 @@ export default function Employees() {
     setEditPosition(employee.position || "");
     setEditDepartment(employee.department || "");
     setEditTerminationDate(employee.termination_date || "");
+    setEditEmail("");
+    setEditPassword("");
     setIsEditDialogOpen(true);
     editDialogPersistence.openDialog({ employee });
   };
@@ -412,6 +419,30 @@ export default function Employees() {
         .eq('id', editingEmployee.id);
 
       if (error) throw error;
+
+      // Update email/password if provided
+      if (editEmail || editPassword) {
+        const { data: authData } = await supabase.auth.getSession();
+        if (!authData.session) throw new Error("Not authenticated");
+
+        const body: Record<string, string> = { userId: editingEmployee.user_id };
+        if (editEmail) body.email = editEmail;
+        if (editPassword) body.password = editPassword;
+
+        const response = await fetch(`https://rdpxbbddqxwbufzqozqz.supabase.co/functions/v1/update-user-credentials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.session.access_token}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to update credentials');
+        }
+      }
 
       toast({
         title: "Успешно",
@@ -617,13 +648,14 @@ export default function Employees() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="role">Роль</Label>
-                  <Select value={role} onValueChange={(value: 'admin' | 'user') => setRole(value)}>
+                  <Select value={role} onValueChange={(value: AppRole) => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите роль" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">Пользователь</SelectItem>
                       <SelectItem value="admin">Администратор</SelectItem>
+                      <SelectItem value="manager_oz">Менеджер ОЗ</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -755,6 +787,11 @@ export default function Employees() {
                                 <Shield className="h-3 w-3 mr-1" />
                                 Администратор
                               </>
+                            ) : employee.role === 'manager_oz' ? (
+                              <>
+                                <User className="h-3 w-3 mr-1" />
+                                Менеджер ОЗ
+                              </>
                             ) : (
                               <>
                                 <User className="h-3 w-3 mr-1" />
@@ -765,7 +802,7 @@ export default function Employees() {
                         ) : (
                           <Select 
                             value={employee.role} 
-                            onValueChange={(value: 'admin' | 'user') => 
+                            onValueChange={(value: AppRole) => 
                               handleRoleChange(employee.user_id, value, `${employee.last_name} ${employee.first_name} ${employee.middle_name || ''}`)
                             }
                             disabled={updatingRoleUserId === employee.user_id}
@@ -784,6 +821,12 @@ export default function Employees() {
                                 <div className="flex items-center">
                                   <Shield className="h-3 w-3 mr-2" />
                                   Администратор
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="manager_oz">
+                                <div className="flex items-center">
+                                  <User className="h-3 w-3 mr-2" />
+                                  Менеджер ОЗ
                                 </div>
                               </SelectItem>
                             </SelectContent>
@@ -964,6 +1007,33 @@ export default function Employees() {
                 <p className="text-xs text-muted-foreground">
                   Оставьте пустым для активных сотрудников
                 </p>
+              </div>
+
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium mb-3">Учётные данные</p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-email">Новый Email</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Оставьте пустым, чтобы не менять"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-password">Новый пароль</Label>
+                    <Input
+                      id="edit-password"
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Оставьте пустым, чтобы не менять"
+                      minLength={6}
+                    />
+                  </div>
+                </div>
               </div>
               
               <div className="flex gap-3 pt-4">
