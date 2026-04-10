@@ -48,7 +48,7 @@ export default function Employees() {
   const [middleName, setMiddleName] = useState("");
   const [position, setPosition] = useState("");
   const [department, setDepartment] = useState("");
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<AppRole>('user');
   const [submitting, setSubmitting] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
@@ -63,6 +63,8 @@ export default function Employees() {
   const [editPosition, setEditPosition] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editTerminationDate, setEditTerminationDate] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
   
   // Filter states
