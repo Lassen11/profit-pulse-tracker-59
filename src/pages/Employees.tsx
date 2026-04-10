@@ -1008,6 +1008,33 @@ export default function Employees() {
                   Оставьте пустым для активных сотрудников
                 </p>
               </div>
+
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium mb-3">Учётные данные</p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-email">Новый Email</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Оставьте пустым, чтобы не менять"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-password">Новый пароль</Label>
+                    <Input
+                      id="edit-password"
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Оставьте пустым, чтобы не менять"
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+              </div>
               
               <div className="flex gap-3 pt-4">
                 <Button
