@@ -648,13 +648,14 @@ export default function Employees() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="role">Роль</Label>
-                  <Select value={role} onValueChange={(value: 'admin' | 'user') => setRole(value)}>
+                  <Select value={role} onValueChange={(value: AppRole) => setRole(value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите роль" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">Пользователь</SelectItem>
                       <SelectItem value="admin">Администратор</SelectItem>
+                      <SelectItem value="manager_oz">Менеджер ОЗ</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
