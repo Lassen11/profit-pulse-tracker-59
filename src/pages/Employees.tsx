@@ -28,12 +28,14 @@ interface Profile {
   created_at: string;
 }
 
+type AppRole = 'admin' | 'user' | 'manager_oz';
+
 interface UserRole {
-  role: 'admin' | 'user';
+  role: AppRole;
 }
 
 export default function Employees() {
-  const [employees, setEmployees] = useState<(Profile & { role?: 'admin' | 'user' })[]>([]);
+  const [employees, setEmployees] = useState<(Profile & { role?: AppRole })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
