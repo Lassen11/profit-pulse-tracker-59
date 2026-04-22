@@ -14,6 +14,7 @@ import { AccountTransactionsDialog } from "@/components/AccountTransactionsDialo
 import { MonthlyAnalytics } from "@/components/MonthlyAnalytics";
 import { ClientsSaldoChart } from "@/components/ClientsSaldoChart";
 import { ClientMetricsChart } from "@/components/ClientMetricsChart";
+import { BusinessClientsSection } from "@/components/BusinessClientsSection";
 import { DemoBanner } from "@/components/DemoBanner";
 import { calculateKPIs } from "@/lib/supabaseData";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target, ArrowUpFromLine, Wallet, LogOut, CalendarIcon, Users, Upload, Building2, BarChart3, BanknoteIcon, ExternalLink, Settings } from "lucide-react";
@@ -1864,6 +1865,11 @@ export default function Dashboard() {
               </div>)}
           </div>
         </div>
+
+        {/* Business Clients Section - only for Дело Бизнеса */}
+        {selectedCompany === "Дело Бизнеса" && !isManagerOz && user && (
+          <BusinessClientsSection userId={user.id} canEdit={isAdmin} />
+        )}
 
         {/* Transaction Table - Full Width */}
         <div className="kpi-card">

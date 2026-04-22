@@ -119,6 +119,89 @@ export type Database = {
         }
         Relationships: []
       }
+      business_client_payments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          id: string
+          is_paid: boolean
+          paid_account: string | null
+          paid_at: string | null
+          payment_date: string
+          service: string
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          paid_account?: string | null
+          paid_at?: string | null
+          payment_date?: string
+          service: string
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          paid_account?: string | null
+          paid_at?: string | null
+          payment_date?: string
+          service?: string
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_client_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "business_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_clients: {
+        Row: {
+          contact: string | null
+          created_at: string
+          id: string
+          inn: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          inn?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          inn?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       company_balance_adjustments: {
         Row: {
           adjusted_balance: number
