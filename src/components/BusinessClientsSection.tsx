@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { Building2, Plus, Pencil, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Building2, Plus, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +64,12 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
   const [activePayment, setActivePayment] = useState<{ payment: Payment; client: Client } | null>(null);
 
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [unmarkPayment, setUnmarkPayment] = useState<Payment | null>(null);
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,7 +141,7 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
       setActivePayment({ payment, client });
       setReceiveOpen(true);
     } else {
-      void unmarkPaid(payment);
+      setUnmarkPayment(payment);
     }
   };
 
@@ -188,9 +197,29 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
     toast({ title: "Платёж зачислен", description: `${client.name} — ${formatCurrency(payment.amount)}` });
   };
 
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p) => {
+      if (statusFilter === "paid" && !p.is_paid) return false;
+      if (statusFilter === "unpaid" && p.is_paid) return false;
+      if (dateFrom && p.payment_date < dateFrom) return false;
+      if (dateTo && p.payment_date > dateTo) return false;
+      return true;
+    });
+  }, [payments, statusFilter, dateFrom, dateTo]);
+
+  const hasActiveFilters = statusFilter !== "all" || !!dateFrom || !!dateTo;
+
+  const totals = useMemo(() => {
+    const paid = filteredPayments.filter((p) => p.is_paid).reduce((s, p) => s + Number(p.amount), 0);
+    const unpaid = filteredPayments.filter((p) => !p.is_paid).reduce((s, p) => s + Number(p.amount), 0);
+    return { paid, unpaid, count: filteredPayments.length };
+  }, [filteredPayments]);
+
   const rows = clients.flatMap((client) => {
-    const list = payments.filter((p) => p.client_id === client.id);
+    const list = filteredPayments.filter((p) => p.client_id === client.id);
     if (list.length === 0) {
+      // hide empty clients when any filter is active
+      if (hasActiveFilters) return [];
       return [{ key: client.id + "-empty", client, payment: null as Payment | null, isFirst: true, rowSpan: 1 }];
     }
     return list.map((p, idx) => ({
@@ -201,6 +230,12 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
       rowSpan: list.length,
     }));
   });
+
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   return (
     <div className="kpi-card">
@@ -217,6 +252,47 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
             <Plus className="w-4 h-4 mr-1" /> Добавить клиента
           </Button>
         )}
+      </div>
+
+      {/* Filters */}
+      <div className="mb-4 grid grid-cols-1 sm:grid-cols-[200px_180px_180px_auto_1fr] gap-3 items-end">
+        <div className="space-y-1">
+          <Label className="text-xs">Статус оплаты</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все</SelectItem>
+              <SelectItem value="unpaid">Не оплачено</SelectItem>
+              <SelectItem value="paid">Оплачено</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Дата платежа с</Label>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">по</Label>
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        <div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              <X className="w-4 h-4 mr-1" /> Сбросить
+            </Button>
+          )}
+        </div>
+        <div className="text-sm text-muted-foreground sm:text-right">
+          Платежей: <span className="font-medium text-foreground">{totals.count}</span>
+          {" • "}Не оплачено:{" "}
+          <span className="font-medium text-destructive">{formatCurrency(totals.unpaid)}</span>
+          {" • "}Оплачено:{" "}
+          <span className="font-medium text-primary">
+            {formatCurrency(totals.paid)}
+          </span>
+        </div>
       </div>
 
       <div className="rounded-md border overflow-x-auto">
@@ -352,6 +428,39 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteClient}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!unmarkPayment} onOpenChange={(o) => !o && setUnmarkPayment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Снять отметку «Оплачено»?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unmarkPayment && (
+                <>
+                  Будет удалена связанная транзакция на сумму{" "}
+                  <span className="font-medium text-foreground">
+                    {formatCurrency(unmarkPayment.amount)}
+                  </span>
+                  {unmarkPayment.paid_account && (
+                    <> со счёта <span className="font-medium text-foreground">{unmarkPayment.paid_account}</span></>
+                  )}
+                  . Баланс счёта будет пересчитан автоматически.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (unmarkPayment) await unmarkPaid(unmarkPayment);
+                setUnmarkPayment(null);
+              }}
+            >
+              Снять отметку
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
