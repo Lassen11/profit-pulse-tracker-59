@@ -289,7 +289,7 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
           {" • "}Не оплачено:{" "}
           <span className="font-medium text-destructive">{formatCurrency(totals.unpaid)}</span>
           {" • "}Оплачено:{" "}
-          <span className="font-medium text-green-600 dark:text-green-400">
+          <span className="font-medium text-primary">
             {formatCurrency(totals.paid)}
           </span>
         </div>
@@ -428,6 +428,39 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteClient}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!unmarkPayment} onOpenChange={(o) => !o && setUnmarkPayment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Снять отметку «Оплачено»?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unmarkPayment && (
+                <>
+                  Будет удалена связанная транзакция на сумму{" "}
+                  <span className="font-medium text-foreground">
+                    {formatCurrency(unmarkPayment.amount)}
+                  </span>
+                  {unmarkPayment.paid_account && (
+                    <> со счёта <span className="font-medium text-foreground">{unmarkPayment.paid_account}</span></>
+                  )}
+                  . Баланс счёта будет пересчитан автоматически.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (unmarkPayment) await unmarkPaid(unmarkPayment);
+                setUnmarkPayment(null);
+              }}
+            >
+              Снять отметку
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
