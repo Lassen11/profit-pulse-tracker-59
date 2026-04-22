@@ -1866,6 +1866,11 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Business Clients Section - only for Дело Бизнеса */}
+        {selectedCompany === "Дело Бизнеса" && !isManagerOz && user && (
+          <BusinessClientsSection userId={user.id} canEdit={isAdmin} />
+        )}
+
         {/* Transaction Table - Full Width */}
         <div className="kpi-card">
           <div className="mb-6">
