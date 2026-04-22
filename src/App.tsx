@@ -12,6 +12,7 @@ import LeadGeneration from "./pages/LeadGeneration";
 import Employees from "./pages/Employees";
 import Payroll from "./pages/Payroll";
 import Settings from "./pages/Settings";
+import FinancialModel from "./pages/FinancialModel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
             <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/financial-model" element={<ProtectedRoute><FinancialModel /></ProtectedRoute>} />
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
