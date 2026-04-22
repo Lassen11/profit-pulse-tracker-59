@@ -64,6 +64,12 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
   const [activePayment, setActivePayment] = useState<{ payment: Payment; client: Client } | null>(null);
 
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [unmarkPayment, setUnmarkPayment] = useState<Payment | null>(null);
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,7 +141,7 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
       setActivePayment({ payment, client });
       setReceiveOpen(true);
     } else {
-      void unmarkPaid(payment);
+      setUnmarkPayment(payment);
     }
   };
 
@@ -191,9 +197,29 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
     toast({ title: "Платёж зачислен", description: `${client.name} — ${formatCurrency(payment.amount)}` });
   };
 
+  const filteredPayments = useMemo(() => {
+    return payments.filter((p) => {
+      if (statusFilter === "paid" && !p.is_paid) return false;
+      if (statusFilter === "unpaid" && p.is_paid) return false;
+      if (dateFrom && p.payment_date < dateFrom) return false;
+      if (dateTo && p.payment_date > dateTo) return false;
+      return true;
+    });
+  }, [payments, statusFilter, dateFrom, dateTo]);
+
+  const hasActiveFilters = statusFilter !== "all" || !!dateFrom || !!dateTo;
+
+  const totals = useMemo(() => {
+    const paid = filteredPayments.filter((p) => p.is_paid).reduce((s, p) => s + Number(p.amount), 0);
+    const unpaid = filteredPayments.filter((p) => !p.is_paid).reduce((s, p) => s + Number(p.amount), 0);
+    return { paid, unpaid, count: filteredPayments.length };
+  }, [filteredPayments]);
+
   const rows = clients.flatMap((client) => {
-    const list = payments.filter((p) => p.client_id === client.id);
+    const list = filteredPayments.filter((p) => p.client_id === client.id);
     if (list.length === 0) {
+      // hide empty clients when any filter is active
+      if (hasActiveFilters) return [];
       return [{ key: client.id + "-empty", client, payment: null as Payment | null, isFirst: true, rowSpan: 1 }];
     }
     return list.map((p, idx) => ({
@@ -204,6 +230,12 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
       rowSpan: list.length,
     }));
   });
+
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   return (
     <div className="kpi-card">
