@@ -30,6 +30,7 @@ import { ForecastBlock } from "@/components/financial-model/ForecastBlock";
 import { CashFlowBlock } from "@/components/financial-model/CashFlowBlock";
 import { ScenarioSimulator } from "@/components/financial-model/ScenarioSimulator";
 import { MonthlyTrendChart, TrendPoint } from "@/components/financial-model/MonthlyTrendChart";
+import { PlanFactScenarioChart } from "@/components/financial-model/PlanFactScenarioChart";
 
 const COMPANIES = ["Спасение", "Дело Бизнеса"] as const;
 
@@ -62,6 +63,7 @@ export default function FinancialModel() {
   const [bizSales, setBizSales] = useState<BizSale[]>([]);
   const [planRows, setPlanRows] = useState<Record<string, { id: string; value: number }>>({});
   const [adjustments, setAdjustments] = useState<number>(0);
+  const [scenarioPnl, setScenarioPnl] = useState<PnL | null>(null);
   const [loading, setLoading] = useState(true);
 
   const monthStart = useMemo(() => startOfMonth(month), [month]);
@@ -317,9 +319,16 @@ export default function FinancialModel() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ScenarioSimulator basePnl={pnl} />
+              <ScenarioSimulator
+                basePnl={pnl}
+                company={company}
+                monthKey={format(month, "yyyy-MM")}
+                onScenarioChange={setScenarioPnl}
+              />
               <MonthlyTrendChart data={trendData} />
             </div>
+
+            <PlanFactScenarioChart pnl={pnl} scenario={scenarioPnl ?? pnl} plan={plan} />
           </>
         )}
       </div>
