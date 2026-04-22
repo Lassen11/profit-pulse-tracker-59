@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, subMonths, getDaysInMonth, getDate } from "date-fns";
 import { ru } from "date-fns/locale";
 import { ArrowLeft, CalendarIcon } from "lucide-react";
@@ -43,10 +43,14 @@ const PLAN_KEYS: Record<keyof PlanValues, string> = {
 
 export default function FinancialModel() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialCompany = searchParams.get("company");
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  const [company, setCompany] = useState<string>("Спасение");
+  const [company, setCompany] = useState<string>(
+    initialCompany === "Дело Бизнеса" || initialCompany === "Спасение" ? initialCompany : "Спасение"
+  );
   const [month, setMonth] = useState<Date>(new Date());
 
   const [monthTx, setMonthTx] = useState<Transaction[]>([]);
