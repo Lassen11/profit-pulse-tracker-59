@@ -181,17 +181,37 @@ export function buildRunRate(
 }
 
 export interface ScenarioDeltas {
-  revenuePct: number; // -50..+100
+  revenuePct: number;
   fotPct: number;
   marketingPct: number;
+  opexPct: number;
+  taxesPct: number;
+  revenueAbs: number; // в рублях, +/-
+  fotAbs: number;
+  marketingAbs: number;
+  opexAbs: number;
+  taxesAbs: number;
 }
 
+export const emptyScenario: ScenarioDeltas = {
+  revenuePct: 0,
+  fotPct: 0,
+  marketingPct: 0,
+  opexPct: 0,
+  taxesPct: 0,
+  revenueAbs: 0,
+  fotAbs: 0,
+  marketingAbs: 0,
+  opexAbs: 0,
+  taxesAbs: 0,
+};
+
 export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
-  const revenue = pnl.revenue * (1 + d.revenuePct / 100);
-  const fot = pnl.fot * (1 + d.fotPct / 100);
-  const marketing = pnl.marketing * (1 + d.marketingPct / 100);
-  const opex = pnl.opex;
-  const taxes = pnl.taxes;
+  const revenue = Math.max(0, pnl.revenue * (1 + d.revenuePct / 100) + d.revenueAbs);
+  const fot = Math.max(0, pnl.fot * (1 + d.fotPct / 100) + d.fotAbs);
+  const marketing = Math.max(0, pnl.marketing * (1 + d.marketingPct / 100) + d.marketingAbs);
+  const opex = Math.max(0, pnl.opex * (1 + d.opexPct / 100) + d.opexAbs);
+  const taxes = Math.max(0, pnl.taxes * (1 + d.taxesPct / 100) + d.taxesAbs);
   const ebitda = revenue - fot - marketing - opex;
   const net = ebitda - taxes;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
