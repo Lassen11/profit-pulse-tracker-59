@@ -30,6 +30,7 @@ import { ForecastBlock } from "@/components/financial-model/ForecastBlock";
 import { CashFlowBlock } from "@/components/financial-model/CashFlowBlock";
 import { ScenarioSimulator } from "@/components/financial-model/ScenarioSimulator";
 import { MonthlyTrendChart, TrendPoint } from "@/components/financial-model/MonthlyTrendChart";
+import { PlanFactScenarioChart } from "@/components/financial-model/PlanFactScenarioChart";
 
 const COMPANIES = ["Спасение", "Дело Бизнеса"] as const;
 
@@ -62,6 +63,7 @@ export default function FinancialModel() {
   const [bizSales, setBizSales] = useState<BizSale[]>([]);
   const [planRows, setPlanRows] = useState<Record<string, { id: string; value: number }>>({});
   const [adjustments, setAdjustments] = useState<number>(0);
+  const [scenarioPnl, setScenarioPnl] = useState<PnL | null>(null);
   const [loading, setLoading] = useState(true);
 
   const monthStart = useMemo(() => startOfMonth(month), [month]);
