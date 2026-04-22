@@ -254,7 +254,47 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
         )}
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
+      {/* Filters */}
+      <div className="mb-4 grid grid-cols-1 sm:grid-cols-[200px_180px_180px_auto_1fr] gap-3 items-end">
+        <div className="space-y-1">
+          <Label className="text-xs">Статус оплаты</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все</SelectItem>
+              <SelectItem value="unpaid">Не оплачено</SelectItem>
+              <SelectItem value="paid">Оплачено</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Дата платежа с</Label>
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">по</Label>
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        <div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              <X className="w-4 h-4 mr-1" /> Сбросить
+            </Button>
+          )}
+        </div>
+        <div className="text-sm text-muted-foreground sm:text-right">
+          Платежей: <span className="font-medium text-foreground">{totals.count}</span>
+          {" • "}Не оплачено:{" "}
+          <span className="font-medium text-destructive">{formatCurrency(totals.unpaid)}</span>
+          {" • "}Оплачено:{" "}
+          <span className="font-medium text-green-600 dark:text-green-400">
+            {formatCurrency(totals.paid)}
+          </span>
+        </div>
+      </div>
+
         <Table>
           <TableHeader>
             <TableRow>
