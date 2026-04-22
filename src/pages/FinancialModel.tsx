@@ -319,9 +319,16 @@ export default function FinancialModel() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ScenarioSimulator basePnl={pnl} />
+              <ScenarioSimulator
+                basePnl={pnl}
+                company={company}
+                monthKey={format(month, "yyyy-MM")}
+                onScenarioChange={setScenarioPnl}
+              />
               <MonthlyTrendChart data={trendData} />
             </div>
+
+            <PlanFactScenarioChart pnl={pnl} scenario={scenarioPnl ?? pnl} plan={plan} />
           </>
         )}
       </div>
