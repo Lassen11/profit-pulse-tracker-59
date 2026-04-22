@@ -29,7 +29,13 @@ const WITHDRAWAL = "Вывод средств";
 const TAX_USN = "Налог УСН";
 const TAX_NDFL = "Налог НДФЛ и Взносы";
 const SALARY_CATEGORIES = ["Зарплата", "Аванс", "Премия"];
-const MARKETING_CATEGORIES = ["Маркетинг", "Реклама", "Лидогенерация"];
+const MARKETING_CATEGORIES = [
+  "Маркетинг",
+  "Реклама",
+  "Лидогенерация",
+  "Авитолог",
+  "Реклама Авито",
+];
 
 export function buildPnl(
   transactions: Transaction[],
