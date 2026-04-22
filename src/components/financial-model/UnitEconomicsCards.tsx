@@ -15,13 +15,6 @@ export function UnitEconomicsCards({ unit, isSpasenie }: Props) {
     ...(isSpasenie
       ? [{ label: "Средний ежем. платёж", value: fmtMoney(unit.avgMonthly), icon: Repeat, accent: "text-cyan-600" }]
       : []),
-    { label: "LTV", value: fmtMoney(unit.ltv), icon: Target, accent: "text-amber-600" },
-    {
-      label: "LTV / CAC",
-      value: unit.ltvCac > 0 ? unit.ltvCac.toFixed(2).replace(".", ",") : "—",
-      icon: Calculator,
-      accent: unit.ltvCac >= 3 ? "text-green-600" : unit.ltvCac >= 1 ? "text-amber-600" : "text-destructive",
-    },
   ];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
