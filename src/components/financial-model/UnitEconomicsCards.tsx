@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { fmtMoney, fmtPct, UnitEconomics } from "@/lib/financialModel";
-import { Users, TrendingUp, Repeat, Wallet, Target, Calculator } from "lucide-react";
+import { Users, TrendingUp, Repeat, Wallet } from "lucide-react";
 
 interface Props {
   unit: UnitEconomics;
