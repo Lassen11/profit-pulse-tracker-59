@@ -1555,6 +1555,13 @@ export default function Dashboard() {
                 <span className="xs:hidden">Лиды</span>
               </Button>
             )}
+            {!isManagerOz && (selectedCompany === "Спасение" || selectedCompany === "Дело Бизнеса") && (
+              <Button variant="outline" onClick={() => navigate(`/financial-model?company=${encodeURIComponent(selectedCompany)}`)}>
+                <BarChart3 className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Финансовая модель</span>
+                <span className="xs:hidden">Финмодель</span>
+              </Button>
+            )}
             {isAdmin && <Button variant="outline" onClick={() => navigate("/employees")}>
                 <Users className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Сотрудники</span>
