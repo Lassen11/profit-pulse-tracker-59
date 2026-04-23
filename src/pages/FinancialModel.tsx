@@ -34,7 +34,7 @@ import { PlanFactScenarioChart } from "@/components/financial-model/PlanFactScen
 
 const COMPANIES = ["Спасение", "Дело Бизнеса"] as const;
 
-const PLAN_KEYS: Record<keyof PlanValues, string> = {
+const PLAN_KEYS: Record<"revenue" | "fot" | "marketing" | "opex" | "net", string> = {
   revenue: "fm_revenue_plan",
   fot: "fm_fot_plan",
   marketing: "fm_marketing_plan",
