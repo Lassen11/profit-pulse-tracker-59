@@ -132,7 +132,6 @@ export default function FinancialModel() {
 
       // ФОТ прошлого месяца: приоритет department_employees.cost, фолбэк — транзакции зарплат
       const SALARY_CATS = ["Зарплата", "Аванс", "Премия"];
-      const MARKETING_CATS = ["Маркетинг", "Реклама", "Лидогенерация", "Авитолог", "Реклама Авито"];
       const TRANSFER_CAT = "Перевод между счетами";
       const WITHDRAWAL_CAT = "Вывод средств";
       const TAX_CATS = ["Налог УСН", "Налог НДФЛ и Взносы"];
