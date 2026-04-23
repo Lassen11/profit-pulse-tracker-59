@@ -261,6 +261,60 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                     </TableRow>
                   </>
                 )}
+                {row.key === "opex" && opexOpen && opexBreakdown.length > 0 && (
+                  <>
+                    {opexBreakdown.map((b) => {
+                      const isOpen = openCategories.has(b.category);
+                      return (
+                        <Fragment key={`opex-${b.category}`}>
+                          <TableRow className="bg-muted/20">
+                            <TableCell className="pl-8 text-sm">
+                              <button
+                                type="button"
+                                onClick={() => toggleCategory(b.category)}
+                                className="inline-flex items-center gap-1 hover:text-primary"
+                              >
+                                <ChevronRight
+                                  className={cn(
+                                    "h-3.5 w-3.5 transition-transform",
+                                    isOpen && "rotate-90"
+                                  )}
+                                />
+                                ↳ {b.category}
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  ({b.items.length})
+                                </span>
+                              </button>
+                            </TableCell>
+                            <TableCell className="text-right text-sm">—</TableCell>
+                            <TableCell className="text-right text-sm">{fmtMoney(b.total)}</TableCell>
+                            <TableCell className="text-right text-sm">—</TableCell>
+                            <TableCell className="text-right text-sm">—</TableCell>
+                          </TableRow>
+                          {isOpen &&
+                            b.items.map((tx) => (
+                              <TableRow key={tx.id} className="text-muted-foreground">
+                                <TableCell className="pl-16 text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className="tabular-nums">
+                                      {format(new Date(tx.date), "dd.MM.yyyy")}
+                                    </span>
+                                    <span className="truncate max-w-[420px]">
+                                      {tx.description || tx.subcategory || "—"}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right text-xs">—</TableCell>
+                                <TableCell className="text-right text-xs">{fmtMoney(Number(tx.amount || 0))}</TableCell>
+                                <TableCell className="text-right text-xs">—</TableCell>
+                                <TableCell className="text-right text-xs">—</TableCell>
+                              </TableRow>
+                            ))}
+                        </Fragment>
+                      );
+                    })}
+                  </>
+                )}
                 </Fragment>
               );
             })}
