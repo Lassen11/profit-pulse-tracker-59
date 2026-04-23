@@ -94,6 +94,7 @@ export default function FinancialModel() {
         prevEmpRes,
         prevTxRes,
         prevLeadRes,
+        dashKpiRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -105,6 +106,10 @@ export default function FinancialModel() {
         supabase.from("department_employees").select("cost").eq("company", company).eq("month", prevMonthStartStr),
         supabase.from("transactions").select("type,category,amount").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
         supabase.from("lead_generation").select("total_cost").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
+        // Спасение: тянем планы дебиторки/продаж с дашборда
+        company === "Спасение"
+          ? supabase.from("kpi_targets").select("kpi_name,target_value").eq("company", "Спасение").in("kpi_name", ["debitorka_plan", "new_sales"]).eq("month", monthStartStr)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
