@@ -413,13 +413,29 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
             </TabsList>
           </Tabs>
           {view === "forecast" && (
-            <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
-              <TabsList>
-                <TabsTrigger value="avg3">Средн. 3 мес.</TabsTrigger>
-                <TabsTrigger value="avg6">Средн. 6 мес.</TabsTrigger>
-                <TabsTrigger value="runrate">Run-rate</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <>
+              <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
+                <TabsList>
+                  <TabsTrigger value="trend">Тренд</TabsTrigger>
+                  <TabsTrigger value="avg3">Средн. 3 мес.</TabsTrigger>
+                  <TabsTrigger value="avg6">Средн. 6 мес.</TabsTrigger>
+                  <TabsTrigger value="runrate">Run-rate</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="growth-pct" className="text-xs whitespace-nowrap">
+                  Рост, %/мес
+                </Label>
+                <Input
+                  id="growth-pct"
+                  type="number"
+                  step="0.5"
+                  value={growthPct}
+                  onChange={(e) => persistGrowth(Number(e.target.value) || 0)}
+                  className="h-9 w-20"
+                />
+              </div>
+            </>
           )}
         </div>
       </CardHeader>
