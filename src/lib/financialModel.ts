@@ -124,9 +124,13 @@ export interface BizSale {
 
 export function buildSpasenieUnit(
   clients: SpasenieClient[],
-  leadGen: LeadGenRow[]
+  leadGen: LeadGenRow[],
+  marketingFact: number = 0
 ): UnitEconomics {
-  const marketing = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
+  // Маркетинг для CAC: приоритет — факт из транзакций (Авитолог + Реклама Авито),
+  // как и в P&L. Если факта нет — берём бюджет лидогенерации (lead_generation.total_cost).
+  const marketingLead = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
+  const marketing = marketingFact > 0 ? marketingFact : marketingLead;
   const totalLeads = leadGen.reduce((s, l) => s + Number(l.total_leads || 0), 0);
   const contracts = clients.length;
   const cac = contracts > 0 ? marketing / contracts : 0;
