@@ -83,6 +83,8 @@ export default function FinancialModel() {
     setLoading(true);
     try {
       const sixMonthsAgoStr = format(startOfMonth(subMonths(month, 5)), "yyyy-MM-dd");
+      const yearStartStr = format(new Date(month.getFullYear(), 0, 1), "yyyy-MM-dd");
+      const yearEndStr = format(new Date(month.getFullYear(), 11, 31), "yyyy-MM-dd");
       const prevMonthStart = startOfMonth(subMonths(month, 1));
       const prevMonthEnd = endOfMonth(subMonths(month, 1));
       const prevMonthStartStr = format(prevMonthStart, "yyyy-MM-dd");
