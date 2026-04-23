@@ -45,6 +45,10 @@ import { cn } from "@/lib/utils";
 interface Props {
   /** Все транзакции компании за период с начала года и далее (нужно для исторической базы) */
   transactions: Transaction[];
+  /** Помесячные записи department_employees по году (cost = начисленный ФОТ компании) */
+  yearEmployees?: { month: string; cost: number }[];
+  /** Помесячные записи lead_generation по году (total_cost = бюджет маркетинга) */
+  yearLeadGen?: { date: string; total_cost: number }[];
   /** Текущий выбранный месяц финмодели */
   currentMonth: Date;
   /** Идентификатор компании — для изоляции сохранённых сценариев */
@@ -53,6 +57,8 @@ interface Props {
 
 const TRANSFER = "Перевод между счетами";
 const WITHDRAWAL = "Вывод средств";
+const SALARY_CATEGORIES = ["Зарплата", "Аванс", "Премия"];
+const MARKETING_CATEGORIES = ["Авитолог", "Реклама Авито"];
 
 interface MonthRow {
   key: string; // yyyy-MM
