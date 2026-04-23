@@ -31,6 +31,7 @@ import { CashFlowBlock } from "@/components/financial-model/CashFlowBlock";
 import { ScenarioSimulator } from "@/components/financial-model/ScenarioSimulator";
 import { MonthlyTrendChart, TrendPoint } from "@/components/financial-model/MonthlyTrendChart";
 import { PlanFactScenarioChart } from "@/components/financial-model/PlanFactScenarioChart";
+import { YearForecastBlock } from "@/components/financial-model/YearForecastBlock";
 
 const COMPANIES = ["Спасение", "Дело Бизнеса"] as const;
 
