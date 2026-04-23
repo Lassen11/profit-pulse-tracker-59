@@ -82,8 +82,28 @@ const DEFAULT_SCENARIOS: Scenario[] = [
 ];
 
 export function YearForecastBlock({ transactions, currentMonth, company }: Props) {
-  const [mode, setMode] = useState<"avg3" | "avg6" | "runrate">("avg3");
+  const [mode, setMode] = useState<"avg3" | "avg6" | "runrate" | "trend">("trend");
   const [view, setView] = useState<"forecast" | "scenarios">("forecast");
+  const growthKey = `fm_year_growth_${company}`;
+  const [growthPct, setGrowthPct] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(growthKey);
+      setGrowthPct(raw ? Number(raw) || 0 : 0);
+    } catch {
+      setGrowthPct(0);
+    }
+  }, [growthKey]);
+
+  const persistGrowth = (v: number) => {
+    setGrowthPct(v);
+    try {
+      localStorage.setItem(growthKey, String(v));
+    } catch {
+      // ignore
+    }
+  };
 
   // Сценарии — храним в localStorage по компании
   const storageKey = `fm_year_scenarios_${company}`;
@@ -184,38 +204,74 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
   }, [transactions, currentMonth]);
 
   // ===== Базовый прогноз (без сценариев) =====
+  // Базовое значение для каждого прогнозного месяца считается по выбранному режиму,
+  // затем умножается на ручной коэффициент роста (1 + growthPct/100)^k,
+  // где k — порядковый номер месяца от первого прогнозного.
   const data = useMemo<MonthRow[]>(() => {
     const closed = baseRows.filter((r) => r.type === "fact" && (r.revenue > 0 || r.expenses > 0));
+    const cur = baseRows.find((r) => r.type === "current");
     const sliceN = mode === "avg3" ? 3 : mode === "avg6" ? 6 : 1;
 
-    let base: { revenue: number; expenses: number };
-    if (mode === "runrate") {
-      const cur = baseRows.find((r) => r.type === "current");
-      if (cur && (cur.revenue > 0 || cur.expenses > 0)) {
-        base = { revenue: cur.revenue, expenses: cur.expenses };
-      } else {
-        const last = closed.slice(-1)[0];
-        base = last ? { revenue: last.revenue, expenses: last.expenses } : { revenue: 0, expenses: 0 };
+    // Линейная регрессия по последним N месяцам (метод наименьших квадратов).
+    // Возвращает функцию-предсказание по индексу месяца от начала года (0..11).
+    const linearTrend = (values: number[], indices: number[]) => {
+      const n = values.length;
+      if (n < 2) {
+        const v = values[0] ?? 0;
+        return (_x: number) => v;
       }
+      const meanX = indices.reduce((s, x) => s + x, 0) / n;
+      const meanY = values.reduce((s, y) => s + y, 0) / n;
+      let num = 0;
+      let den = 0;
+      for (let i = 0; i < n; i++) {
+        num += (indices[i] - meanX) * (values[i] - meanY);
+        den += (indices[i] - meanX) ** 2;
+      }
+      const slope = den === 0 ? 0 : num / den;
+      const intercept = meanY - slope * meanX;
+      return (x: number) => Math.max(0, intercept + slope * x);
+    };
+
+    let predictRevenue: (idx: number) => number;
+    let predictExpenses: (idx: number) => number;
+
+    if (mode === "trend") {
+      // Берём все закрытые месяцы + текущий (run-rate), но не больше 6
+      const histRows = [...closed, ...(cur && (cur.revenue > 0 || cur.expenses > 0) ? [cur] : [])].slice(-6);
+      const indices = histRows.map((r) => r.date.getMonth());
+      predictRevenue = linearTrend(histRows.map((r) => r.revenue), indices);
+      predictExpenses = linearTrend(histRows.map((r) => r.expenses), indices);
+    } else if (mode === "runrate") {
+      const v = cur && (cur.revenue > 0 || cur.expenses > 0)
+        ? { r: cur.revenue, e: cur.expenses }
+        : closed.length
+        ? { r: closed[closed.length - 1].revenue, e: closed[closed.length - 1].expenses }
+        : { r: 0, e: 0 };
+      predictRevenue = () => v.r;
+      predictExpenses = () => v.e;
     } else {
       const last = closed.slice(-sliceN);
-      if (last.length) {
-        base = {
-          revenue: last.reduce((s, x) => s + x.revenue, 0) / last.length,
-          expenses: last.reduce((s, x) => s + x.expenses, 0) / last.length,
-        };
-      } else {
-        const cur = baseRows.find((r) => r.type === "current");
-        base = cur ? { revenue: cur.revenue, expenses: cur.expenses } : { revenue: 0, expenses: 0 };
-      }
+      const r = last.length ? last.reduce((s, x) => s + x.revenue, 0) / last.length : (cur?.revenue ?? 0);
+      const e = last.length ? last.reduce((s, x) => s + x.expenses, 0) / last.length : (cur?.expenses ?? 0);
+      predictRevenue = () => r;
+      predictExpenses = () => e;
     }
 
-    return baseRows.map((r) =>
-      r.type === "forecast"
-        ? { ...r, revenue: base.revenue, expenses: base.expenses, net: base.revenue - base.expenses }
-        : r
-    );
-  }, [baseRows, mode]);
+    // Индекс первого прогнозного месяца — для расчёта k (номер от стартовой точки роста)
+    const firstForecastIdx = baseRows.find((r) => r.type === "forecast")?.date.getMonth() ?? 12;
+    const growthFactor = 1 + growthPct / 100;
+
+    return baseRows.map((r) => {
+      if (r.type !== "forecast") return r;
+      const monthIdx = r.date.getMonth();
+      const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
+      const compound = Math.pow(growthFactor, k);
+      const revenue = predictRevenue(monthIdx) * compound;
+      const expenses = predictExpenses(monthIdx) * compound;
+      return { ...r, revenue, expenses, net: revenue - expenses };
+    });
+  }, [baseRows, mode, growthPct]);
 
   const totals = useMemo(() => {
     const sumAll = data.reduce(
@@ -357,13 +413,29 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
             </TabsList>
           </Tabs>
           {view === "forecast" && (
-            <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
-              <TabsList>
-                <TabsTrigger value="avg3">Средн. 3 мес.</TabsTrigger>
-                <TabsTrigger value="avg6">Средн. 6 мес.</TabsTrigger>
-                <TabsTrigger value="runrate">Run-rate</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <>
+              <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
+                <TabsList>
+                  <TabsTrigger value="trend">Тренд</TabsTrigger>
+                  <TabsTrigger value="avg3">Средн. 3 мес.</TabsTrigger>
+                  <TabsTrigger value="avg6">Средн. 6 мес.</TabsTrigger>
+                  <TabsTrigger value="runrate">Run-rate</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="growth-pct" className="text-xs whitespace-nowrap">
+                  Рост, %/мес
+                </Label>
+                <Input
+                  id="growth-pct"
+                  type="number"
+                  step="0.5"
+                  value={growthPct}
+                  onChange={(e) => persistGrowth(Number(e.target.value) || 0)}
+                  className="h-9 w-20"
+                />
+              </div>
+            </>
           )}
         </div>
       </CardHeader>
@@ -528,8 +600,9 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Прогноз для будущих месяцев = среднее по выбранной базе. Текущий месяц использует точный
-              run-rate (факт × дней_в_месяце ÷ прошедших_дней). Переводы между счетами и выводы исключены.
+              База прогноза: <b>Тренд</b> — линейная регрессия по последним месяцам, <b>Средн. 3/6 мес.</b> — среднее за период,
+              <b> Run-rate</b> — экстраполяция текущего месяца. Поверх базы применяется ручной рост {growthPct}%/мес
+              (компаудинг). Переводы и выводы исключены.
             </p>
           </>
         ) : (
