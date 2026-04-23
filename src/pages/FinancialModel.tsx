@@ -388,7 +388,14 @@ export default function FinancialModel() {
 
         {!loading && (
           <>
-            <PnlTable pnl={pnl} plan={plan} canEdit={isAdmin} onSavePlan={handleSavePlan} showRevenueBreakdown={company === "Спасение"} />
+            <PnlTable
+              pnl={pnl}
+              plan={plan}
+              canEdit={isAdmin}
+              onSavePlan={handleSavePlan}
+              showRevenueBreakdown={company === "Спасение"}
+              revenuePlanReadOnly={company === "Спасение"}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ForecastBlock
