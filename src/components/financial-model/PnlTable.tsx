@@ -15,7 +15,12 @@ export interface PlanValues {
   marketing: number;
   opex: number;
   net: number;
+  /** Дебиторка-план с учётом потерь (показывается в строке плана) */
   revenueDebitorPlan?: number;
+  /** Дебиторка-план «грязный», до вычета потерь */
+  revenueDebitorPlanGross?: number;
+  /** Процент ожидаемых потерь по дебиторке (0..100) */
+  revenueDebitorLossPct?: number;
   revenueSalesPlan?: number;
 }
 
@@ -29,6 +34,8 @@ interface Props {
   revenuePlanReadOnly?: boolean;
   /** Транзакции выбранного месяца — нужны для детализации OpEx по категориям */
   monthTransactions?: Transaction[];
+  /** Сохранение процента ожидаемых потерь по дебиторке (только для Спасения) */
+  onSaveDebitorkaLossPct?: (pct: number) => Promise<void> | void;
 }
 
 // Должно совпадать с исключениями в buildPnl (src/lib/financialModel.ts)
