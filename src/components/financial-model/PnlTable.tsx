@@ -62,11 +62,13 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false, monthTransactions = [] }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false, monthTransactions = [], onSaveDebitorkaLossPct }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
   const [opexOpen, setOpexOpen] = useState(false);
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [editingLoss, setEditingLoss] = useState(false);
+  const [lossDraft, setLossDraft] = useState("");
 
   const factOf = (k: typeof ROWS[number]["key"]) => {
     if (k === "margin") return pnl.margin;
