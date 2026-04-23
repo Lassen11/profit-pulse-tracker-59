@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ interface Props {
   plan: PlanValues;
   canEdit: boolean;
   onSavePlan: (key: keyof PlanValues, value: number) => Promise<void> | void;
+  showRevenueBreakdown?: boolean;
 }
 
 const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
@@ -33,7 +34,7 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -81,7 +82,8 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan }: Props) {
               const isEditing = editing === row.planKey && row.planKey;
 
               return (
-                <TableRow key={row.key} className={cn(row.emphasis === "bold" && "font-semibold bg-muted/40")}>
+                <Fragment key={row.key}>
+                <TableRow className={cn(row.emphasis === "bold" && "font-semibold bg-muted/40")}>
                   <TableCell>{row.label}</TableCell>
                   <TableCell className="text-right">
                     {row.planKey ? (
@@ -140,6 +142,25 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan }: Props) {
                     {row.planKey && planVal !== 0 ? `${pct.toFixed(0)}%` : "—"}
                   </TableCell>
                 </TableRow>
+                {row.key === "revenue" && showRevenueBreakdown && (
+                  <>
+                    <TableRow className="text-muted-foreground">
+                      <TableCell className="pl-8 text-sm">↳ Дебиторка (ежем. платежи)</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">{fmtMoney(pnl.revenueDebitor)}</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                    </TableRow>
+                    <TableRow className="text-muted-foreground">
+                      <TableCell className="pl-8 text-sm">↳ Продажи</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">{fmtMoney(pnl.revenueSales)}</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                    </TableRow>
+                  </>
+                )}
+                </Fragment>
               );
             })}
           </TableBody>

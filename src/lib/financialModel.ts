@@ -15,6 +15,8 @@ export interface LeadGenRow {
 
 export interface PnL {
   revenue: number;
+  revenueDebitor: number;
+  revenueSales: number;
   fot: number;
   marketing: number;
   opex: number;
@@ -25,6 +27,7 @@ export interface PnL {
 }
 
 const TRANSFER = "Перевод между счетами";
+const SALES_CATEGORIES = ["Продажи", "Продажа"];
 const WITHDRAWAL = "Вывод средств";
 const TAX_USN = "Налог УСН";
 const TAX_NDFL = "Налог НДФЛ и Взносы";
@@ -42,9 +45,14 @@ export function buildPnl(
   employees: DepartmentEmployeeRow[],
   leadGen: LeadGenRow[]
 ): PnL {
-  const revenue = transactions
-    .filter((t) => t.type === "income" && t.category !== TRANSFER)
+  const incomeTx = transactions.filter(
+    (t) => t.type === "income" && t.category !== TRANSFER
+  );
+  const revenue = incomeTx.reduce((s, t) => s + Number(t.amount || 0), 0);
+  const revenueSales = incomeTx
+    .filter((t) => SALES_CATEGORIES.includes(t.category))
     .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const revenueDebitor = revenue - revenueSales;
 
   // ФОТ — приоритет department_employees.cost; если 0 — берём из transactions Зарплата/Аванс/Премия
   const fotFromEmployees = employees.reduce((s, e) => s + Number(e.cost || 0), 0);
@@ -84,7 +92,7 @@ export function buildPnl(
   const net = ebitda - taxes;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
 
-  return { revenue, fot, marketing, opex, taxes, ebitda, net, margin };
+  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export interface UnitEconomics {
@@ -221,7 +229,10 @@ export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
   const ebitda = revenue - fot - marketing - opex;
   const net = ebitda - taxes;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
-  return { revenue, fot, marketing, opex, taxes, ebitda, net, margin };
+  const ratio = pnl.revenue > 0 ? revenue / pnl.revenue : 0;
+  const revenueDebitor = pnl.revenueDebitor * ratio;
+  const revenueSales = pnl.revenueSales * ratio;
+  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export const fmtMoney = (v: number) =>
