@@ -34,10 +34,9 @@ const WITHDRAWAL = "Вывод средств";
 const TAX_USN = "Налог УСН";
 const TAX_NDFL = "Налог НДФЛ и Взносы";
 const SALARY_CATEGORIES = ["Зарплата", "Аванс", "Премия"];
+// Категории, по которым считается ФАКТ маркетинга из транзакций.
+// План маркетинга считается отдельно из lead_generation.total_cost.
 const MARKETING_CATEGORIES = [
-  "Маркетинг",
-  "Реклама",
-  "Лидогенерация",
   "Авитолог",
   "Реклама Авито",
 ];
@@ -68,10 +67,11 @@ export function buildPnl(
     .reduce((s, t) => s + Number(t.amount || 0), 0);
   const fot = fotPaid;
 
-  // Маркетинг: только бюджет лидогенерации (lead_generation.total_cost).
-  // Маркетинговые транзакции (Реклама Авито, Авитолог и т.п.) попадают в OpEx,
-  // чтобы не задваивать расходы и не зависеть от ручного ведения категорий.
-  const marketing = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
+  // Маркетинг (факт): транзакции категорий «Авитолог» и «Реклама Авито» за месяц.
+  // Бюджет лидогенерации (lead_generation.total_cost) используется отдельно для плана.
+  const marketing = transactions
+    .filter((t) => t.type === "expense" && MARKETING_CATEGORIES.includes(t.category))
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
 
   const taxes = transactions
     .filter(
