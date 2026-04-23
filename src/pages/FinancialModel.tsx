@@ -469,9 +469,7 @@ export default function FinancialModel() {
             <YearForecastBlock
               transactions={yearTx}
               currentMonth={month}
-              currentMonthRunRateRevenue={runRate.revenue}
-              currentMonthRunRateExpenses={runRate.expenses}
-              currentMonthRunRateNet={runRate.net}
+              company={company}
             />
           </>
         )}
