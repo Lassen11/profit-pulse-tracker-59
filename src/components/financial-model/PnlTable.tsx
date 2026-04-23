@@ -38,7 +38,7 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
 
