@@ -294,6 +294,8 @@ export default function FinancialModel() {
     if (!user) return;
     // Чистая прибыль рассчитывается автоматически и не сохраняется отдельно
     if (key === "net") return;
+    // Для Спасения выручка = Дебиторка + Новые продажи (автоматически)
+    if (key === "revenue" && company === "Спасение") return;
     const kpiName = PLAN_KEYS[key];
     const existing = planRows[kpiName];
     try {
