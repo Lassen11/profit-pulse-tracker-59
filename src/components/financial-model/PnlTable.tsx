@@ -148,14 +148,18 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                   <>
                     <TableRow className="text-muted-foreground">
                       <TableCell className="pl-8 text-sm">↳ Дебиторка (ежем. платежи)</TableCell>
-                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {plan.revenueDebitorPlan != null ? fmtMoney(plan.revenueDebitorPlan) : "—"}
+                      </TableCell>
                       <TableCell className="text-right text-sm">{fmtMoney(pnl.revenueDebitor)}</TableCell>
                       <TableCell className="text-right text-sm">—</TableCell>
                       <TableCell className="text-right text-sm">—</TableCell>
                     </TableRow>
                     <TableRow className="text-muted-foreground">
                       <TableCell className="pl-8 text-sm">↳ Продажи</TableCell>
-                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {plan.revenueSalesPlan != null ? fmtMoney(plan.revenueSalesPlan) : "—"}
+                      </TableCell>
                       <TableCell className="text-right text-sm">{fmtMoney(pnl.revenueSales)}</TableCell>
                       <TableCell className="text-right text-sm">—</TableCell>
                       <TableCell className="text-right text-sm">—</TableCell>
