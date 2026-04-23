@@ -233,8 +233,15 @@ export default function FinancialModel() {
   const pnl: PnL = useMemo(() => buildPnl(monthTx, employees, leadGen), [monthTx, employees, leadGen]);
 
   const plan: PlanValues = useMemo(() => {
-    const dashRevenue = company === "Спасение" ? dashDebitorkaPlan + dashNewSalesPlan : 0;
-    // План выручки: для Спасения — всегда сумма Дебиторки и Новых продаж с дашборда
+    // Процент ожидаемых потерь по дебиторке (только для Спасения)
+    const debitorkaLossPct =
+      company === "Спасение"
+        ? Math.max(0, Math.min(100, planRows[DEBITORKA_LOSS_KEY]?.value || 0))
+        : 0;
+    const debitorkaPlanGross = company === "Спасение" ? dashDebitorkaPlan : 0;
+    const debitorkaPlanNet = debitorkaPlanGross * (1 - debitorkaLossPct / 100);
+    const dashRevenue = company === "Спасение" ? debitorkaPlanNet + dashNewSalesPlan : 0;
+    // План выручки: для Спасения — Дебиторка (с учётом потерь) + Новые продажи с дашборда
     // (автоматический расчёт, не редактируется вручную). Для остальных проектов —
     // ручное значение fm_revenue_plan.
     const revenue =
@@ -253,7 +260,9 @@ export default function FinancialModel() {
       marketing,
       opex,
       net,
-      revenueDebitorPlan: company === "Спасение" ? dashDebitorkaPlan : undefined,
+      revenueDebitorPlan: company === "Спасение" ? debitorkaPlanNet : undefined,
+      revenueDebitorPlanGross: company === "Спасение" ? debitorkaPlanGross : undefined,
+      revenueDebitorLossPct: company === "Спасение" ? debitorkaLossPct : undefined,
       revenueSalesPlan: company === "Спасение" ? dashNewSalesPlan : undefined,
     };
   }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes, company, dashDebitorkaPlan, dashNewSalesPlan]);
