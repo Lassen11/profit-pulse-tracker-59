@@ -141,6 +141,25 @@ export default function FinancialModel() {
         // ФОТ начисленный из department_employees.cost и бюджет лидгена из lead_generation.total_cost.
         supabase.from("department_employees").select("month,cost").eq("company", company).gte("month", yearStartStr).lte("month", yearEndStr),
         supabase.from("lead_generation").select("date,total_cost").eq("company", company).gte("date", yearStartStr).lte("date", yearEndStr),
+        // Годовые планы P&L (fm_fot_plan, fm_marketing_plan, fm_opex_plan, fm_revenue_plan)
+        // — для прогноза текущего и будущих месяцев берём расходы из плана, а не из факта.
+        supabase
+          .from("kpi_targets")
+          .select("month,kpi_name,target_value")
+          .eq("company", company)
+          .in("kpi_name", ["fm_fot_plan", "fm_marketing_plan", "fm_opex_plan", "fm_revenue_plan", "fm_net_plan", "fm_debitorka_loss_pct"])
+          .gte("month", yearStartStr)
+          .lte("month", yearEndStr),
+        // Дашбордные планы для Спасения (помесячно за весь год) — нужны для расчёта плана выручки прогноза.
+        company === "Спасение"
+          ? supabase
+              .from("kpi_targets")
+              .select("month,kpi_name,target_value")
+              .eq("company", "Спасение")
+              .in("kpi_name", ["debitorka_plan", "new_sales"])
+              .gte("month", yearStartStr)
+              .lte("month", yearEndStr)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
