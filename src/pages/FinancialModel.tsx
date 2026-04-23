@@ -62,6 +62,7 @@ export default function FinancialModel() {
   const [spasenieClients, setSpasenieClients] = useState<SpasenieClient[]>([]);
   const [bizSales, setBizSales] = useState<BizSale[]>([]);
   const [planRows, setPlanRows] = useState<Record<string, { id: string; value: number }>>({});
+  const [prevMonthFot, setPrevMonthFot] = useState<number>(0);
   const [adjustments, setAdjustments] = useState<number>(0);
   const [scenarioPnl, setScenarioPnl] = useState<PnL | null>(null);
   const [loading, setLoading] = useState(true);
