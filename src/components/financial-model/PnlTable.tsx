@@ -72,6 +72,13 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
     setDraft(String(plan[k] || 0));
   };
 
+  const save = async () => {
+    if (!editing) return;
+    const val = parseFloat(draft) || 0;
+    await onSavePlan(editing, val);
+    setEditing(null);
+  };
+
   const opexBreakdown = useMemo(() => {
     const map = new Map<string, { total: number; items: Transaction[] }>();
     for (const t of monthTransactions) {
