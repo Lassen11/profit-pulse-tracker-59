@@ -68,11 +68,10 @@ export function buildPnl(
     .reduce((s, t) => s + Number(t.amount || 0), 0);
   const fot = fotPaid;
 
-  const marketingFromLeads = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
-  const marketingFromTx = transactions
-    .filter((t) => t.type === "expense" && MARKETING_CATEGORIES.includes(t.category))
-    .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const marketing = marketingFromLeads + marketingFromTx;
+  // Маркетинг: только бюджет лидогенерации (lead_generation.total_cost).
+  // Маркетинговые транзакции (Реклама Авито, Авитолог и т.п.) попадают в OpEx,
+  // чтобы не задваивать расходы и не зависеть от ручного ведения категорий.
+  const marketing = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
 
   const taxes = transactions
     .filter(
@@ -90,8 +89,9 @@ export function buildPnl(
         t.category !== WITHDRAWAL &&
         t.category !== TAX_USN &&
         t.category !== TAX_NDFL &&
-        !SALARY_CATEGORIES.includes(t.category) &&
-        !MARKETING_CATEGORIES.includes(t.category)
+        !SALARY_CATEGORIES.includes(t.category)
+        // Маркетинговые категории включены в OpEx, т.к. строка «Маркетинг»
+        // считается отдельно из lead_generation.total_cost
     )
     .reduce((s, t) => s + Number(t.amount || 0), 0);
 
