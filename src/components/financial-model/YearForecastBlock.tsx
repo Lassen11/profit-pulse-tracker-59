@@ -49,6 +49,10 @@ interface Props {
   yearEmployees?: { month: string; cost: number }[];
   /** Помесячные записи lead_generation по году (total_cost = бюджет маркетинга) */
   yearLeadGen?: { date: string; total_cost: number }[];
+  /** Планы P&L по году (fm_fot_plan, fm_marketing_plan, fm_opex_plan, fm_revenue_plan, fm_debitorka_loss_pct) */
+  yearPlans?: { month: string; kpi_name: string; target_value: number }[];
+  /** Дашбордные планы по году (debitorka_plan, new_sales) — для расчёта плана выручки Спасения */
+  yearDashKpi?: { month: string; kpi_name: string; target_value: number }[];
   /** Текущий выбранный месяц финмодели */
   currentMonth: Date;
   /** Идентификатор компании — для изоляции сохранённых сценариев */
@@ -59,6 +63,7 @@ const TRANSFER = "Перевод между счетами";
 const WITHDRAWAL = "Вывод средств";
 const SALARY_CATEGORIES = ["Зарплата", "Аванс", "Премия"];
 const MARKETING_CATEGORIES = ["Авитолог", "Реклама Авито"];
+const TAX_CATEGORIES = ["Налог УСН", "Налог НДФЛ и Взносы"];
 
 interface MonthRow {
   key: string; // yyyy-MM
