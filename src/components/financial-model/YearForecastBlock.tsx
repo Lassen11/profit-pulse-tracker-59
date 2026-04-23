@@ -687,7 +687,7 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                       </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2 text-xs">
+                  <div className="flex flex-wrap gap-2 text-xs">
                     <Badge variant="outline">
                       Выручка {s.revenuePct >= 0 ? "+" : ""}
                       {s.revenuePct}%
@@ -695,6 +695,10 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                     <Badge variant="outline">
                       Расходы {s.expensesPct >= 0 ? "+" : ""}
                       {s.expensesPct}%
+                    </Badge>
+                    <Badge variant="outline">
+                      Рост {s.growthPct >= 0 ? "+" : ""}
+                      {s.growthPct}%/мес
                     </Badge>
                   </div>
                   <div className="pt-1 border-t">
