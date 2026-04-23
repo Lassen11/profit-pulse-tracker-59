@@ -383,9 +383,13 @@ export function YearForecastBlock({
       const monthIdx = r.date.getMonth();
       const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
       const compound = Math.pow(growthFactor, k);
+      // Выручка прогнозируется по выбранному режиму (тренд/среднее/run-rate) + рост.
       const revenueBase = predictRevenue(monthIdx);
-      const expensesBase = predictExpenses(monthIdx);
       const revenue = revenueBase * compound;
+      // Расходы — из ПЛАНА P&L (baseRows уже содержит fot+marketing+opex плана).
+      // Если плана нет (всё пусто), фолбэк на прогноз режима.
+      const planExpenses = r.expenses;
+      const expensesBase = planExpenses > 0 ? planExpenses : predictExpenses(monthIdx);
       const expenses = expensesBase * compound;
       return {
         ...r,
