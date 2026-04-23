@@ -206,13 +206,13 @@ export default function FinancialModel() {
   const plan: PlanValues = useMemo(
     () => ({
       revenue: planRows[PLAN_KEYS.revenue]?.value || 0,
-      // План ФОТ: если не задан вручную — берём факт ФОТ предыдущего месяца
+      // План ФОТ/Маркетинга/OpEx: если не задан вручную — берём факт предыдущего месяца
       fot: planRows[PLAN_KEYS.fot]?.value || prevMonthFot || 0,
-      marketing: planRows[PLAN_KEYS.marketing]?.value || 0,
-      opex: planRows[PLAN_KEYS.opex]?.value || 0,
+      marketing: planRows[PLAN_KEYS.marketing]?.value || prevMonthMarketing || 0,
+      opex: planRows[PLAN_KEYS.opex]?.value || prevMonthOpex || 0,
       net: planRows[PLAN_KEYS.net]?.value || 0,
     }),
-    [planRows, prevMonthFot]
+    [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex]
   );
 
   const unit: UnitEconomics = useMemo(
