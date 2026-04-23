@@ -64,6 +64,8 @@ export default function FinancialModel() {
   const [yearTx, setYearTx] = useState<Transaction[]>([]);
   const [yearEmployees, setYearEmployees] = useState<{ month: string; cost: number }[]>([]);
   const [yearLeadGen, setYearLeadGen] = useState<{ date: string; total_cost: number }[]>([]);
+  const [yearPlans, setYearPlans] = useState<{ month: string; kpi_name: string; target_value: number }[]>([]);
+  const [yearDashKpi, setYearDashKpi] = useState<{ month: string; kpi_name: string; target_value: number }[]>([]);
   const [employees, setEmployees] = useState<DepartmentEmployeeRow[]>([]);
   const [leadGen, setLeadGen] = useState<LeadGenRow[]>([]);
   const [spasenieClients, setSpasenieClients] = useState<SpasenieClient[]>([]);
@@ -109,6 +111,8 @@ export default function FinancialModel() {
         dashKpiRes,
         yearEmpRes,
         yearLeadRes,
+        yearPlansRes,
+        yearDashKpiRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -137,6 +141,25 @@ export default function FinancialModel() {
         // ФОТ начисленный из department_employees.cost и бюджет лидгена из lead_generation.total_cost.
         supabase.from("department_employees").select("month,cost").eq("company", company).gte("month", yearStartStr).lte("month", yearEndStr),
         supabase.from("lead_generation").select("date,total_cost").eq("company", company).gte("date", yearStartStr).lte("date", yearEndStr),
+        // Годовые планы P&L (fm_fot_plan, fm_marketing_plan, fm_opex_plan, fm_revenue_plan)
+        // — для прогноза текущего и будущих месяцев берём расходы из плана, а не из факта.
+        supabase
+          .from("kpi_targets")
+          .select("month,kpi_name,target_value")
+          .eq("company", company)
+          .in("kpi_name", ["fm_fot_plan", "fm_marketing_plan", "fm_opex_plan", "fm_revenue_plan", "fm_net_plan", "fm_debitorka_loss_pct"])
+          .gte("month", yearStartStr)
+          .lte("month", yearEndStr),
+        // Дашбордные планы для Спасения (помесячно за весь год) — нужны для расчёта плана выручки прогноза.
+        company === "Спасение"
+          ? supabase
+              .from("kpi_targets")
+              .select("month,kpi_name,target_value")
+              .eq("company", "Спасение")
+              .in("kpi_name", ["debitorka_plan", "new_sales"])
+              .gte("month", yearStartStr)
+              .lte("month", yearEndStr)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
@@ -145,6 +168,8 @@ export default function FinancialModel() {
       setYearTx((yearTxRes.data as Transaction[]) || []);
       setYearEmployees(((yearEmpRes.data as any[]) || []).map((r) => ({ month: r.month, cost: Number(r.cost || 0) })));
       setYearLeadGen(((yearLeadRes.data as any[]) || []).map((r) => ({ date: r.date, total_cost: Number(r.total_cost || 0) })));
+      setYearPlans(((yearPlansRes.data as any[]) || []).map((r) => ({ month: r.month, kpi_name: r.kpi_name, target_value: Number(r.target_value || 0) })));
+      setYearDashKpi(((yearDashKpiRes.data as any[]) || []).map((r) => ({ month: r.month, kpi_name: r.kpi_name, target_value: Number(r.target_value || 0) })));
       setEmployees(empRes.data || []);
       setLeadGen(leadRes.data || []);
       const adjSum = (adjRes.data || []).reduce((s, a) => s + Number(a.adjusted_balance || 0), 0);
@@ -480,6 +505,8 @@ export default function FinancialModel() {
               transactions={yearTx}
               yearEmployees={yearEmployees}
               yearLeadGen={yearLeadGen}
+              yearPlans={yearPlans}
+              yearDashKpi={yearDashKpi}
               currentMonth={month}
               company={company}
             />

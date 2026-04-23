@@ -49,6 +49,10 @@ interface Props {
   yearEmployees?: { month: string; cost: number }[];
   /** Помесячные записи lead_generation по году (total_cost = бюджет маркетинга) */
   yearLeadGen?: { date: string; total_cost: number }[];
+  /** Планы P&L по году (fm_fot_plan, fm_marketing_plan, fm_opex_plan, fm_revenue_plan, fm_debitorka_loss_pct) */
+  yearPlans?: { month: string; kpi_name: string; target_value: number }[];
+  /** Дашбордные планы по году (debitorka_plan, new_sales) — для расчёта плана выручки Спасения */
+  yearDashKpi?: { month: string; kpi_name: string; target_value: number }[];
   /** Текущий выбранный месяц финмодели */
   currentMonth: Date;
   /** Идентификатор компании — для изоляции сохранённых сценариев */
@@ -59,6 +63,7 @@ const TRANSFER = "Перевод между счетами";
 const WITHDRAWAL = "Вывод средств";
 const SALARY_CATEGORIES = ["Зарплата", "Аванс", "Премия"];
 const MARKETING_CATEGORIES = ["Авитолог", "Реклама Авито"];
+const TAX_CATEGORIES = ["Налог УСН", "Налог НДФЛ и Взносы"];
 
 interface MonthRow {
   key: string; // yyyy-MM
@@ -92,7 +97,15 @@ const DEFAULT_SCENARIOS: Scenario[] = [
   { id: "worst", name: "Худший", revenuePct: -10, expensesPct: 10, growthPct: -3, color: "hsl(0, 72%, 51%)", visible: true },
 ];
 
-export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGen = [], currentMonth, company }: Props) {
+export function YearForecastBlock({
+  transactions,
+  yearEmployees = [],
+  yearLeadGen = [],
+  yearPlans = [],
+  yearDashKpi = [],
+  currentMonth,
+  company,
+}: Props) {
   const [mode, setMode] = useState<"avg3" | "avg6" | "runrate" | "trend">("trend");
   const [view, setView] = useState<"forecast" | "scenarios">("forecast");
   const growthKey = `fm_year_growth_${company}`;
@@ -206,6 +219,25 @@ export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGe
       marketingByMonth.set(key, (marketingByMonth.get(key) || 0) + Number(l.total_cost || 0));
     }
 
+    // Карты планов P&L по месяцам (yearPlans приходит из kpi_targets за весь год).
+    const planByMonth = new Map<string, Record<string, number>>();
+    for (const p of yearPlans) {
+      if (!p.month) continue;
+      const key = format(startOfMonth(new Date(p.month)), "yyyy-MM");
+      if (!planByMonth.has(key)) planByMonth.set(key, {});
+      planByMonth.get(key)![p.kpi_name] = Number(p.target_value || 0);
+    }
+    // Дашбордные планы для Спасения (debitorka_plan, new_sales) — для расчёта плана выручки.
+    const dashByMonth = new Map<string, Record<string, number>>();
+    for (const p of yearDashKpi) {
+      if (!p.month) continue;
+      const key = format(startOfMonth(new Date(p.month)), "yyyy-MM");
+      if (!dashByMonth.has(key)) dashByMonth.set(key, {});
+      const cur = dashByMonth.get(key)!;
+      // Если несколько записей одного KPI в месяце — берём максимум (как в FinancialModel.tsx).
+      cur[p.kpi_name] = Math.max(cur[p.kpi_name] || 0, Number(p.target_value || 0));
+    }
+
     const rows: MonthRow[] = [];
     for (let m = 0; m < 12; m++) {
       const d = new Date(year, m, 1);
@@ -219,32 +251,49 @@ export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGe
       else if (isCurrentSystem) type = "current";
       else type = "forecast";
 
-      // P&L-стиль расходов:
-      // — ФОТ: department_employees.cost (если есть), иначе фолбэк на кассовые ЗП-выплаты;
-      // — Маркетинг: lead_generation.total_cost (если есть), иначе фолбэк на транзакции «Авитолог»+«Реклама Авито»;
-      // — Прочее (OpEx + налоги): из транзакций, как раньше.
+      // ФАКТ-расходы (для закрытых месяцев): P&L-стиль из транзакций + начисленный ФОТ.
       const fotAccrued = fotByMonth.get(key) || 0;
-      const fot = fotAccrued > 0 ? fotAccrued : b.salaryTx;
+      const fotFact = fotAccrued > 0 ? fotAccrued : b.salaryTx;
       const marketingBudget = marketingByMonth.get(key) || 0;
-      const marketing = marketingBudget > 0 ? marketingBudget : b.marketingTx;
+      const marketingFact = marketingBudget > 0 ? marketingBudget : b.marketingTx;
+      const expensesFact = fotFact + marketingFact + b.otherExpenses;
 
       let revenue = b.revenue;
-      let expenses = fot + marketing + b.otherExpenses;
+      let expenses = expensesFact;
       let daysPassed: number | undefined;
       let daysInMonth: number | undefined;
 
-      if (type === "current") {
-        // ТОЧНЫЙ run-rate: пересчитываем по фактическому числу прошедших дней.
-        // ФОТ начисленный и бюджет лидгена не масштабируем (это месячные плановые величины),
-        // run-rate применяем только к транзакционной части (выручка + прочие расходы).
-        daysInMonth = getDaysInMonth(d);
-        daysPassed = Math.max(1, getDate(today));
-        const factor = daysInMonth / daysPassed;
-        revenue = b.revenue * factor;
-        const otherScaled = b.otherExpenses * factor;
-        const fotScaled = fotAccrued > 0 ? fotAccrued : b.salaryTx * factor;
-        const marketingScaled = marketingBudget > 0 ? marketingBudget : b.marketingTx * factor;
-        expenses = fotScaled + marketingScaled + otherScaled;
+      if (type === "current" || type === "forecast") {
+        // План P&L: для текущего и будущих месяцев берём расходы целиком из плана,
+        // чтобы прогноз совпадал с блоком P&L «План / Факт».
+        const plans = planByMonth.get(key) || {};
+        // Маркетинг план: kpi fm_marketing_plan, иначе бюджет лидгена ПРЕДЫДУЩЕГО месяца
+        // (так считается план в FinancialModel.tsx), иначе бюджет текущего месяца, иначе факт.
+        const prevMonthDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+        const prevMonthKey = format(prevMonthDate, "yyyy-MM");
+        const prevMarketingBudget = marketingByMonth.get(prevMonthKey) || 0;
+        const fotPlan = plans.fm_fot_plan ?? fotFact;
+        const marketingPlan =
+          plans.fm_marketing_plan ?? (prevMarketingBudget || marketingBudget || marketingFact);
+        const opexPlan = plans.fm_opex_plan ?? b.otherExpenses;
+        expenses = fotPlan + marketingPlan + opexPlan;
+
+        // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
+        // фолбэк — факт выручки месяца.
+        if (company === "Спасение") {
+          const dash = dashByMonth.get(key) || {};
+          const lossPct = Math.max(0, Math.min(100, plans.fm_debitorka_loss_pct || 0));
+          const debitorkaNet = (dash.debitorka_plan || 0) * (1 - lossPct / 100);
+          const dashRevenue = debitorkaNet + (dash.new_sales || 0);
+          revenue = dashRevenue > 0 ? dashRevenue : (plans.fm_revenue_plan || b.revenue);
+        } else {
+          revenue = plans.fm_revenue_plan || b.revenue;
+        }
+
+        if (type === "current") {
+          daysInMonth = getDaysInMonth(d);
+          daysPassed = Math.max(1, getDate(today));
+        }
       }
 
       rows.push({
@@ -260,7 +309,7 @@ export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGe
       });
     }
     return rows;
-  }, [transactions, yearEmployees, yearLeadGen, currentMonth]);
+  }, [transactions, yearEmployees, yearLeadGen, yearPlans, yearDashKpi, currentMonth, company]);
 
   // ===== Базовый прогноз (без сценариев) =====
   // Базовое значение для каждого прогнозного месяца считается по выбранному режиму,
@@ -333,9 +382,13 @@ export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGe
       const monthIdx = r.date.getMonth();
       const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
       const compound = Math.pow(growthFactor, k);
+      // Выручка прогнозируется по выбранному режиму (тренд/среднее/run-rate) + рост.
       const revenueBase = predictRevenue(monthIdx);
-      const expensesBase = predictExpenses(monthIdx);
       const revenue = revenueBase * compound;
+      // Расходы — из ПЛАНА P&L (baseRows уже содержит fot+marketing+opex плана).
+      // Если плана нет (всё пусто), фолбэк на прогноз режима.
+      const planExpenses = r.expenses;
+      const expensesBase = planExpenses > 0 ? planExpenses : predictExpenses(monthIdx);
       const expenses = expensesBase * compound;
       return {
         ...r,
