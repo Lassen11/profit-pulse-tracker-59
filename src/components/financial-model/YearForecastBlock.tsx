@@ -328,41 +328,51 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
   // Применяем к каждому месяцу-прогнозу коэффициенты сценария.
   // Факт остаётся фактом, текущий месяц (run-rate) НЕ модифицируется,
   // только будущие прогнозные месяцы реагируют на сценарий.
+  // Для прогнозных месяцев берём «базу» (без глобального growthPct) и применяем
+  // сценарный сдвиг (revenuePct/expensesPct) + сценарный рост (growthPct в месяц, компаундинг).
+  const firstForecastMonthIdx = useMemo(
+    () => baseRows.find((r) => r.type === "forecast")?.date.getMonth() ?? 12,
+    [baseRows]
+  );
+
+  const applyScenarioToRow = (r: MonthRow, s: Scenario) => {
+    if (r.type === "fact" || r.type === "current") {
+      return { revenue: r.revenue, expenses: r.expenses, net: r.net };
+    }
+    const monthIdx = r.date.getMonth();
+    const k = monthIdx - firstForecastMonthIdx + 1;
+    const compound = Math.pow(1 + s.growthPct / 100, k);
+    const baseRev = r.revenueBase ?? r.revenue;
+    const baseExp = r.expensesBase ?? r.expenses;
+    const rev = baseRev * (1 + s.revenuePct / 100) * compound;
+    const exp = baseExp * (1 + s.expensesPct / 100) * compound;
+    return { revenue: rev, expenses: exp, net: rev - exp };
+  };
+
   const scenarioChartData = useMemo(() => {
     return data.map((r) => {
       const point: Record<string, number | string> = { label: r.label };
       for (const s of scenarios) {
-        if (r.type === "fact" || r.type === "current") {
-          point[s.id] = r.net;
-        } else {
-          const rev = r.revenue * (1 + s.revenuePct / 100);
-          const exp = r.expenses * (1 + s.expensesPct / 100);
-          point[s.id] = rev - exp;
-        }
+        point[s.id] = applyScenarioToRow(r, s).net;
       }
       return point;
     });
-  }, [data, scenarios]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, scenarios, firstForecastMonthIdx]);
 
   const scenarioTotals = useMemo(() => {
     return scenarios.map((s) => {
       let total = 0;
       let remaining = 0;
       for (const r of data) {
-        if (r.type === "fact" || r.type === "current") {
-          total += r.net;
-          if (r.type === "current") remaining += r.net;
-        } else {
-          const rev = r.revenue * (1 + s.revenuePct / 100);
-          const exp = r.expenses * (1 + s.expensesPct / 100);
-          const net = rev - exp;
-          total += net;
-          remaining += net;
-        }
+        const { net } = applyScenarioToRow(r, s);
+        total += net;
+        if (r.type !== "fact") remaining += net;
       }
       return { ...s, total, remaining };
     });
-  }, [scenarios, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarios, data, firstForecastMonthIdx]);
 
   const year = currentMonth.getFullYear();
   const currentRow = baseRows.find((r) => r.type === "current");
