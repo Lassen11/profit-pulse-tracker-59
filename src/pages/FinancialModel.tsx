@@ -62,6 +62,8 @@ export default function FinancialModel() {
   const [priorTx, setPriorTx] = useState<Transaction[]>([]);
   const [trendTx, setTrendTx] = useState<Transaction[]>([]);
   const [yearTx, setYearTx] = useState<Transaction[]>([]);
+  const [yearEmployees, setYearEmployees] = useState<{ month: string; cost: number }[]>([]);
+  const [yearLeadGen, setYearLeadGen] = useState<{ date: string; total_cost: number }[]>([]);
   const [employees, setEmployees] = useState<DepartmentEmployeeRow[]>([]);
   const [leadGen, setLeadGen] = useState<LeadGenRow[]>([]);
   const [spasenieClients, setSpasenieClients] = useState<SpasenieClient[]>([]);
