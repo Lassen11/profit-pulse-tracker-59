@@ -15,7 +15,12 @@ export interface PlanValues {
   marketing: number;
   opex: number;
   net: number;
+  /** Дебиторка-план с учётом потерь (показывается в строке плана) */
   revenueDebitorPlan?: number;
+  /** Дебиторка-план «грязный», до вычета потерь */
+  revenueDebitorPlanGross?: number;
+  /** Процент ожидаемых потерь по дебиторке (0..100) */
+  revenueDebitorLossPct?: number;
   revenueSalesPlan?: number;
 }
 
@@ -29,6 +34,8 @@ interface Props {
   revenuePlanReadOnly?: boolean;
   /** Транзакции выбранного месяца — нужны для детализации OpEx по категориям */
   monthTransactions?: Transaction[];
+  /** Сохранение процента ожидаемых потерь по дебиторке (только для Спасения) */
+  onSaveDebitorkaLossPct?: (pct: number) => Promise<void> | void;
 }
 
 // Должно совпадать с исключениями в buildPnl (src/lib/financialModel.ts)
@@ -55,11 +62,13 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false, monthTransactions = [] }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false, monthTransactions = [], onSaveDebitorkaLossPct }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
   const [opexOpen, setOpexOpen] = useState(false);
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [editingLoss, setEditingLoss] = useState(false);
+  const [lossDraft, setLossDraft] = useState("");
 
   const factOf = (k: typeof ROWS[number]["key"]) => {
     if (k === "margin") return pnl.margin;
@@ -220,13 +229,93 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                 {row.key === "revenue" && showRevenueBreakdown && (
                   <>
                     <TableRow className="text-muted-foreground">
-                      <TableCell className="pl-8 text-sm">↳ Дебиторка (ежем. платежи)</TableCell>
+                      <TableCell className="pl-8 text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>↳ Дебиторка (ежем. платежи)</span>
+                          {onSaveDebitorkaLossPct && (
+                            editingLoss ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="text-xs">потери:</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step="0.1"
+                                  value={lossDraft}
+                                  onChange={(e) => setLossDraft(e.target.value)}
+                                  className="h-7 w-20 text-right text-xs"
+                                  autoFocus
+                                />
+                                <span className="text-xs">%</span>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={async () => {
+                                    const v = parseFloat(lossDraft.replace(",", ".")) || 0;
+                                    await onSaveDebitorkaLossPct(v);
+                                    setEditingLoss(false);
+                                  }}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => setEditingLoss(false)}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={!canEdit}
+                                onClick={() => {
+                                  if (!canEdit) return;
+                                  setLossDraft(String(plan.revenueDebitorLossPct ?? 0));
+                                  setEditingLoss(true);
+                                }}
+                                title="Ожидаемые потери по дебиторке (например, недоплаты, отказы)"
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border border-dashed",
+                                  canEdit && "hover:text-primary hover:border-primary cursor-pointer"
+                                )}
+                              >
+                                потери: {fmtPct(plan.revenueDebitorLossPct ?? 0)}
+                                {canEdit && <Pencil className="h-3 w-3 opacity-50" />}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right text-sm">
-                        {plan.revenueDebitorPlan != null ? fmtMoney(plan.revenueDebitorPlan) : "—"}
+                        {plan.revenueDebitorPlan != null ? (
+                          <div className="flex flex-col items-end leading-tight">
+                            <span>{fmtMoney(plan.revenueDebitorPlan)}</span>
+                            {plan.revenueDebitorPlanGross != null &&
+                              (plan.revenueDebitorLossPct ?? 0) > 0 && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  брутто {fmtMoney(plan.revenueDebitorPlanGross)} − {fmtPct(plan.revenueDebitorLossPct ?? 0)}
+                                </span>
+                              )}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-sm">{fmtMoney(pnl.revenueDebitor)}</TableCell>
-                      <TableCell className="text-right text-sm">—</TableCell>
-                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {plan.revenueDebitorPlan != null
+                          ? fmtMoney(pnl.revenueDebitor - plan.revenueDebitorPlan)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {plan.revenueDebitorPlan && plan.revenueDebitorPlan !== 0
+                          ? `${((pnl.revenueDebitor / plan.revenueDebitorPlan) * 100).toFixed(0)}%`
+                          : "—"}
+                      </TableCell>
                     </TableRow>
                     <TableRow className="text-muted-foreground">
                       <TableCell className="pl-8 text-sm">↳ Продажи</TableCell>

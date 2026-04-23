@@ -42,6 +42,9 @@ const PLAN_KEYS: Record<"revenue" | "fot" | "marketing" | "opex" | "net", string
   net: "fm_net_plan",
 };
 
+const DEBITORKA_LOSS_KEY = "fm_debitorka_loss_pct";
+
+
 export default function FinancialModel() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -230,8 +233,15 @@ export default function FinancialModel() {
   const pnl: PnL = useMemo(() => buildPnl(monthTx, employees, leadGen), [monthTx, employees, leadGen]);
 
   const plan: PlanValues = useMemo(() => {
-    const dashRevenue = company === "Спасение" ? dashDebitorkaPlan + dashNewSalesPlan : 0;
-    // План выручки: для Спасения — всегда сумма Дебиторки и Новых продаж с дашборда
+    // Процент ожидаемых потерь по дебиторке (только для Спасения)
+    const debitorkaLossPct =
+      company === "Спасение"
+        ? Math.max(0, Math.min(100, planRows[DEBITORKA_LOSS_KEY]?.value || 0))
+        : 0;
+    const debitorkaPlanGross = company === "Спасение" ? dashDebitorkaPlan : 0;
+    const debitorkaPlanNet = debitorkaPlanGross * (1 - debitorkaLossPct / 100);
+    const dashRevenue = company === "Спасение" ? debitorkaPlanNet + dashNewSalesPlan : 0;
+    // План выручки: для Спасения — Дебиторка (с учётом потерь) + Новые продажи с дашборда
     // (автоматический расчёт, не редактируется вручную). Для остальных проектов —
     // ручное значение fm_revenue_plan.
     const revenue =
@@ -250,7 +260,9 @@ export default function FinancialModel() {
       marketing,
       opex,
       net,
-      revenueDebitorPlan: company === "Спасение" ? dashDebitorkaPlan : undefined,
+      revenueDebitorPlan: company === "Спасение" ? debitorkaPlanNet : undefined,
+      revenueDebitorPlanGross: company === "Спасение" ? debitorkaPlanGross : undefined,
+      revenueDebitorLossPct: company === "Спасение" ? debitorkaLossPct : undefined,
       revenueSalesPlan: company === "Спасение" ? dashNewSalesPlan : undefined,
     };
   }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes, company, dashDebitorkaPlan, dashNewSalesPlan]);
@@ -296,6 +308,11 @@ export default function FinancialModel() {
     // Для Спасения выручка = Дебиторка + Новые продажи (автоматически)
     if (key === "revenue" && company === "Спасение") return;
     const kpiName = PLAN_KEYS[key];
+    await upsertKpi(kpiName, value);
+  };
+
+  const upsertKpi = async (kpiName: string, value: number) => {
+    if (!user) return;
     const existing = planRows[kpiName];
     try {
       if (existing) {
@@ -325,12 +342,18 @@ export default function FinancialModel() {
         ...cur,
         [kpiName]: { id: cur[kpiName]?.id ?? "", value },
       }));
-      toast({ title: "План обновлён" });
+      toast({ title: "Сохранено" });
     } catch (e: any) {
       console.error(e);
       toast({ title: "Ошибка сохранения", description: e.message, variant: "destructive" });
     }
   };
+
+  const handleSaveDebitorkaLossPct = async (pct: number) => {
+    const clamped = Math.max(0, Math.min(100, pct));
+    await upsertKpi(DEBITORKA_LOSS_KEY, clamped);
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -397,6 +420,9 @@ export default function FinancialModel() {
               showRevenueBreakdown={company === "Спасение"}
               revenuePlanReadOnly={company === "Спасение"}
               monthTransactions={monthTx}
+              onSaveDebitorkaLossPct={
+                company === "Спасение" ? handleSaveDebitorkaLossPct : undefined
+              }
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
