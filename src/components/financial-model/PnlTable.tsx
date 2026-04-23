@@ -70,11 +70,38 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
     setDraft(String(plan[k] || 0));
   };
 
-  const save = async () => {
-    if (!editing) return;
-    const val = parseFloat(draft) || 0;
-    await onSavePlan(editing, val);
-    setEditing(null);
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false, monthTransactions = [] }: Props) {
+  const [editing, setEditing] = useState<keyof PlanValues | null>(null);
+  const [draft, setDraft] = useState("");
+  const [opexOpen, setOpexOpen] = useState(false);
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+
+  const opexBreakdown = useMemo(() => {
+    const map = new Map<string, { total: number; items: Transaction[] }>();
+    for (const t of monthTransactions) {
+      if (t.type !== "expense") continue;
+      if (OPEX_EXCLUDED.has(t.category)) continue;
+      const entry = map.get(t.category) ?? { total: 0, items: [] };
+      entry.total += Number(t.amount || 0);
+      entry.items.push(t);
+      map.set(t.category, entry);
+    }
+    return Array.from(map.entries())
+      .map(([category, { total, items }]) => ({
+        category,
+        total,
+        items: [...items].sort((a, b) => (a.date < b.date ? 1 : -1)),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [monthTransactions]);
+
+  const toggleCategory = (cat: string) => {
+    setOpenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
   };
 
   return (
