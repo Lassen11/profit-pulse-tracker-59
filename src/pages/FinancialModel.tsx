@@ -505,6 +505,8 @@ export default function FinancialModel() {
               transactions={yearTx}
               yearEmployees={yearEmployees}
               yearLeadGen={yearLeadGen}
+              yearPlans={yearPlans}
+              yearDashKpi={yearDashKpi}
               currentMonth={month}
               company={company}
             />
