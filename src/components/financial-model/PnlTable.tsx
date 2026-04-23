@@ -174,6 +174,28 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                     </TableRow>
                   </>
                 )}
+                {row.key === "fot" && (
+                  <>
+                    <TableRow className="text-muted-foreground">
+                      <TableCell className="pl-8 text-sm" title="Полная стоимость сотрудников из таблицы Зарплата (department_employees.cost)">
+                        ↳ Начислено
+                      </TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">{fmtMoney(pnl.fotAccrued)}</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                    </TableRow>
+                    <TableRow className="text-muted-foreground">
+                      <TableCell className="pl-8 text-sm" title="Фактически проведённые транзакции категорий «Зарплата / Аванс / Премия»">
+                        ↳ Выплачено (касса)
+                      </TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">{fmtMoney(pnl.fotPaid)}</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">—</TableCell>
+                    </TableRow>
+                  </>
+                )}
                 </Fragment>
               );
             })}
