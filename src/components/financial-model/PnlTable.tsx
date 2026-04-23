@@ -1,11 +1,13 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, ChevronRight } from "lucide-react";
 import { fmtMoney, fmtPct, PnL } from "@/lib/financialModel";
 import { cn } from "@/lib/utils";
+import { Transaction } from "@/components/TransactionTable";
+import { format } from "date-fns";
 
 export interface PlanValues {
   revenue: number;
@@ -25,7 +27,22 @@ interface Props {
   showRevenueBreakdown?: boolean;
   /** Выручка-план рассчитывается автоматически и недоступна для редактирования */
   revenuePlanReadOnly?: boolean;
+  /** Транзакции выбранного месяца — нужны для детализации OpEx по категориям */
+  monthTransactions?: Transaction[];
 }
+
+// Должно совпадать с исключениями в buildPnl (src/lib/financialModel.ts)
+const OPEX_EXCLUDED = new Set([
+  "Перевод между счетами",
+  "Вывод средств",
+  "Налог УСН",
+  "Налог НДФЛ и Взносы",
+  "Зарплата",
+  "Аванс",
+  "Премия",
+  "Авитолог",
+  "Реклама Авито",
+]);
 
 const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
   { key: "revenue", label: "Выручка", planKey: "revenue", emphasis: "good" },
