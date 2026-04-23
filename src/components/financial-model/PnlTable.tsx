@@ -20,6 +20,7 @@ interface Props {
   plan: PlanValues;
   canEdit: boolean;
   onSavePlan: (key: keyof PlanValues, value: number) => Promise<void> | void;
+  showRevenueBreakdown?: boolean;
 }
 
 const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
@@ -33,7 +34,7 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
 
