@@ -229,13 +229,93 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                 {row.key === "revenue" && showRevenueBreakdown && (
                   <>
                     <TableRow className="text-muted-foreground">
-                      <TableCell className="pl-8 text-sm">↳ Дебиторка (ежем. платежи)</TableCell>
+                      <TableCell className="pl-8 text-sm">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>↳ Дебиторка (ежем. платежи)</span>
+                          {onSaveDebitorkaLossPct && (
+                            editingLoss ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="text-xs">потери:</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step="0.1"
+                                  value={lossDraft}
+                                  onChange={(e) => setLossDraft(e.target.value)}
+                                  className="h-7 w-20 text-right text-xs"
+                                  autoFocus
+                                />
+                                <span className="text-xs">%</span>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={async () => {
+                                    const v = parseFloat(lossDraft.replace(",", ".")) || 0;
+                                    await onSaveDebitorkaLossPct(v);
+                                    setEditingLoss(false);
+                                  }}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => setEditingLoss(false)}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={!canEdit}
+                                onClick={() => {
+                                  if (!canEdit) return;
+                                  setLossDraft(String(plan.revenueDebitorLossPct ?? 0));
+                                  setEditingLoss(true);
+                                }}
+                                title="Ожидаемые потери по дебиторке (например, недоплаты, отказы)"
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border border-dashed",
+                                  canEdit && "hover:text-primary hover:border-primary cursor-pointer"
+                                )}
+                              >
+                                потери: {fmtPct(plan.revenueDebitorLossPct ?? 0)}
+                                {canEdit && <Pencil className="h-3 w-3 opacity-50" />}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right text-sm">
-                        {plan.revenueDebitorPlan != null ? fmtMoney(plan.revenueDebitorPlan) : "—"}
+                        {plan.revenueDebitorPlan != null ? (
+                          <div className="flex flex-col items-end leading-tight">
+                            <span>{fmtMoney(plan.revenueDebitorPlan)}</span>
+                            {plan.revenueDebitorPlanGross != null &&
+                              (plan.revenueDebitorLossPct ?? 0) > 0 && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  брутто {fmtMoney(plan.revenueDebitorPlanGross)} − {fmtPct(plan.revenueDebitorLossPct ?? 0)}
+                                </span>
+                              )}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-sm">{fmtMoney(pnl.revenueDebitor)}</TableCell>
-                      <TableCell className="text-right text-sm">—</TableCell>
-                      <TableCell className="text-right text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm">
+                        {plan.revenueDebitorPlan != null
+                          ? fmtMoney(pnl.revenueDebitor - plan.revenueDebitorPlan)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {plan.revenueDebitorPlan && plan.revenueDebitorPlan !== 0
+                          ? `${((pnl.revenueDebitor / plan.revenueDebitorPlan) * 100).toFixed(0)}%`
+                          : "—"}
+                      </TableCell>
                     </TableRow>
                     <TableRow className="text-muted-foreground">
                       <TableCell className="pl-8 text-sm">↳ Продажи</TableCell>
