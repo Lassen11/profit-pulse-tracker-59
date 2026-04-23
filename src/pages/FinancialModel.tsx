@@ -107,6 +107,8 @@ export default function FinancialModel() {
         prevTxRes,
         prevLeadRes,
         dashKpiRes,
+        yearEmpRes,
+        yearLeadRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -131,6 +133,10 @@ export default function FinancialModel() {
               .gte("month", monthStartStr)
               .lte("month", monthEndStr)
           : Promise.resolve({ data: [] as any[] }),
+        // Годовые помесячные данные для прогноза (P&L-стиль расходов):
+        // ФОТ начисленный из department_employees.cost и бюджет лидгена из lead_generation.total_cost.
+        supabase.from("department_employees").select("month,cost").eq("company", company).gte("month", yearStartStr).lte("month", yearEndStr),
+        supabase.from("lead_generation").select("date,total_cost").eq("company", company).gte("date", yearStartStr).lte("date", yearEndStr),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
