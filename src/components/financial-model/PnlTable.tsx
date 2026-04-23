@@ -82,6 +82,7 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
               const isEditing = editing === row.planKey && row.planKey;
 
               return (
+                <>
                 <TableRow key={row.key} className={cn(row.emphasis === "bold" && "font-semibold bg-muted/40")}>
                   <TableCell>{row.label}</TableCell>
                   <TableCell className="text-right">
