@@ -62,6 +62,8 @@ export default function FinancialModel() {
   const [priorTx, setPriorTx] = useState<Transaction[]>([]);
   const [trendTx, setTrendTx] = useState<Transaction[]>([]);
   const [yearTx, setYearTx] = useState<Transaction[]>([]);
+  const [yearEmployees, setYearEmployees] = useState<{ month: string; cost: number }[]>([]);
+  const [yearLeadGen, setYearLeadGen] = useState<{ date: string; total_cost: number }[]>([]);
   const [employees, setEmployees] = useState<DepartmentEmployeeRow[]>([]);
   const [leadGen, setLeadGen] = useState<LeadGenRow[]>([]);
   const [spasenieClients, setSpasenieClients] = useState<SpasenieClient[]>([]);
@@ -105,6 +107,8 @@ export default function FinancialModel() {
         prevTxRes,
         prevLeadRes,
         dashKpiRes,
+        yearEmpRes,
+        yearLeadRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -129,12 +133,18 @@ export default function FinancialModel() {
               .gte("month", monthStartStr)
               .lte("month", monthEndStr)
           : Promise.resolve({ data: [] as any[] }),
+        // Годовые помесячные данные для прогноза (P&L-стиль расходов):
+        // ФОТ начисленный из department_employees.cost и бюджет лидгена из lead_generation.total_cost.
+        supabase.from("department_employees").select("month,cost").eq("company", company).gte("month", yearStartStr).lte("month", yearEndStr),
+        supabase.from("lead_generation").select("date,total_cost").eq("company", company).gte("date", yearStartStr).lte("date", yearEndStr),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
       setPriorTx((priorTxRes.data as Transaction[]) || []);
       setTrendTx((trendTxRes.data as Transaction[]) || []);
       setYearTx((yearTxRes.data as Transaction[]) || []);
+      setYearEmployees(((yearEmpRes.data as any[]) || []).map((r) => ({ month: r.month, cost: Number(r.cost || 0) })));
+      setYearLeadGen(((yearLeadRes.data as any[]) || []).map((r) => ({ date: r.date, total_cost: Number(r.total_cost || 0) })));
       setEmployees(empRes.data || []);
       setLeadGen(leadRes.data || []);
       const adjSum = (adjRes.data || []).reduce((s, a) => s + Number(a.adjusted_balance || 0), 0);
@@ -468,6 +478,8 @@ export default function FinancialModel() {
 
             <YearForecastBlock
               transactions={yearTx}
+              yearEmployees={yearEmployees}
+              yearLeadGen={yearLeadGen}
               currentMonth={month}
               company={company}
             />

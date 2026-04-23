@@ -45,6 +45,10 @@ import { cn } from "@/lib/utils";
 interface Props {
   /** Все транзакции компании за период с начала года и далее (нужно для исторической базы) */
   transactions: Transaction[];
+  /** Помесячные записи department_employees по году (cost = начисленный ФОТ компании) */
+  yearEmployees?: { month: string; cost: number }[];
+  /** Помесячные записи lead_generation по году (total_cost = бюджет маркетинга) */
+  yearLeadGen?: { date: string; total_cost: number }[];
   /** Текущий выбранный месяц финмодели */
   currentMonth: Date;
   /** Идентификатор компании — для изоляции сохранённых сценариев */
@@ -53,6 +57,8 @@ interface Props {
 
 const TRANSFER = "Перевод между счетами";
 const WITHDRAWAL = "Вывод средств";
+const SALARY_CATEGORIES = ["Зарплата", "Аванс", "Премия"];
+const MARKETING_CATEGORIES = ["Авитолог", "Реклама Авито"];
 
 interface MonthRow {
   key: string; // yyyy-MM
@@ -86,7 +92,7 @@ const DEFAULT_SCENARIOS: Scenario[] = [
   { id: "worst", name: "Худший", revenuePct: -10, expensesPct: 10, growthPct: -3, color: "hsl(0, 72%, 51%)", visible: true },
 ];
 
-export function YearForecastBlock({ transactions, currentMonth, company }: Props) {
+export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGen = [], currentMonth, company }: Props) {
   const [mode, setMode] = useState<"avg3" | "avg6" | "runrate" | "trend">("trend");
   const [view, setView] = useState<"forecast" | "scenarios">("forecast");
   const growthKey = `fm_year_growth_${company}`;
@@ -147,10 +153,25 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
     const yearEnd = new Date(year, 11, 31);
     const today = new Date();
 
-    const buckets = new Map<string, { revenue: number; expenses: number }>();
+    // Бакеты по транзакциям: revenue + расходы по категориям
+    // (split: ФОТ-выплаты, маркетинг-транзакции, прочие — для P&L-стиля).
+    const buckets = new Map<
+      string,
+      {
+        revenue: number;
+        salaryTx: number; // выплаты ЗП/Аванс/Премия (касса)
+        marketingTx: number; // Авитолог + Реклама Авито (касса)
+        otherExpenses: number; // OpEx + налоги (всё остальное, кроме переводов/выводов)
+      }
+    >();
     for (let m = 0; m < 12; m++) {
       const d = new Date(year, m, 1);
-      buckets.set(format(d, "yyyy-MM"), { revenue: 0, expenses: 0 });
+      buckets.set(format(d, "yyyy-MM"), {
+        revenue: 0,
+        salaryTx: 0,
+        marketingTx: 0,
+        otherExpenses: 0,
+      });
     }
     for (const t of transactions) {
       if (!t.date) continue;
@@ -161,8 +182,28 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       const b = buckets.get(key);
       if (!b) continue;
       const amt = Number(t.amount || 0);
-      if (t.type === "income") b.revenue += amt;
-      else if (t.type === "expense") b.expenses += amt;
+      if (t.type === "income") {
+        b.revenue += amt;
+      } else if (t.type === "expense") {
+        if (SALARY_CATEGORIES.includes(t.category)) b.salaryTx += amt;
+        else if (MARKETING_CATEGORIES.includes(t.category)) b.marketingTx += amt;
+        else b.otherExpenses += amt;
+      }
+    }
+
+    // ФОТ начисленный (department_employees.cost) и бюджет лидгена (lead_generation.total_cost)
+    // — те же источники, что использует P&L месяца. Это выравнивает прогноз с план/факт P&L.
+    const fotByMonth = new Map<string, number>();
+    for (const e of yearEmployees) {
+      if (!e.month) continue;
+      const key = format(startOfMonth(new Date(e.month)), "yyyy-MM");
+      fotByMonth.set(key, (fotByMonth.get(key) || 0) + Number(e.cost || 0));
+    }
+    const marketingByMonth = new Map<string, number>();
+    for (const l of yearLeadGen) {
+      if (!l.date) continue;
+      const key = format(startOfMonth(new Date(l.date)), "yyyy-MM");
+      marketingByMonth.set(key, (marketingByMonth.get(key) || 0) + Number(l.total_cost || 0));
     }
 
     const rows: MonthRow[] = [];
@@ -171,7 +212,6 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       const key = format(d, "yyyy-MM");
       const b = buckets.get(key)!;
       const isCurrentSystem = isSameMonth(d, today);
-      const isSelected = isSameMonth(d, currentMonth);
       const isPast = isAfter(today, endOfMonth(d));
 
       let type: MonthRow["type"];
@@ -179,18 +219,32 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       else if (isCurrentSystem) type = "current";
       else type = "forecast";
 
+      // P&L-стиль расходов:
+      // — ФОТ: department_employees.cost (если есть), иначе фолбэк на кассовые ЗП-выплаты;
+      // — Маркетинг: lead_generation.total_cost (если есть), иначе фолбэк на транзакции «Авитолог»+«Реклама Авито»;
+      // — Прочее (OpEx + налоги): из транзакций, как раньше.
+      const fotAccrued = fotByMonth.get(key) || 0;
+      const fot = fotAccrued > 0 ? fotAccrued : b.salaryTx;
+      const marketingBudget = marketingByMonth.get(key) || 0;
+      const marketing = marketingBudget > 0 ? marketingBudget : b.marketingTx;
+
       let revenue = b.revenue;
-      let expenses = b.expenses;
+      let expenses = fot + marketing + b.otherExpenses;
       let daysPassed: number | undefined;
       let daysInMonth: number | undefined;
 
       if (type === "current") {
         // ТОЧНЫЙ run-rate: пересчитываем по фактическому числу прошедших дней.
+        // ФОТ начисленный и бюджет лидгена не масштабируем (это месячные плановые величины),
+        // run-rate применяем только к транзакционной части (выручка + прочие расходы).
         daysInMonth = getDaysInMonth(d);
         daysPassed = Math.max(1, getDate(today));
         const factor = daysInMonth / daysPassed;
         revenue = b.revenue * factor;
-        expenses = b.expenses * factor;
+        const otherScaled = b.otherExpenses * factor;
+        const fotScaled = fotAccrued > 0 ? fotAccrued : b.salaryTx * factor;
+        const marketingScaled = marketingBudget > 0 ? marketingBudget : b.marketingTx * factor;
+        expenses = fotScaled + marketingScaled + otherScaled;
       }
 
       rows.push({
@@ -206,7 +260,7 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       });
     }
     return rows;
-  }, [transactions, currentMonth]);
+  }, [transactions, yearEmployees, yearLeadGen, currentMonth]);
 
   // ===== Базовый прогноз (без сценариев) =====
   // Базовое значение для каждого прогнозного месяца считается по выбранному режиму,
@@ -645,7 +699,8 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
             <p className="text-xs text-muted-foreground">
               База прогноза: <b>Тренд</b> — линейная регрессия по последним месяцам, <b>Средн. 3/6 мес.</b> — среднее за период,
               <b> Run-rate</b> — экстраполяция текущего месяца. Поверх базы применяется ручной рост {growthPct}%/мес
-              (компаудинг). Переводы и выводы исключены.
+              (компаудинг). Расходы по правилам P&L: ФОТ — начисленный из <b>department_employees.cost</b>,
+              маркетинг — бюджет <b>lead_generation.total_cost</b>, остальное — из транзакций. Переводы и выводы исключены.
             </p>
           </>
         ) : (
