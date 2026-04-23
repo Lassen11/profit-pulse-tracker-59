@@ -79,6 +79,10 @@ interface MonthRow {
   type: "fact" | "current" | "forecast";
   daysPassed?: number;
   daysInMonth?: number;
+  /** true, если расходы для этого месяца явно заданы планом fm_*_plan (а не фолбэком). */
+  hasExplicitExpensePlan?: boolean;
+  /** true, если выручка для этого месяца явно задана планом. */
+  hasExplicitRevenuePlan?: boolean;
 }
 
 interface Scenario {
@@ -263,12 +267,15 @@ export function YearForecastBlock({
       let daysPassed: number | undefined;
       let daysInMonth: number | undefined;
 
+      let hasExplicitExpensePlan = false;
+      let hasExplicitRevenuePlan = false;
+
       if (type === "current" || type === "forecast") {
-        // План P&L: для текущего и будущих месяцев берём расходы целиком из плана,
-        // чтобы прогноз совпадал с блоком P&L «План / Факт».
-        // Фолбэк: если для месяца нет fm_*_plan — ищем последний непустой
-        // источник (план или факт) среди ПРЕДЫДУЩИХ месяцев года, чтобы прогноз
-        // не схлопывался в 0 для месяцев без данных (например июнь→декабрь).
+        // План P&L: для текущего и будущих месяцев берём расходы из плана,
+        // если он явно задан в kpi_targets для этого месяца. Иначе — фолбэк
+        // на последний непустой план/факт предыдущих месяцев. В блоке `data`
+        // ниже фолбэк ещё раз заменяется трендом, если план не задан явно
+        // (флаг hasExplicitExpensePlan).
         const plans = planByMonth.get(key) || {};
 
         const findPrevValue = (
@@ -282,28 +289,39 @@ export function YearForecastBlock({
           return 0;
         };
 
+        const fotPlanExplicit = plans.fm_fot_plan;
+        const marketingPlanExplicit = plans.fm_marketing_plan;
+        const opexPlanExplicit = plans.fm_opex_plan;
+
         const fotPlan =
-          plans.fm_fot_plan ??
+          fotPlanExplicit ??
           findPrevValue((k) => {
             const planFot = planByMonth.get(k)?.fm_fot_plan;
             if (planFot && planFot > 0) return planFot;
             return fotByMonth.get(k);
           });
         const marketingPlan =
-          plans.fm_marketing_plan ??
+          marketingPlanExplicit ??
           findPrevValue((k) => {
             const planMk = planByMonth.get(k)?.fm_marketing_plan;
             if (planMk && planMk > 0) return planMk;
             return marketingByMonth.get(k);
           });
         const opexPlan =
-          plans.fm_opex_plan ??
+          opexPlanExplicit ??
           findPrevValue((k) => {
             const planOpex = planByMonth.get(k)?.fm_opex_plan;
             if (planOpex && planOpex > 0) return planOpex;
             return buckets.get(k)?.otherExpenses;
           });
         expenses = fotPlan + marketingPlan + opexPlan;
+        // Считаем план «явным», если хотя бы одна из трёх компонент задана
+        // в kpi_targets именно для этого месяца. Тогда блок прогноза будет
+        // уважать план. Иначе — для прогнозных месяцев применится тренд.
+        hasExplicitExpensePlan =
+          fotPlanExplicit !== undefined ||
+          marketingPlanExplicit !== undefined ||
+          opexPlanExplicit !== undefined;
 
         // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
         // фолбэк — факт выручки месяца.
@@ -312,9 +330,22 @@ export function YearForecastBlock({
           const lossPct = Math.max(0, Math.min(100, plans.fm_debitorka_loss_pct || 0));
           const debitorkaNet = (dash.debitorka_plan || 0) * (1 - lossPct / 100);
           const dashRevenue = debitorkaNet + (dash.new_sales || 0);
-          revenue = dashRevenue > 0 ? dashRevenue : (plans.fm_revenue_plan || b.revenue);
+          if (dashRevenue > 0) {
+            revenue = dashRevenue;
+            hasExplicitRevenuePlan = true;
+          } else if (plans.fm_revenue_plan) {
+            revenue = plans.fm_revenue_plan;
+            hasExplicitRevenuePlan = true;
+          } else {
+            revenue = b.revenue;
+          }
         } else {
-          revenue = plans.fm_revenue_plan || b.revenue;
+          if (plans.fm_revenue_plan) {
+            revenue = plans.fm_revenue_plan;
+            hasExplicitRevenuePlan = true;
+          } else {
+            revenue = b.revenue;
+          }
         }
 
         if (type === "current") {
@@ -333,6 +364,8 @@ export function YearForecastBlock({
         type,
         daysPassed,
         daysInMonth,
+        hasExplicitExpensePlan,
+        hasExplicitRevenuePlan,
       });
     }
     return rows;
@@ -409,13 +442,14 @@ export function YearForecastBlock({
       const monthIdx = r.date.getMonth();
       const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
       const compound = Math.pow(growthFactor, k);
-      // Выручка прогнозируется по выбранному режиму (тренд/среднее/run-rate) + рост.
-      const revenueBase = predictRevenue(monthIdx);
+      // Выручка прогнозируется по выбранному режиму (тренд/среднее/run-rate),
+      // если для месяца НЕТ явного плана выручки. Иначе — берётся план.
+      const revenueBase = r.hasExplicitRevenuePlan ? r.revenue : predictRevenue(monthIdx);
       const revenue = revenueBase * compound;
-      // Расходы — из ПЛАНА P&L (baseRows уже содержит fot+marketing+opex плана).
-      // Если плана нет (всё пусто), фолбэк на прогноз режима.
-      const planExpenses = r.expenses;
-      const expensesBase = planExpenses > 0 ? planExpenses : predictExpenses(monthIdx);
+      // Расходы: если план задан явно (fm_*_plan для этого месяца) — используем план.
+      // Иначе — прогноз по выбранному режиму (тренд/среднее/run-rate),
+      // чтобы прогноз не схлопывался в одинаковые суммы при пустых планах.
+      const expensesBase = r.hasExplicitExpensePlan ? r.expenses : predictExpenses(monthIdx);
       const expenses = expensesBase * compound;
       return {
         ...r,
