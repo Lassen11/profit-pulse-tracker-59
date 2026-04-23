@@ -132,6 +132,7 @@ export default function FinancialModel() {
 
       // ФОТ прошлого месяца: приоритет department_employees.cost, фолбэк — транзакции зарплат
       const SALARY_CATS = ["Зарплата", "Аванс", "Премия"];
+      const MARKETING_CATS = ["Авитолог", "Реклама Авито"];
       const TRANSFER_CAT = "Перевод между счетами";
       const WITHDRAWAL_CAT = "Вывод средств";
       const TAX_CATS = ["Налог УСН", "Налог НДФЛ и Взносы"];
@@ -143,13 +144,13 @@ export default function FinancialModel() {
       const prevFot = prevFotEmp > 0 ? prevFotEmp : prevFotTx;
       setPrevMonthFot(prevFot);
 
-      // Маркетинг прошлого месяца: только бюджет лидогенерации (lead_generation.total_cost).
-      // Маркетинговые транзакции попадают в OpEx (см. financialModel.ts).
+      // План маркетинга на текущий месяц = бюджет лидогенерации прошлого месяца
+      // (lead_generation.total_cost). Факт маркетинга считается отдельно из транзакций
+      // «Авитолог» + «Реклама Авито» — см. financialModel.ts.
       const prevMarketingLead = (prevLeadRes.data || []).reduce((s, l) => s + Number(l.total_cost || 0), 0);
       setPrevMonthMarketing(prevMarketingLead);
 
-      // OpEx прошлого месяца: все расходы кроме переводов, выводов, налогов и ЗП.
-      // Маркетинговые транзакции включены в OpEx (строка «Маркетинг» считается из lead_generation).
+      // OpEx прошлого месяца: все расходы кроме переводов, выводов, налогов, ЗП и маркетинга
       const prevOpex = prevTxData
         .filter(
           (t) =>
@@ -157,7 +158,8 @@ export default function FinancialModel() {
             t.category !== TRANSFER_CAT &&
             t.category !== WITHDRAWAL_CAT &&
             !TAX_CATS.includes(t.category) &&
-            !SALARY_CATS.includes(t.category)
+            !SALARY_CATS.includes(t.category) &&
+            !MARKETING_CATS.includes(t.category)
         )
         .reduce((s, t) => s + Number(t.amount || 0), 0);
       setPrevMonthOpex(prevOpex);
