@@ -323,15 +323,19 @@ export function YearForecastBlock({
           marketingPlanExplicit !== undefined ||
           opexPlanExplicit !== undefined;
 
-        // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
-        // фолбэк — факт выручки месяца.
+        // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales;
+        // иначе — fm_revenue_plan; фолбэк — факт выручки месяца.
+        // ВАЖНО: «явным» планом считается только ПОЛНАЯ пара (debitorka_plan
+        // и new_sales заданы явно для этого месяца). Иначе одно лишь new_sales
+        // даст заниженный план (например 350 000) и заблокирует тренд.
         if (company === "Спасение") {
           const dash = dashByMonth.get(key) || {};
           const lossPct = Math.max(0, Math.min(100, plans.fm_debitorka_loss_pct || 0));
-          const debitorkaNet = (dash.debitorka_plan || 0) * (1 - lossPct / 100);
-          const dashRevenue = debitorkaNet + (dash.new_sales || 0);
-          if (dashRevenue > 0) {
-            revenue = dashRevenue;
+          const hasDashPair =
+            (dash.debitorka_plan || 0) > 0 && (dash.new_sales || 0) > 0;
+          if (hasDashPair) {
+            const debitorkaNet = dash.debitorka_plan * (1 - lossPct / 100);
+            revenue = debitorkaNet + dash.new_sales;
             hasExplicitRevenuePlan = true;
           } else if (plans.fm_revenue_plan) {
             revenue = plans.fm_revenue_plan;
