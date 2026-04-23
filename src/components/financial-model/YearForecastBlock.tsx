@@ -784,9 +784,9 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
-                  <Label>Изменение выручки, %</Label>
+                  <Label>Выручка, %</Label>
                   <Input
                     type="number"
                     value={editing.revenuePct}
@@ -794,14 +794,27 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Изменение расходов, %</Label>
+                  <Label>Расходы, %</Label>
                   <Input
                     type="number"
                     value={editing.expensesPct}
                     onChange={(e) => setEditing({ ...editing, expensesPct: Number(e.target.value) || 0 })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Рост, %/мес</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    value={editing.growthPct}
+                    onChange={(e) => setEditing({ ...editing, growthPct: Number(e.target.value) || 0 })}
+                  />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Сдвиг применяется один раз ко всем прогнозным месяцам, рост — компаундингом
+                (1+rate)^k от первого прогнозного месяца.
+              </p>
               <div className="space-y-2">
                 <Label>Цвет линии</Label>
                 <div className="flex items-center gap-2">
