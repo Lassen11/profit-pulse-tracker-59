@@ -170,9 +170,11 @@ export function buildSpasenieUnit(
 
 export function buildBusinessUnit(
   sales: BizSale[],
-  leadGen: LeadGenRow[]
+  leadGen: LeadGenRow[],
+  marketingFact: number = 0
 ): UnitEconomics {
-  const marketing = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
+  const marketingLead = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
+  const marketing = marketingFact > 0 ? marketingFact : marketingLead;
   const totalLeads = leadGen.reduce((s, l) => s + Number(l.total_leads || 0), 0);
   const contracts = sales.length;
   const cac = contracts > 0 ? marketing / contracts : 0;
