@@ -22,14 +22,14 @@ interface Props {
   onSavePlan: (key: keyof PlanValues, value: number) => Promise<void> | void;
 }
 
-const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold" }> = [
+const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
   { key: "revenue", label: "Выручка", planKey: "revenue", emphasis: "good" },
   { key: "fot", label: "ФОТ (себестоимость)", planKey: "fot" },
   { key: "marketing", label: "Маркетинг / Лидген", planKey: "marketing" },
   { key: "opex", label: "Операционные расходы", planKey: "opex" },
   { key: "ebitda", label: "EBITDA", emphasis: "bold" },
   { key: "taxes", label: "Налоги" },
-  { key: "net", label: "Чистая прибыль", planKey: "net", emphasis: "bold" },
+  { key: "net", label: "Чистая прибыль", planKey: "net", emphasis: "bold", planReadOnly: true },
   { key: "margin", label: "Маржа, %" },
 ];
 
