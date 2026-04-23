@@ -478,6 +478,8 @@ export default function FinancialModel() {
 
             <YearForecastBlock
               transactions={yearTx}
+              yearEmployees={yearEmployees}
+              yearLeadGen={yearLeadGen}
               currentMonth={month}
               company={company}
             />
