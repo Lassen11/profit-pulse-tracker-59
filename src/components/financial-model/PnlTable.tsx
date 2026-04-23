@@ -91,8 +91,14 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                   <TableCell>{row.label}</TableCell>
                   <TableCell className="text-right">
                     {row.planKey ? (
-                      row.planReadOnly ? (
-                        <span title="Рассчитывается автоматически: Выручка − ФОТ − Маркетинг − OpEx − Налоги">
+                      row.planReadOnly || (row.planKey === "revenue" && revenuePlanReadOnly) ? (
+                        <span
+                          title={
+                            row.planKey === "revenue"
+                              ? "Рассчитывается автоматически: Дебиторка + Новые продажи (с дашборда)"
+                              : "Рассчитывается автоматически: Выручка − ФОТ − Маркетинг − OpEx − Налоги"
+                          }
+                        >
                           {fmtMoney(planVal)}
                         </span>
                       ) : isEditing ? (
