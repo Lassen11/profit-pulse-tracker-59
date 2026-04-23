@@ -267,8 +267,15 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
     const firstForecastIdx = baseRows.find((r) => r.type === "forecast")?.date.getMonth() ?? 12;
     const growthFactor = 1 + growthPct / 100;
 
-    return baseRows.map((r) => {
-      if (r.type !== "forecast") return r;
+    return baseRows.map((r, i, arr) => {
+      if (r.type !== "forecast") {
+        // Чтобы пунктирная линия «база» плавно стартовала от последнего реального
+        // месяца, дублируем net в netBase для самого последнего fact/current перед прогнозом.
+        const isAnchor = arr[i + 1]?.type === "forecast";
+        return isAnchor
+          ? { ...r, revenueBase: r.revenue, expensesBase: r.expenses, netBase: r.net }
+          : r;
+      }
       const monthIdx = r.date.getMonth();
       const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
       const compound = Math.pow(growthFactor, k);
