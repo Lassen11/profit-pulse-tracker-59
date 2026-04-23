@@ -18,6 +18,8 @@ export interface PnL {
   revenueDebitor: number;
   revenueSales: number;
   fot: number;
+  fotAccrued: number;
+  fotPaid: number;
   marketing: number;
   opex: number;
   taxes: number;
@@ -56,10 +58,15 @@ export function buildPnl(
 
   // ФОТ — приоритет department_employees.cost; если 0 — берём из transactions Зарплата/Аванс/Премия
   const fotFromEmployees = employees.reduce((s, e) => s + Number(e.cost || 0), 0);
-  const fotFromTx = transactions
+  // ФОТ:
+  // - Начислено: department_employees.cost (полная стоимость сотрудника для компании)
+  // - Выплачено: фактические транзакции категорий «Зарплата / Аванс / Премия»
+  // По умолчанию в P&L используется «Выплачено» (кассовый факт).
+  const fotAccrued = employees.reduce((s, e) => s + Number(e.cost || 0), 0);
+  const fotPaid = transactions
     .filter((t) => t.type === "expense" && SALARY_CATEGORIES.includes(t.category))
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const fot = fotFromEmployees > 0 ? fotFromEmployees : fotFromTx;
+  const fot = fotPaid;
 
   const marketingFromLeads = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
   const marketingFromTx = transactions
@@ -92,7 +99,7 @@ export function buildPnl(
   const net = ebitda - taxes;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
 
-  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
+  return { revenue, revenueDebitor, revenueSales, fot, fotAccrued, fotPaid, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export interface UnitEconomics {
@@ -223,6 +230,9 @@ export const emptyScenario: ScenarioDeltas = {
 export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
   const revenue = Math.max(0, pnl.revenue * (1 + d.revenuePct / 100) + d.revenueAbs);
   const fot = Math.max(0, pnl.fot * (1 + d.fotPct / 100) + d.fotAbs);
+  const fotRatio = pnl.fot > 0 ? fot / pnl.fot : 0;
+  const fotAccrued = pnl.fotAccrued * fotRatio;
+  const fotPaid = pnl.fotPaid * fotRatio;
   const marketing = Math.max(0, pnl.marketing * (1 + d.marketingPct / 100) + d.marketingAbs);
   const opex = Math.max(0, pnl.opex * (1 + d.opexPct / 100) + d.opexAbs);
   const taxes = Math.max(0, pnl.taxes * (1 + d.taxesPct / 100) + d.taxesAbs);
@@ -232,7 +242,7 @@ export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
   const ratio = pnl.revenue > 0 ? revenue / pnl.revenue : 0;
   const revenueDebitor = pnl.revenueDebitor * ratio;
   const revenueSales = pnl.revenueSales * ratio;
-  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
+  return { revenue, revenueDebitor, revenueSales, fot, fotAccrued, fotPaid, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export const fmtMoney = (v: number) =>
