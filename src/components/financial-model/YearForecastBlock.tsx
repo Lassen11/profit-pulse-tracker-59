@@ -219,6 +219,25 @@ export function YearForecastBlock({
       marketingByMonth.set(key, (marketingByMonth.get(key) || 0) + Number(l.total_cost || 0));
     }
 
+    // Карты планов P&L по месяцам (yearPlans приходит из kpi_targets за весь год).
+    const planByMonth = new Map<string, Record<string, number>>();
+    for (const p of yearPlans) {
+      if (!p.month) continue;
+      const key = format(startOfMonth(new Date(p.month)), "yyyy-MM");
+      if (!planByMonth.has(key)) planByMonth.set(key, {});
+      planByMonth.get(key)![p.kpi_name] = Number(p.target_value || 0);
+    }
+    // Дашбордные планы для Спасения (debitorka_plan, new_sales) — для расчёта плана выручки.
+    const dashByMonth = new Map<string, Record<string, number>>();
+    for (const p of yearDashKpi) {
+      if (!p.month) continue;
+      const key = format(startOfMonth(new Date(p.month)), "yyyy-MM");
+      if (!dashByMonth.has(key)) dashByMonth.set(key, {});
+      const cur = dashByMonth.get(key)!;
+      // Если несколько записей одного KPI в месяце — берём максимум (как в FinancialModel.tsx).
+      cur[p.kpi_name] = Math.max(cur[p.kpi_name] || 0, Number(p.target_value || 0));
+    }
+
     const rows: MonthRow[] = [];
     for (let m = 0; m < 12; m++) {
       const d = new Date(year, m, 1);
@@ -232,32 +251,50 @@ export function YearForecastBlock({
       else if (isCurrentSystem) type = "current";
       else type = "forecast";
 
-      // P&L-стиль расходов:
-      // — ФОТ: department_employees.cost (если есть), иначе фолбэк на кассовые ЗП-выплаты;
-      // — Маркетинг: lead_generation.total_cost (если есть), иначе фолбэк на транзакции «Авитолог»+«Реклама Авито»;
-      // — Прочее (OpEx + налоги): из транзакций, как раньше.
+      // ФАКТ-расходы (для закрытых месяцев): P&L-стиль из транзакций + начисленный ФОТ.
       const fotAccrued = fotByMonth.get(key) || 0;
-      const fot = fotAccrued > 0 ? fotAccrued : b.salaryTx;
+      const fotFact = fotAccrued > 0 ? fotAccrued : b.salaryTx;
       const marketingBudget = marketingByMonth.get(key) || 0;
-      const marketing = marketingBudget > 0 ? marketingBudget : b.marketingTx;
+      const marketingFact = marketingBudget > 0 ? marketingBudget : b.marketingTx;
+      const expensesFact = fotFact + marketingFact + b.otherExpenses;
 
       let revenue = b.revenue;
-      let expenses = fot + marketing + b.otherExpenses;
+      let expenses = expensesFact;
       let daysPassed: number | undefined;
       let daysInMonth: number | undefined;
 
-      if (type === "current") {
-        // ТОЧНЫЙ run-rate: пересчитываем по фактическому числу прошедших дней.
-        // ФОТ начисленный и бюджет лидгена не масштабируем (это месячные плановые величины),
-        // run-rate применяем только к транзакционной части (выручка + прочие расходы).
-        daysInMonth = getDaysInMonth(d);
-        daysPassed = Math.max(1, getDate(today));
-        const factor = daysInMonth / daysPassed;
-        revenue = b.revenue * factor;
-        const otherScaled = b.otherExpenses * factor;
-        const fotScaled = fotAccrued > 0 ? fotAccrued : b.salaryTx * factor;
-        const marketingScaled = marketingBudget > 0 ? marketingBudget : b.marketingTx * factor;
-        expenses = fotScaled + marketingScaled + otherScaled;
+      if (type === "current" || type === "forecast") {
+        // План P&L: для текущего и будущих месяцев берём расходы целиком из плана,
+        // чтобы прогноз совпадал с блоком P&L «План / Факт».
+        const plans = planByMonth.get(key) || {};
+        // Налоги — факт месяца (план обычно не задают).
+        const taxesFact = b.otherExpenses; // прочие расходы включают налоги; план opex обычно учитывает их отдельно
+        // Маркетинг план: kpi fm_marketing_plan, иначе бюджет лидгена месяца, иначе факт.
+        const fotPlan = plans.fm_fot_plan ?? fotFact;
+        const marketingPlan = plans.fm_marketing_plan ?? (marketingBudget || marketingFact);
+        const opexPlan = plans.fm_opex_plan ?? b.otherExpenses;
+        // Налоги факт прибавляем поверх opex плана (как в P&L: net = revenue - fot - marketing - opex - taxes).
+        const taxesByMonth = 0; // налоги уже учтены в b.otherExpenses, поэтому либо план opex включает их, либо берём факт
+        // Если план opex задан вручную — берём его «как есть» (юзер сам решает, входят ли туда налоги).
+        // Если плана opex нет — используем факт b.otherExpenses (где налоги уже сидят).
+        expenses = fotPlan + marketingPlan + opexPlan;
+
+        // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
+        // фолбэк — факт выручки месяца.
+        if (company === "Спасение") {
+          const dash = dashByMonth.get(key) || {};
+          const lossPct = Math.max(0, Math.min(100, plans.fm_debitorka_loss_pct || 0));
+          const debitorkaNet = (dash.debitorka_plan || 0) * (1 - lossPct / 100);
+          const dashRevenue = debitorkaNet + (dash.new_sales || 0);
+          revenue = dashRevenue > 0 ? dashRevenue : (plans.fm_revenue_plan || b.revenue);
+        } else {
+          revenue = plans.fm_revenue_plan || b.revenue;
+        }
+
+        if (type === "current") {
+          daysInMonth = getDaysInMonth(d);
+          daysPassed = Math.max(1, getDate(today));
+        }
       }
 
       rows.push({
