@@ -13,6 +13,8 @@ export interface PlanValues {
   marketing: number;
   opex: number;
   net: number;
+  revenueDebitorPlan?: number;
+  revenueSalesPlan?: number;
 }
 
 interface Props {
