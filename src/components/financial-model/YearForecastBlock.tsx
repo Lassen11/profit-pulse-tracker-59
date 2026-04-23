@@ -267,16 +267,15 @@ export function YearForecastBlock({
         // План P&L: для текущего и будущих месяцев берём расходы целиком из плана,
         // чтобы прогноз совпадал с блоком P&L «План / Факт».
         const plans = planByMonth.get(key) || {};
-        // Налоги — факт месяца (план обычно не задают).
-        const taxesFact = b.otherExpenses; // прочие расходы включают налоги; план opex обычно учитывает их отдельно
-        // Маркетинг план: kpi fm_marketing_plan, иначе бюджет лидгена месяца, иначе факт.
+        // Маркетинг план: kpi fm_marketing_plan, иначе бюджет лидгена ПРЕДЫДУЩЕГО месяца
+        // (так считается план в FinancialModel.tsx), иначе бюджет текущего месяца, иначе факт.
+        const prevMonthDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+        const prevMonthKey = format(prevMonthDate, "yyyy-MM");
+        const prevMarketingBudget = marketingByMonth.get(prevMonthKey) || 0;
         const fotPlan = plans.fm_fot_plan ?? fotFact;
-        const marketingPlan = plans.fm_marketing_plan ?? (marketingBudget || marketingFact);
+        const marketingPlan =
+          plans.fm_marketing_plan ?? (prevMarketingBudget || marketingBudget || marketingFact);
         const opexPlan = plans.fm_opex_plan ?? b.otherExpenses;
-        // Налоги факт прибавляем поверх opex плана (как в P&L: net = revenue - fot - marketing - opex - taxes).
-        const taxesByMonth = 0; // налоги уже учтены в b.otherExpenses, поэтому либо план opex включает их, либо берём факт
-        // Если план opex задан вручную — берём его «как есть» (юзер сам решает, входят ли туда налоги).
-        // Если плана opex нет — используем факт b.otherExpenses (где налоги уже сидят).
         expenses = fotPlan + marketingPlan + opexPlan;
 
         // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
