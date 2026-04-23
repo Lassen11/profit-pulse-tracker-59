@@ -143,6 +143,8 @@ export default function FinancialModel() {
       setPriorTx((priorTxRes.data as Transaction[]) || []);
       setTrendTx((trendTxRes.data as Transaction[]) || []);
       setYearTx((yearTxRes.data as Transaction[]) || []);
+      setYearEmployees(((yearEmpRes.data as any[]) || []).map((r) => ({ month: r.month, cost: Number(r.cost || 0) })));
+      setYearLeadGen(((yearLeadRes.data as any[]) || []).map((r) => ({ date: r.date, total_cost: Number(r.total_cost || 0) })));
       setEmployees(empRes.data || []);
       setLeadGen(leadRes.data || []);
       const adjSum = (adjRes.data || []).reduce((s, a) => s + Number(a.adjusted_balance || 0), 0);
