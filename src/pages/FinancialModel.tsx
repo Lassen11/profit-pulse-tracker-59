@@ -93,6 +93,7 @@ export default function FinancialModel() {
         adjRes,
         prevEmpRes,
         prevTxRes,
+        prevLeadRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -103,6 +104,7 @@ export default function FinancialModel() {
         supabase.from("company_balance_adjustments").select("adjusted_balance").eq("company", company),
         supabase.from("department_employees").select("cost").eq("company", company).eq("month", prevMonthStartStr),
         supabase.from("transactions").select("type,category,amount").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
+        supabase.from("lead_generation").select("total_cost").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
@@ -115,12 +117,38 @@ export default function FinancialModel() {
 
       // ФОТ прошлого месяца: приоритет department_employees.cost, фолбэк — транзакции зарплат
       const SALARY_CATS = ["Зарплата", "Аванс", "Премия"];
+      const MARKETING_CATS = ["Маркетинг", "Реклама", "Лидогенерация", "Авитолог", "Реклама Авито"];
+      const TRANSFER_CAT = "Перевод между счетами";
+      const WITHDRAWAL_CAT = "Вывод средств";
+      const TAX_CATS = ["Налог УСН", "Налог НДФЛ и Взносы"];
+      const prevTxData = ((prevTxRes.data as any[]) || []);
       const prevFotEmp = (prevEmpRes.data || []).reduce((s, e) => s + Number(e.cost || 0), 0);
-      const prevFotTx = ((prevTxRes.data as any[]) || [])
+      const prevFotTx = prevTxData
         .filter((t) => t.type === "expense" && SALARY_CATS.includes(t.category))
         .reduce((s, t) => s + Number(t.amount || 0), 0);
       const prevFot = prevFotEmp > 0 ? prevFotEmp : prevFotTx;
       setPrevMonthFot(prevFot);
+
+      // Маркетинг прошлого месяца: lead_generation.total_cost + транзакции маркетинговых категорий
+      const prevMarketingLead = (prevLeadRes.data || []).reduce((s, l) => s + Number(l.total_cost || 0), 0);
+      const prevMarketingTx = prevTxData
+        .filter((t) => t.type === "expense" && MARKETING_CATS.includes(t.category))
+        .reduce((s, t) => s + Number(t.amount || 0), 0);
+      setPrevMonthMarketing(prevMarketingLead + prevMarketingTx);
+
+      // OpEx прошлого месяца: все расходы кроме переводов, выводов, налогов, ЗП и маркетинга
+      const prevOpex = prevTxData
+        .filter(
+          (t) =>
+            t.type === "expense" &&
+            t.category !== TRANSFER_CAT &&
+            t.category !== WITHDRAWAL_CAT &&
+            !TAX_CATS.includes(t.category) &&
+            !SALARY_CATS.includes(t.category) &&
+            !MARKETING_CATS.includes(t.category)
+        )
+        .reduce((s, t) => s + Number(t.amount || 0), 0);
+      setPrevMonthOpex(prevOpex);
 
       const map: Record<string, { id: string; value: number }> = {};
       (kpiRes.data || []).forEach((r: any) => {
