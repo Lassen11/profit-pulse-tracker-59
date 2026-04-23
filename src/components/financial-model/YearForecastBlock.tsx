@@ -61,6 +61,10 @@ interface MonthRow {
   revenue: number;
   expenses: number;
   net: number;
+  /** Значения «база» — без применения growthPct (для второй линии на графике) */
+  revenueBase?: number;
+  expensesBase?: number;
+  netBase?: number;
   type: "fact" | "current" | "forecast";
   daysPassed?: number;
   daysInMonth?: number;
@@ -69,16 +73,17 @@ interface MonthRow {
 interface Scenario {
   id: string;
   name: string;
-  revenuePct: number; // -100..+∞
+  revenuePct: number; // -100..+∞ — единоразовый сдвиг
   expensesPct: number;
+  growthPct: number; // % в месяц, компаундинг поверх базы
   color: string;
   visible: boolean;
 }
 
 const DEFAULT_SCENARIOS: Scenario[] = [
-  { id: "best", name: "Лучший", revenuePct: 20, expensesPct: -10, color: "hsl(142, 71%, 45%)", visible: true },
-  { id: "base", name: "Базовый", revenuePct: 0, expensesPct: 0, color: "hsl(var(--primary))", visible: true },
-  { id: "worst", name: "Худший", revenuePct: -20, expensesPct: 15, color: "hsl(0, 72%, 51%)", visible: true },
+  { id: "best", name: "Лучший", revenuePct: 10, expensesPct: -5, growthPct: 5, color: "hsl(142, 71%, 45%)", visible: true },
+  { id: "base", name: "Базовый", revenuePct: 0, expensesPct: 0, growthPct: 0, color: "hsl(var(--primary))", visible: true },
+  { id: "worst", name: "Худший", revenuePct: -10, expensesPct: 10, growthPct: -3, color: "hsl(0, 72%, 51%)", visible: true },
 ];
 
 export function YearForecastBlock({ transactions, currentMonth, company }: Props) {
@@ -262,14 +267,31 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
     const firstForecastIdx = baseRows.find((r) => r.type === "forecast")?.date.getMonth() ?? 12;
     const growthFactor = 1 + growthPct / 100;
 
-    return baseRows.map((r) => {
-      if (r.type !== "forecast") return r;
+    return baseRows.map((r, i, arr) => {
+      if (r.type !== "forecast") {
+        // Чтобы пунктирная линия «база» плавно стартовала от последнего реального
+        // месяца, дублируем net в netBase для самого последнего fact/current перед прогнозом.
+        const isAnchor = arr[i + 1]?.type === "forecast";
+        return isAnchor
+          ? { ...r, revenueBase: r.revenue, expensesBase: r.expenses, netBase: r.net }
+          : r;
+      }
       const monthIdx = r.date.getMonth();
       const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
       const compound = Math.pow(growthFactor, k);
-      const revenue = predictRevenue(monthIdx) * compound;
-      const expenses = predictExpenses(monthIdx) * compound;
-      return { ...r, revenue, expenses, net: revenue - expenses };
+      const revenueBase = predictRevenue(monthIdx);
+      const expensesBase = predictExpenses(monthIdx);
+      const revenue = revenueBase * compound;
+      const expenses = expensesBase * compound;
+      return {
+        ...r,
+        revenue,
+        expenses,
+        net: revenue - expenses,
+        revenueBase,
+        expensesBase,
+        netBase: revenueBase - expensesBase,
+      };
     });
   }, [baseRows, mode, growthPct]);
 
@@ -313,41 +335,51 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
   // Применяем к каждому месяцу-прогнозу коэффициенты сценария.
   // Факт остаётся фактом, текущий месяц (run-rate) НЕ модифицируется,
   // только будущие прогнозные месяцы реагируют на сценарий.
+  // Для прогнозных месяцев берём «базу» (без глобального growthPct) и применяем
+  // сценарный сдвиг (revenuePct/expensesPct) + сценарный рост (growthPct в месяц, компаундинг).
+  const firstForecastMonthIdx = useMemo(
+    () => baseRows.find((r) => r.type === "forecast")?.date.getMonth() ?? 12,
+    [baseRows]
+  );
+
+  const applyScenarioToRow = (r: MonthRow, s: Scenario) => {
+    if (r.type === "fact" || r.type === "current") {
+      return { revenue: r.revenue, expenses: r.expenses, net: r.net };
+    }
+    const monthIdx = r.date.getMonth();
+    const k = monthIdx - firstForecastMonthIdx + 1;
+    const compound = Math.pow(1 + s.growthPct / 100, k);
+    const baseRev = r.revenueBase ?? r.revenue;
+    const baseExp = r.expensesBase ?? r.expenses;
+    const rev = baseRev * (1 + s.revenuePct / 100) * compound;
+    const exp = baseExp * (1 + s.expensesPct / 100) * compound;
+    return { revenue: rev, expenses: exp, net: rev - exp };
+  };
+
   const scenarioChartData = useMemo(() => {
     return data.map((r) => {
       const point: Record<string, number | string> = { label: r.label };
       for (const s of scenarios) {
-        if (r.type === "fact" || r.type === "current") {
-          point[s.id] = r.net;
-        } else {
-          const rev = r.revenue * (1 + s.revenuePct / 100);
-          const exp = r.expenses * (1 + s.expensesPct / 100);
-          point[s.id] = rev - exp;
-        }
+        point[s.id] = applyScenarioToRow(r, s).net;
       }
       return point;
     });
-  }, [data, scenarios]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, scenarios, firstForecastMonthIdx]);
 
   const scenarioTotals = useMemo(() => {
     return scenarios.map((s) => {
       let total = 0;
       let remaining = 0;
       for (const r of data) {
-        if (r.type === "fact" || r.type === "current") {
-          total += r.net;
-          if (r.type === "current") remaining += r.net;
-        } else {
-          const rev = r.revenue * (1 + s.revenuePct / 100);
-          const exp = r.expenses * (1 + s.expensesPct / 100);
-          const net = rev - exp;
-          total += net;
-          remaining += net;
-        }
+        const { net } = applyScenarioToRow(r, s);
+        total += net;
+        if (r.type !== "fact") remaining += net;
       }
       return { ...s, total, remaining };
     });
-  }, [scenarios, data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarios, data, firstForecastMonthIdx]);
 
   const year = currentMonth.getFullYear();
   const currentRow = baseRows.find((r) => r.type === "current");
@@ -359,6 +391,7 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       name: "Новый сценарий",
       revenuePct: 0,
       expensesPct: 0,
+      growthPct: 0,
       color: "hsl(220, 80%, 55%)",
       visible: true,
     });
@@ -522,8 +555,18 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                   />
                   <Line
                     type="monotone"
+                    dataKey="netBase"
+                    name="Прибыль (база)"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={1.5}
+                    strokeDasharray="5 4"
+                    dot={false}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
                     dataKey="net"
-                    name="Чистая прибыль"
+                    name={growthPct !== 0 ? `Прибыль (с ростом ${growthPct >= 0 ? "+" : ""}${growthPct}%/мес)` : "Чистая прибыль"}
                     stroke="hsl(var(--foreground))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -661,7 +704,7 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                       </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2 text-xs">
+                  <div className="flex flex-wrap gap-2 text-xs">
                     <Badge variant="outline">
                       Выручка {s.revenuePct >= 0 ? "+" : ""}
                       {s.revenuePct}%
@@ -669,6 +712,10 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                     <Badge variant="outline">
                       Расходы {s.expensesPct >= 0 ? "+" : ""}
                       {s.expensesPct}%
+                    </Badge>
+                    <Badge variant="outline">
+                      Рост {s.growthPct >= 0 ? "+" : ""}
+                      {s.growthPct}%/мес
                     </Badge>
                   </div>
                   <div className="pt-1 border-t">
@@ -754,9 +801,9 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
-                  <Label>Изменение выручки, %</Label>
+                  <Label>Выручка, %</Label>
                   <Input
                     type="number"
                     value={editing.revenuePct}
@@ -764,14 +811,27 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Изменение расходов, %</Label>
+                  <Label>Расходы, %</Label>
                   <Input
                     type="number"
                     value={editing.expensesPct}
                     onChange={(e) => setEditing({ ...editing, expensesPct: Number(e.target.value) || 0 })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Рост, %/мес</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    value={editing.growthPct}
+                    onChange={(e) => setEditing({ ...editing, growthPct: Number(e.target.value) || 0 })}
+                  />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Сдвиг применяется один раз ко всем прогнозным месяцам, рост — компаундингом
+                (1+rate)^k от первого прогнозного месяца.
+              </p>
               <div className="space-y-2">
                 <Label>Цвет линии</Label>
                 <div className="flex items-center gap-2">
