@@ -310,7 +310,7 @@ export function YearForecastBlock({
       });
     }
     return rows;
-  }, [transactions, yearEmployees, yearLeadGen, currentMonth]);
+  }, [transactions, yearEmployees, yearLeadGen, yearPlans, yearDashKpi, currentMonth, company]);
 
   // ===== Базовый прогноз (без сценариев) =====
   // Базовое значение для каждого прогнозного месяца считается по выбранному режиму,
