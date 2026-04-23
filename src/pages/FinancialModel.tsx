@@ -465,6 +465,14 @@ export default function FinancialModel() {
             </div>
 
             <PlanFactScenarioChart pnl={pnl} scenario={scenarioPnl ?? pnl} plan={plan} />
+
+            <YearForecastBlock
+              transactions={yearTx}
+              currentMonth={month}
+              currentMonthRunRateRevenue={runRate.revenue}
+              currentMonthRunRateExpenses={runRate.expenses}
+              currentMonthRunRateNet={runRate.net}
+            />
           </>
         )}
       </div>
