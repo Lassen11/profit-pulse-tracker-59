@@ -135,7 +135,25 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
               return (
                 <Fragment key={row.key}>
                 <TableRow className={cn(row.emphasis === "bold" && "font-semibold bg-muted/40")}>
-                  <TableCell>{row.label}</TableCell>
+                  <TableCell>
+                    {row.key === "opex" && opexBreakdown.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setOpexOpen((v) => !v)}
+                        className="inline-flex items-center gap-1 hover:text-primary"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "h-3.5 w-3.5 transition-transform",
+                            opexOpen && "rotate-90"
+                          )}
+                        />
+                        {row.label}
+                      </button>
+                    ) : (
+                      row.label
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     {row.planKey ? (
                       row.planReadOnly || (row.planKey === "revenue" && revenuePlanReadOnly) ? (
