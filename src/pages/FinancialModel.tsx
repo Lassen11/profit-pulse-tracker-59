@@ -218,15 +218,25 @@ export default function FinancialModel() {
   const pnl: PnL = useMemo(() => buildPnl(monthTx, employees, leadGen), [monthTx, employees, leadGen]);
 
   const plan: PlanValues = useMemo(() => {
-    const revenue = planRows[PLAN_KEYS.revenue]?.value || 0;
+    const dashRevenue = company === "Спасение" ? dashDebitorkaPlan + dashNewSalesPlan : 0;
+    // План выручки: ручное значение (fm_revenue_plan) > сумма дашбордных планов (для Спасения)
+    const revenue = planRows[PLAN_KEYS.revenue]?.value || dashRevenue || 0;
     // План ФОТ/Маркетинга/OpEx: если не задан вручную — берём факт предыдущего месяца
     const fot = planRows[PLAN_KEYS.fot]?.value || prevMonthFot || 0;
     const marketing = planRows[PLAN_KEYS.marketing]?.value || prevMonthMarketing || 0;
     const opex = planRows[PLAN_KEYS.opex]?.value || prevMonthOpex || 0;
     // Чистая прибыль = выручка - ФОТ - маркетинг - opex - налоги (факт)
     const net = revenue - fot - marketing - opex - (pnl.taxes || 0);
-    return { revenue, fot, marketing, opex, net };
-  }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes]);
+    return {
+      revenue,
+      fot,
+      marketing,
+      opex,
+      net,
+      revenueDebitorPlan: company === "Спасение" ? dashDebitorkaPlan : undefined,
+      revenueSalesPlan: company === "Спасение" ? dashNewSalesPlan : undefined,
+    };
+  }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes, company, dashDebitorkaPlan, dashNewSalesPlan]);
 
   const unit: UnitEconomics = useMemo(
     () => (company === "Спасение" ? buildSpasenieUnit(spasenieClients, leadGen) : buildBusinessUnit(bizSales, leadGen)),
