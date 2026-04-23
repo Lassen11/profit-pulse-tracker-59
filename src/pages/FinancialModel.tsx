@@ -63,6 +63,8 @@ export default function FinancialModel() {
   const [bizSales, setBizSales] = useState<BizSale[]>([]);
   const [planRows, setPlanRows] = useState<Record<string, { id: string; value: number }>>({});
   const [prevMonthFot, setPrevMonthFot] = useState<number>(0);
+  const [prevMonthMarketing, setPrevMonthMarketing] = useState<number>(0);
+  const [prevMonthOpex, setPrevMonthOpex] = useState<number>(0);
   const [adjustments, setAdjustments] = useState<number>(0);
   const [scenarioPnl, setScenarioPnl] = useState<PnL | null>(null);
   const [loading, setLoading] = useState(true);
