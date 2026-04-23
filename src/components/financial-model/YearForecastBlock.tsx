@@ -548,8 +548,18 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
                   />
                   <Line
                     type="monotone"
+                    dataKey="netBase"
+                    name="Прибыль (база)"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={1.5}
+                    strokeDasharray="5 4"
+                    dot={false}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
                     dataKey="net"
-                    name="Чистая прибыль"
+                    name={growthPct !== 0 ? `Прибыль (с ростом ${growthPct >= 0 ? "+" : ""}${growthPct}%/мес)` : "Чистая прибыль"}
                     stroke="hsl(var(--foreground))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
