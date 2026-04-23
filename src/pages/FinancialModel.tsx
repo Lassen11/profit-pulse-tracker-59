@@ -34,7 +34,7 @@ import { PlanFactScenarioChart } from "@/components/financial-model/PlanFactScen
 
 const COMPANIES = ["Спасение", "Дело Бизнеса"] as const;
 
-const PLAN_KEYS: Record<keyof PlanValues, string> = {
+const PLAN_KEYS: Record<"revenue" | "fot" | "marketing" | "opex" | "net", string> = {
   revenue: "fm_revenue_plan",
   fot: "fm_fot_plan",
   marketing: "fm_marketing_plan",
@@ -66,6 +66,8 @@ export default function FinancialModel() {
   const [prevMonthMarketing, setPrevMonthMarketing] = useState<number>(0);
   const [prevMonthOpex, setPrevMonthOpex] = useState<number>(0);
   const [adjustments, setAdjustments] = useState<number>(0);
+  const [dashDebitorkaPlan, setDashDebitorkaPlan] = useState<number>(0);
+  const [dashNewSalesPlan, setDashNewSalesPlan] = useState<number>(0);
   const [scenarioPnl, setScenarioPnl] = useState<PnL | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -94,6 +96,7 @@ export default function FinancialModel() {
         prevEmpRes,
         prevTxRes,
         prevLeadRes,
+        dashKpiRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -105,6 +108,10 @@ export default function FinancialModel() {
         supabase.from("department_employees").select("cost").eq("company", company).eq("month", prevMonthStartStr),
         supabase.from("transactions").select("type,category,amount").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
         supabase.from("lead_generation").select("total_cost").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
+        // Спасение: тянем планы дебиторки/продаж с дашборда
+        company === "Спасение"
+          ? supabase.from("kpi_targets").select("kpi_name,target_value").eq("company", "Спасение").in("kpi_name", ["debitorka_plan", "new_sales"]).eq("month", monthStartStr)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
@@ -156,6 +163,13 @@ export default function FinancialModel() {
       });
       setPlanRows(map);
 
+      // Дашбордные планы по Спасению (Дебиторка + Новые продажи)
+      const dashRows = (dashKpiRes.data as any[]) || [];
+      const debPlan = dashRows.find((r) => r.kpi_name === "debitorka_plan");
+      const salesPlan = dashRows.find((r) => r.kpi_name === "new_sales");
+      setDashDebitorkaPlan(debPlan ? Number(debPlan.target_value) : 0);
+      setDashNewSalesPlan(salesPlan ? Number(salesPlan.target_value) : 0);
+
       // Юнит-экономика — клиенты/продажи за месяц
       if (company === "Спасение") {
         const { data } = await supabase
@@ -204,15 +218,25 @@ export default function FinancialModel() {
   const pnl: PnL = useMemo(() => buildPnl(monthTx, employees, leadGen), [monthTx, employees, leadGen]);
 
   const plan: PlanValues = useMemo(() => {
-    const revenue = planRows[PLAN_KEYS.revenue]?.value || 0;
+    const dashRevenue = company === "Спасение" ? dashDebitorkaPlan + dashNewSalesPlan : 0;
+    // План выручки: ручное значение (fm_revenue_plan) > сумма дашбордных планов (для Спасения)
+    const revenue = planRows[PLAN_KEYS.revenue]?.value || dashRevenue || 0;
     // План ФОТ/Маркетинга/OpEx: если не задан вручную — берём факт предыдущего месяца
     const fot = planRows[PLAN_KEYS.fot]?.value || prevMonthFot || 0;
     const marketing = planRows[PLAN_KEYS.marketing]?.value || prevMonthMarketing || 0;
     const opex = planRows[PLAN_KEYS.opex]?.value || prevMonthOpex || 0;
     // Чистая прибыль = выручка - ФОТ - маркетинг - opex - налоги (факт)
     const net = revenue - fot - marketing - opex - (pnl.taxes || 0);
-    return { revenue, fot, marketing, opex, net };
-  }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes]);
+    return {
+      revenue,
+      fot,
+      marketing,
+      opex,
+      net,
+      revenueDebitorPlan: company === "Спасение" ? dashDebitorkaPlan : undefined,
+      revenueSalesPlan: company === "Спасение" ? dashNewSalesPlan : undefined,
+    };
+  }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes, company, dashDebitorkaPlan, dashNewSalesPlan]);
 
   const unit: UnitEconomics = useMemo(
     () => (company === "Спасение" ? buildSpasenieUnit(spasenieClients, leadGen) : buildBusinessUnit(bizSales, leadGen)),
