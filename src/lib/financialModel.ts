@@ -229,7 +229,10 @@ export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
   const ebitda = revenue - fot - marketing - opex;
   const net = ebitda - taxes;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
-  return { revenue, fot, marketing, opex, taxes, ebitda, net, margin };
+  const ratio = pnl.revenue > 0 ? revenue / pnl.revenue : 0;
+  const revenueDebitor = pnl.revenueDebitor * ratio;
+  const revenueSales = pnl.revenueSales * ratio;
+  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export const fmtMoney = (v: number) =>
