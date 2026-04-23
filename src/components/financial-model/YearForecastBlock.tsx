@@ -79,6 +79,10 @@ interface MonthRow {
   type: "fact" | "current" | "forecast";
   daysPassed?: number;
   daysInMonth?: number;
+  /** true, если расходы для этого месяца явно заданы планом fm_*_plan (а не фолбэком). */
+  hasExplicitExpensePlan?: boolean;
+  /** true, если выручка для этого месяца явно задана планом. */
+  hasExplicitRevenuePlan?: boolean;
 }
 
 interface Scenario {
