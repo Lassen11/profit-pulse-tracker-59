@@ -85,7 +85,11 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan }: Props) {
                   <TableCell>{row.label}</TableCell>
                   <TableCell className="text-right">
                     {row.planKey ? (
-                      isEditing ? (
+                      row.planReadOnly ? (
+                        <span title="Рассчитывается автоматически: Выручка − ФОТ − Маркетинг − OpEx − Налоги">
+                          {fmtMoney(planVal)}
+                        </span>
+                      ) : isEditing ? (
                         <div className="flex items-center justify-end gap-1">
                           <Input
                             type="number"
