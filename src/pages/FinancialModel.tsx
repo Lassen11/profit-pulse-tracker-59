@@ -76,6 +76,10 @@ export default function FinancialModel() {
     setLoading(true);
     try {
       const sixMonthsAgoStr = format(startOfMonth(subMonths(month, 5)), "yyyy-MM-dd");
+      const prevMonthStart = startOfMonth(subMonths(month, 1));
+      const prevMonthEnd = endOfMonth(subMonths(month, 1));
+      const prevMonthStartStr = format(prevMonthStart, "yyyy-MM-dd");
+      const prevMonthEndStr = format(prevMonthEnd, "yyyy-MM-dd");
 
       const [
         monthTxRes,
@@ -85,6 +89,8 @@ export default function FinancialModel() {
         leadRes,
         kpiRes,
         adjRes,
+        prevEmpRes,
+        prevTxRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
@@ -93,6 +99,8 @@ export default function FinancialModel() {
         supabase.from("lead_generation").select("total_cost,total_leads,qualified_leads,contracts,payments").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("kpi_targets").select("id,kpi_name,target_value").eq("company", company).eq("month", monthStartStr),
         supabase.from("company_balance_adjustments").select("adjusted_balance").eq("company", company),
+        supabase.from("department_employees").select("cost").eq("company", company).eq("month", prevMonthStartStr),
+        supabase.from("transactions").select("type,category,amount").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
       ]);
 
       setMonthTx((monthTxRes.data as Transaction[]) || []);
@@ -102,6 +110,15 @@ export default function FinancialModel() {
       setLeadGen(leadRes.data || []);
       const adjSum = (adjRes.data || []).reduce((s, a) => s + Number(a.adjusted_balance || 0), 0);
       setAdjustments(adjSum);
+
+      // ФОТ прошлого месяца: приоритет department_employees.cost, фолбэк — транзакции зарплат
+      const SALARY_CATS = ["Зарплата", "Аванс", "Премия"];
+      const prevFotEmp = (prevEmpRes.data || []).reduce((s, e) => s + Number(e.cost || 0), 0);
+      const prevFotTx = ((prevTxRes.data as any[]) || [])
+        .filter((t) => t.type === "expense" && SALARY_CATS.includes(t.category))
+        .reduce((s, t) => s + Number(t.amount || 0), 0);
+      const prevFot = prevFotEmp > 0 ? prevFotEmp : prevFotTx;
+      setPrevMonthFot(prevFot);
 
       const map: Record<string, { id: string; value: number }> = {};
       (kpiRes.data || []).forEach((r: any) => {
