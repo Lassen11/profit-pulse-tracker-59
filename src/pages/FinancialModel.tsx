@@ -42,6 +42,9 @@ const PLAN_KEYS: Record<"revenue" | "fot" | "marketing" | "opex" | "net", string
   net: "fm_net_plan",
 };
 
+const DEBITORKA_LOSS_KEY = "fm_debitorka_loss_pct";
+
+
 export default function FinancialModel() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
