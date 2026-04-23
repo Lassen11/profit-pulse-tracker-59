@@ -1,11 +1,13 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, ChevronRight } from "lucide-react";
 import { fmtMoney, fmtPct, PnL } from "@/lib/financialModel";
 import { cn } from "@/lib/utils";
+import { Transaction } from "@/components/TransactionTable";
+import { format } from "date-fns";
 
 export interface PlanValues {
   revenue: number;
@@ -25,7 +27,22 @@ interface Props {
   showRevenueBreakdown?: boolean;
   /** Выручка-план рассчитывается автоматически и недоступна для редактирования */
   revenuePlanReadOnly?: boolean;
+  /** Транзакции выбранного месяца — нужны для детализации OpEx по категориям */
+  monthTransactions?: Transaction[];
 }
+
+// Должно совпадать с исключениями в buildPnl (src/lib/financialModel.ts)
+const OPEX_EXCLUDED = new Set([
+  "Перевод между счетами",
+  "Вывод средств",
+  "Налог УСН",
+  "Налог НДФЛ и Взносы",
+  "Зарплата",
+  "Аванс",
+  "Премия",
+  "Авитолог",
+  "Реклама Авито",
+]);
 
 const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
   { key: "revenue", label: "Выручка", planKey: "revenue", emphasis: "good" },
@@ -38,9 +55,11 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false, monthTransactions = [] }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
+  const [opexOpen, setOpexOpen] = useState(false);
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
 
   const factOf = (k: typeof ROWS[number]["key"]) => {
     if (k === "margin") return pnl.margin;
@@ -58,6 +77,34 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
     const val = parseFloat(draft) || 0;
     await onSavePlan(editing, val);
     setEditing(null);
+  };
+
+  const opexBreakdown = useMemo(() => {
+    const map = new Map<string, { total: number; items: Transaction[] }>();
+    for (const t of monthTransactions) {
+      if (t.type !== "expense") continue;
+      if (OPEX_EXCLUDED.has(t.category)) continue;
+      const entry = map.get(t.category) ?? { total: 0, items: [] };
+      entry.total += Number(t.amount || 0);
+      entry.items.push(t);
+      map.set(t.category, entry);
+    }
+    return Array.from(map.entries())
+      .map(([category, { total, items }]) => ({
+        category,
+        total,
+        items: [...items].sort((a, b) => (a.date < b.date ? 1 : -1)),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [monthTransactions]);
+
+  const toggleCategory = (cat: string) => {
+    setOpenCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
   };
 
   return (
@@ -88,7 +135,25 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
               return (
                 <Fragment key={row.key}>
                 <TableRow className={cn(row.emphasis === "bold" && "font-semibold bg-muted/40")}>
-                  <TableCell>{row.label}</TableCell>
+                  <TableCell>
+                    {row.key === "opex" && opexBreakdown.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setOpexOpen((v) => !v)}
+                        className="inline-flex items-center gap-1 hover:text-primary"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "h-3.5 w-3.5 transition-transform",
+                            opexOpen && "rotate-90"
+                          )}
+                        />
+                        {row.label}
+                      </button>
+                    ) : (
+                      row.label
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     {row.planKey ? (
                       row.planReadOnly || (row.planKey === "revenue" && revenuePlanReadOnly) ? (
@@ -194,6 +259,60 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                       <TableCell className="text-right text-sm">—</TableCell>
                       <TableCell className="text-right text-sm">—</TableCell>
                     </TableRow>
+                  </>
+                )}
+                {row.key === "opex" && opexOpen && opexBreakdown.length > 0 && (
+                  <>
+                    {opexBreakdown.map((b) => {
+                      const isOpen = openCategories.has(b.category);
+                      return (
+                        <Fragment key={`opex-${b.category}`}>
+                          <TableRow className="bg-muted/20">
+                            <TableCell className="pl-8 text-sm">
+                              <button
+                                type="button"
+                                onClick={() => toggleCategory(b.category)}
+                                className="inline-flex items-center gap-1 hover:text-primary"
+                              >
+                                <ChevronRight
+                                  className={cn(
+                                    "h-3.5 w-3.5 transition-transform",
+                                    isOpen && "rotate-90"
+                                  )}
+                                />
+                                ↳ {b.category}
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  ({b.items.length})
+                                </span>
+                              </button>
+                            </TableCell>
+                            <TableCell className="text-right text-sm">—</TableCell>
+                            <TableCell className="text-right text-sm">{fmtMoney(b.total)}</TableCell>
+                            <TableCell className="text-right text-sm">—</TableCell>
+                            <TableCell className="text-right text-sm">—</TableCell>
+                          </TableRow>
+                          {isOpen &&
+                            b.items.map((tx) => (
+                              <TableRow key={tx.id} className="text-muted-foreground">
+                                <TableCell className="pl-16 text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className="tabular-nums">
+                                      {format(new Date(tx.date), "dd.MM.yyyy")}
+                                    </span>
+                                    <span className="truncate max-w-[420px]">
+                                      {tx.description || tx.subcategory || "—"}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right text-xs">—</TableCell>
+                                <TableCell className="text-right text-xs">{fmtMoney(Number(tx.amount || 0))}</TableCell>
+                                <TableCell className="text-right text-xs">—</TableCell>
+                                <TableCell className="text-right text-xs">—</TableCell>
+                              </TableRow>
+                            ))}
+                        </Fragment>
+                      );
+                    })}
                   </>
                 )}
                 </Fragment>
