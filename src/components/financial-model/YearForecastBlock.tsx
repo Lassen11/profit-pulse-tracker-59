@@ -699,7 +699,8 @@ export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGe
             <p className="text-xs text-muted-foreground">
               База прогноза: <b>Тренд</b> — линейная регрессия по последним месяцам, <b>Средн. 3/6 мес.</b> — среднее за период,
               <b> Run-rate</b> — экстраполяция текущего месяца. Поверх базы применяется ручной рост {growthPct}%/мес
-              (компаудинг). Переводы и выводы исключены.
+              (компаудинг). Расходы по правилам P&L: ФОТ — начисленный из <b>department_employees.cost</b>,
+              маркетинг — бюджет <b>lead_generation.total_cost</b>, остальное — из транзакций. Переводы и выводы исключены.
             </p>
           </>
         ) : (
