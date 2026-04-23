@@ -282,7 +282,19 @@ export function YearForecastBlock({
         const marketingPlan = plans.fm_marketing_plan ?? prevMarketingBudget;
         const opexPlan = plans.fm_opex_plan ?? prevOpex;
         expenses = fotPlan + marketingPlan + opexPlan;
-...
+
+        // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
+        // фолбэк — факт выручки месяца.
+        if (company === "Спасение") {
+          const dash = dashByMonth.get(key) || {};
+          const lossPct = Math.max(0, Math.min(100, plans.fm_debitorka_loss_pct || 0));
+          const debitorkaNet = (dash.debitorka_plan || 0) * (1 - lossPct / 100);
+          const dashRevenue = debitorkaNet + (dash.new_sales || 0);
+          revenue = dashRevenue > 0 ? dashRevenue : (plans.fm_revenue_plan || b.revenue);
+        } else {
+          revenue = plans.fm_revenue_plan || b.revenue;
+        }
+
         if (type === "current") {
           daysInMonth = getDaysInMonth(d);
           daysPassed = Math.max(1, getDate(today));
