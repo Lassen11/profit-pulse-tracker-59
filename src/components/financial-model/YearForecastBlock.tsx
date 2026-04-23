@@ -61,6 +61,10 @@ interface MonthRow {
   revenue: number;
   expenses: number;
   net: number;
+  /** Значения «база» — без применения growthPct (для второй линии на графике) */
+  revenueBase?: number;
+  expensesBase?: number;
+  netBase?: number;
   type: "fact" | "current" | "forecast";
   daysPassed?: number;
   daysInMonth?: number;
@@ -69,16 +73,17 @@ interface MonthRow {
 interface Scenario {
   id: string;
   name: string;
-  revenuePct: number; // -100..+∞
+  revenuePct: number; // -100..+∞ — единоразовый сдвиг
   expensesPct: number;
+  growthPct: number; // % в месяц, компаундинг поверх базы
   color: string;
   visible: boolean;
 }
 
 const DEFAULT_SCENARIOS: Scenario[] = [
-  { id: "best", name: "Лучший", revenuePct: 20, expensesPct: -10, color: "hsl(142, 71%, 45%)", visible: true },
-  { id: "base", name: "Базовый", revenuePct: 0, expensesPct: 0, color: "hsl(var(--primary))", visible: true },
-  { id: "worst", name: "Худший", revenuePct: -20, expensesPct: 15, color: "hsl(0, 72%, 51%)", visible: true },
+  { id: "best", name: "Лучший", revenuePct: 10, expensesPct: -5, growthPct: 5, color: "hsl(142, 71%, 45%)", visible: true },
+  { id: "base", name: "Базовый", revenuePct: 0, expensesPct: 0, growthPct: 0, color: "hsl(var(--primary))", visible: true },
+  { id: "worst", name: "Худший", revenuePct: -10, expensesPct: 10, growthPct: -3, color: "hsl(0, 72%, 51%)", visible: true },
 ];
 
 export function YearForecastBlock({ transactions, currentMonth, company }: Props) {
