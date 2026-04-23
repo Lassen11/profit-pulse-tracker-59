@@ -308,6 +308,11 @@ export default function FinancialModel() {
     // Для Спасения выручка = Дебиторка + Новые продажи (автоматически)
     if (key === "revenue" && company === "Спасение") return;
     const kpiName = PLAN_KEYS[key];
+    await upsertKpi(kpiName, value);
+  };
+
+  const upsertKpi = async (kpiName: string, value: number) => {
+    if (!user) return;
     const existing = planRows[kpiName];
     try {
       if (existing) {
@@ -337,12 +342,18 @@ export default function FinancialModel() {
         ...cur,
         [kpiName]: { id: cur[kpiName]?.id ?? "", value },
       }));
-      toast({ title: "План обновлён" });
+      toast({ title: "Сохранено" });
     } catch (e: any) {
       console.error(e);
       toast({ title: "Ошибка сохранения", description: e.message, variant: "destructive" });
     }
   };
+
+  const handleSaveDebitorkaLossPct = async (pct: number) => {
+    const clamped = Math.max(0, Math.min(100, pct));
+    await upsertKpi(DEBITORKA_LOSS_KEY, clamped);
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
