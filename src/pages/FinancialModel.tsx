@@ -66,6 +66,8 @@ export default function FinancialModel() {
   const [prevMonthMarketing, setPrevMonthMarketing] = useState<number>(0);
   const [prevMonthOpex, setPrevMonthOpex] = useState<number>(0);
   const [adjustments, setAdjustments] = useState<number>(0);
+  const [dashDebitorkaPlan, setDashDebitorkaPlan] = useState<number>(0);
+  const [dashNewSalesPlan, setDashNewSalesPlan] = useState<number>(0);
   const [scenarioPnl, setScenarioPnl] = useState<PnL | null>(null);
   const [loading, setLoading] = useState(true);
 
