@@ -82,8 +82,28 @@ const DEFAULT_SCENARIOS: Scenario[] = [
 ];
 
 export function YearForecastBlock({ transactions, currentMonth, company }: Props) {
-  const [mode, setMode] = useState<"avg3" | "avg6" | "runrate">("avg3");
+  const [mode, setMode] = useState<"avg3" | "avg6" | "runrate" | "trend">("trend");
   const [view, setView] = useState<"forecast" | "scenarios">("forecast");
+  const growthKey = `fm_year_growth_${company}`;
+  const [growthPct, setGrowthPct] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(growthKey);
+      setGrowthPct(raw ? Number(raw) || 0 : 0);
+    } catch {
+      setGrowthPct(0);
+    }
+  }, [growthKey]);
+
+  const persistGrowth = (v: number) => {
+    setGrowthPct(v);
+    try {
+      localStorage.setItem(growthKey, String(v));
+    } catch {
+      // ignore
+    }
+  };
 
   // Сценарии — храним в localStorage по компании
   const storageKey = `fm_year_scenarios_${company}`;
