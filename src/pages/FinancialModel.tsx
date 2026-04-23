@@ -232,8 +232,13 @@ export default function FinancialModel() {
 
   const plan: PlanValues = useMemo(() => {
     const dashRevenue = company === "Спасение" ? dashDebitorkaPlan + dashNewSalesPlan : 0;
-    // План выручки: ручное значение (fm_revenue_plan) > сумма дашбордных планов (для Спасения)
-    const revenue = planRows[PLAN_KEYS.revenue]?.value || dashRevenue || 0;
+    // План выручки: для Спасения — всегда сумма Дебиторки и Новых продаж с дашборда
+    // (автоматический расчёт, не редактируется вручную). Для остальных проектов —
+    // ручное значение fm_revenue_plan.
+    const revenue =
+      company === "Спасение"
+        ? dashRevenue
+        : planRows[PLAN_KEYS.revenue]?.value || 0;
     // План ФОТ/Маркетинга/OpEx: если не задан вручную — берём факт предыдущего месяца
     const fot = planRows[PLAN_KEYS.fot]?.value || prevMonthFot || 0;
     const marketing = planRows[PLAN_KEYS.marketing]?.value || prevMonthMarketing || 0;
