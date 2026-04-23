@@ -108,9 +108,17 @@ export default function FinancialModel() {
         supabase.from("department_employees").select("cost").eq("company", company).eq("month", prevMonthStartStr),
         supabase.from("transactions").select("type,category,amount").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
         supabase.from("lead_generation").select("total_cost").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
-        // Спасение: тянем планы дебиторки/продаж с дашборда
+        // Спасение: тянем планы дебиторки/продаж с дашборда.
+        // На дашборде планы могут храниться с любой датой внутри месяца
+        // (1-е, последнее число и т.п.) — берём диапазоном.
         company === "Спасение"
-          ? supabase.from("kpi_targets").select("kpi_name,target_value").eq("company", "Спасение").in("kpi_name", ["debitorka_plan", "new_sales"]).eq("month", monthStartStr)
+          ? supabase
+              .from("kpi_targets")
+              .select("kpi_name,target_value,month")
+              .eq("company", "Спасение")
+              .in("kpi_name", ["debitorka_plan", "new_sales"])
+              .gte("month", monthStartStr)
+              .lte("month", monthEndStr)
           : Promise.resolve({ data: [] as any[] }),
       ]);
 
