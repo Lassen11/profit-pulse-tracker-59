@@ -384,6 +384,7 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       name: "Новый сценарий",
       revenuePct: 0,
       expensesPct: 0,
+      growthPct: 0,
       color: "hsl(220, 80%, 55%)",
       visible: true,
     });
