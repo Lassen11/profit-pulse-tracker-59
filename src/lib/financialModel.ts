@@ -136,9 +136,16 @@ export function buildSpasenieUnit(
     contracts > 0
       ? clients.reduce((s, c) => s + Number(c.contract_amount || 0), 0) / contracts
       : 0;
+  // Средний ежемесячный платёж считаем только по клиентам с рассрочкой
+  // (monthly_payment > 0). Клиенты, оплатившие договор сразу/без рассрочки,
+  // искусственно занижали бы среднее.
+  const installmentClients = clients.filter(
+    (c) => Number(c.monthly_payment || 0) > 0
+  );
   const avgMonthly =
-    contracts > 0
-      ? clients.reduce((s, c) => s + Number(c.monthly_payment || 0), 0) / contracts
+    installmentClients.length > 0
+      ? installmentClients.reduce((s, c) => s + Number(c.monthly_payment || 0), 0) /
+        installmentClients.length
       : 0;
 
   const ltv =
