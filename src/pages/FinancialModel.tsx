@@ -268,8 +268,10 @@ export default function FinancialModel() {
   }, [planRows, prevMonthFot, prevMonthMarketing, prevMonthOpex, pnl.taxes, company, dashDebitorkaPlan, dashNewSalesPlan]);
 
   const unit: UnitEconomics = useMemo(
-    () => (company === "Спасение" ? buildSpasenieUnit(spasenieClients, leadGen) : buildBusinessUnit(bizSales, leadGen)),
-    [company, spasenieClients, bizSales, leadGen]
+    () => (company === "Спасение"
+      ? buildSpasenieUnit(spasenieClients, leadGen, pnl.marketing)
+      : buildBusinessUnit(bizSales, leadGen, pnl.marketing)),
+    [company, spasenieClients, bizSales, leadGen, pnl.marketing]
   );
 
   const today = new Date();
