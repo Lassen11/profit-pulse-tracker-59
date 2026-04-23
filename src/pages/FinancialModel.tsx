@@ -133,6 +133,7 @@ export default function FinancialModel() {
       setMonthTx((monthTxRes.data as Transaction[]) || []);
       setPriorTx((priorTxRes.data as Transaction[]) || []);
       setTrendTx((trendTxRes.data as Transaction[]) || []);
+      setYearTx((yearTxRes.data as Transaction[]) || []);
       setEmployees(empRes.data || []);
       setLeadGen(leadRes.data || []);
       const adjSum = (adjRes.data || []).reduce((s, a) => s + Number(a.adjusted_balance || 0), 0);
