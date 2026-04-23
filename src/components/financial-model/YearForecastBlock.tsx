@@ -97,7 +97,15 @@ const DEFAULT_SCENARIOS: Scenario[] = [
   { id: "worst", name: "Худший", revenuePct: -10, expensesPct: 10, growthPct: -3, color: "hsl(0, 72%, 51%)", visible: true },
 ];
 
-export function YearForecastBlock({ transactions, yearEmployees = [], yearLeadGen = [], currentMonth, company }: Props) {
+export function YearForecastBlock({
+  transactions,
+  yearEmployees = [],
+  yearLeadGen = [],
+  yearPlans = [],
+  yearDashKpi = [],
+  currentMonth,
+  company,
+}: Props) {
   const [mode, setMode] = useState<"avg3" | "avg6" | "runrate" | "trend">("trend");
   const [view, setView] = useState<"forecast" | "scenarios">("forecast");
   const growthKey = `fm_year_growth_${company}`;
