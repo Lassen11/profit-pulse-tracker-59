@@ -232,8 +232,13 @@ export default function FinancialModel() {
 
   const plan: PlanValues = useMemo(() => {
     const dashRevenue = company === "Спасение" ? dashDebitorkaPlan + dashNewSalesPlan : 0;
-    // План выручки: ручное значение (fm_revenue_plan) > сумма дашбордных планов (для Спасения)
-    const revenue = planRows[PLAN_KEYS.revenue]?.value || dashRevenue || 0;
+    // План выручки: для Спасения — всегда сумма Дебиторки и Новых продаж с дашборда
+    // (автоматический расчёт, не редактируется вручную). Для остальных проектов —
+    // ручное значение fm_revenue_plan.
+    const revenue =
+      company === "Спасение"
+        ? dashRevenue
+        : planRows[PLAN_KEYS.revenue]?.value || 0;
     // План ФОТ/Маркетинга/OpEx: если не задан вручную — берём факт предыдущего месяца
     const fot = planRows[PLAN_KEYS.fot]?.value || prevMonthFot || 0;
     const marketing = planRows[PLAN_KEYS.marketing]?.value || prevMonthMarketing || 0;
@@ -289,6 +294,8 @@ export default function FinancialModel() {
     if (!user) return;
     // Чистая прибыль рассчитывается автоматически и не сохраняется отдельно
     if (key === "net") return;
+    // Для Спасения выручка = Дебиторка + Новые продажи (автоматически)
+    if (key === "revenue" && company === "Спасение") return;
     const kpiName = PLAN_KEYS[key];
     const existing = planRows[kpiName];
     try {
@@ -383,7 +390,14 @@ export default function FinancialModel() {
 
         {!loading && (
           <>
-            <PnlTable pnl={pnl} plan={plan} canEdit={isAdmin} onSavePlan={handleSavePlan} showRevenueBreakdown={company === "Спасение"} />
+            <PnlTable
+              pnl={pnl}
+              plan={plan}
+              canEdit={isAdmin}
+              onSavePlan={handleSavePlan}
+              showRevenueBreakdown={company === "Спасение"}
+              revenuePlanReadOnly={company === "Спасение"}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ForecastBlock

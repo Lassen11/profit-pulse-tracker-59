@@ -23,6 +23,8 @@ interface Props {
   canEdit: boolean;
   onSavePlan: (key: keyof PlanValues, value: number) => Promise<void> | void;
   showRevenueBreakdown?: boolean;
+  /** Выручка-план рассчитывается автоматически и недоступна для редактирования */
+  revenuePlanReadOnly?: boolean;
 }
 
 const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
@@ -36,7 +38,7 @@ const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label
   { key: "margin", label: "Маржа, %" },
 ];
 
-export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false }: Props) {
+export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown = false, revenuePlanReadOnly = false }: Props) {
   const [editing, setEditing] = useState<keyof PlanValues | null>(null);
   const [draft, setDraft] = useState("");
 
@@ -89,8 +91,14 @@ export function PnlTable({ pnl, plan, canEdit, onSavePlan, showRevenueBreakdown 
                   <TableCell>{row.label}</TableCell>
                   <TableCell className="text-right">
                     {row.planKey ? (
-                      row.planReadOnly ? (
-                        <span title="Рассчитывается автоматически: Выручка − ФОТ − Маркетинг − OpEx − Налоги">
+                      row.planReadOnly || (row.planKey === "revenue" && revenuePlanReadOnly) ? (
+                        <span
+                          title={
+                            row.planKey === "revenue"
+                              ? "Рассчитывается автоматически: Дебиторка + Новые продажи (с дашборда)"
+                              : "Рассчитывается автоматически: Выручка − ФОТ − Маркетинг − OpEx − Налоги"
+                          }
+                        >
                           {fmtMoney(planVal)}
                         </span>
                       ) : isEditing ? (
