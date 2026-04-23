@@ -108,9 +108,17 @@ export default function FinancialModel() {
         supabase.from("department_employees").select("cost").eq("company", company).eq("month", prevMonthStartStr),
         supabase.from("transactions").select("type,category,amount").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
         supabase.from("lead_generation").select("total_cost").eq("company", company).gte("date", prevMonthStartStr).lte("date", prevMonthEndStr),
-        // Спасение: тянем планы дебиторки/продаж с дашборда
+        // Спасение: тянем планы дебиторки/продаж с дашборда.
+        // На дашборде планы могут храниться с любой датой внутри месяца
+        // (1-е, последнее число и т.п.) — берём диапазоном.
         company === "Спасение"
-          ? supabase.from("kpi_targets").select("kpi_name,target_value").eq("company", "Спасение").in("kpi_name", ["debitorka_plan", "new_sales"]).eq("month", monthStartStr)
+          ? supabase
+              .from("kpi_targets")
+              .select("kpi_name,target_value,month")
+              .eq("company", "Спасение")
+              .in("kpi_name", ["debitorka_plan", "new_sales"])
+              .gte("month", monthStartStr)
+              .lte("month", monthEndStr)
           : Promise.resolve({ data: [] as any[] }),
       ]);
 
@@ -163,12 +171,17 @@ export default function FinancialModel() {
       });
       setPlanRows(map);
 
-      // Дашбордные планы по Спасению (Дебиторка + Новые продажи)
+      // Дашбордные планы по Спасению (Дебиторка + Новые продажи).
+      // Записи могут лежать с разными датами внутри месяца — суммируем по типу
+      // (по факту обычно одна запись; если несколько — берём максимальное значение,
+      // т.к. план не складывается).
       const dashRows = (dashKpiRes.data as any[]) || [];
-      const debPlan = dashRows.find((r) => r.kpi_name === "debitorka_plan");
-      const salesPlan = dashRows.find((r) => r.kpi_name === "new_sales");
-      setDashDebitorkaPlan(debPlan ? Number(debPlan.target_value) : 0);
-      setDashNewSalesPlan(salesPlan ? Number(salesPlan.target_value) : 0);
+      const maxByKpi = (name: string) =>
+        dashRows
+          .filter((r) => r.kpi_name === name)
+          .reduce((mx, r) => Math.max(mx, Number(r.target_value) || 0), 0);
+      setDashDebitorkaPlan(maxByKpi("debitorka_plan"));
+      setDashNewSalesPlan(maxByKpi("new_sales"));
 
       // Юнит-экономика — клиенты/продажи за месяц
       if (company === "Спасение") {
