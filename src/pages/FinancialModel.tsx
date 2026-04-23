@@ -111,6 +111,8 @@ export default function FinancialModel() {
         dashKpiRes,
         yearEmpRes,
         yearLeadRes,
+        yearPlansRes,
+        yearDashKpiRes,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
