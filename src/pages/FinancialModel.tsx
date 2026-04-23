@@ -250,6 +250,8 @@ export default function FinancialModel() {
 
   const handleSavePlan = async (key: keyof PlanValues, value: number) => {
     if (!user) return;
+    // Чистая прибыль рассчитывается автоматически и не сохраняется отдельно
+    if (key === "net") return;
     const kpiName = PLAN_KEYS[key];
     const existing = planRows[kpiName];
     try {
