@@ -266,16 +266,21 @@ export function YearForecastBlock({
       if (type === "current" || type === "forecast") {
         // План P&L: для текущего и будущих месяцев берём расходы целиком из плана,
         // чтобы прогноз совпадал с блоком P&L «План / Факт».
+        // Логика фолбэков повторяет FinancialModel.tsx → plan:
+        //   FOT       = fm_fot_plan       || ФОТ начисленный предыдущего месяца (из department_employees.cost)
+        //   Marketing = fm_marketing_plan || бюджет лидгена ПРЕДЫДУЩЕГО месяца (lead_generation.total_cost)
+        //   OpEx      = fm_opex_plan      || OpEx-факт предыдущего месяца (transactions, без excluded категорий)
         const plans = planByMonth.get(key) || {};
-        // Маркетинг план: kpi fm_marketing_plan, иначе бюджет лидгена ПРЕДЫДУЩЕГО месяца
-        // (так считается план в FinancialModel.tsx), иначе бюджет текущего месяца, иначе факт.
         const prevMonthDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
         const prevMonthKey = format(prevMonthDate, "yyyy-MM");
+        const prevFot = fotByMonth.get(prevMonthKey) || 0;
         const prevMarketingBudget = marketingByMonth.get(prevMonthKey) || 0;
-        const fotPlan = plans.fm_fot_plan ?? fotFact;
-        const marketingPlan =
-          plans.fm_marketing_plan ?? (prevMarketingBudget || marketingBudget || marketingFact);
-        const opexPlan = plans.fm_opex_plan ?? b.otherExpenses;
+        const prevBucket = buckets.get(prevMonthKey);
+        const prevOpex = prevBucket?.otherExpenses || 0;
+
+        const fotPlan = plans.fm_fot_plan ?? prevFot;
+        const marketingPlan = plans.fm_marketing_plan ?? prevMarketingBudget;
+        const opexPlan = plans.fm_opex_plan ?? prevOpex;
         expenses = fotPlan + marketingPlan + opexPlan;
 
         // Выручка план: для Спасения — debitorka_plan*(1-loss) + new_sales; иначе — fm_revenue_plan;
