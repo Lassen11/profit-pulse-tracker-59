@@ -31,6 +31,7 @@ import { CashFlowBlock } from "@/components/financial-model/CashFlowBlock";
 import { ScenarioSimulator } from "@/components/financial-model/ScenarioSimulator";
 import { MonthlyTrendChart, TrendPoint } from "@/components/financial-model/MonthlyTrendChart";
 import { PlanFactScenarioChart } from "@/components/financial-model/PlanFactScenarioChart";
+import { YearForecastBlock } from "@/components/financial-model/YearForecastBlock";
 
 const COMPANIES = ["Спасение", "Дело Бизнеса"] as const;
 
@@ -60,6 +61,7 @@ export default function FinancialModel() {
   const [monthTx, setMonthTx] = useState<Transaction[]>([]);
   const [priorTx, setPriorTx] = useState<Transaction[]>([]);
   const [trendTx, setTrendTx] = useState<Transaction[]>([]);
+  const [yearTx, setYearTx] = useState<Transaction[]>([]);
   const [employees, setEmployees] = useState<DepartmentEmployeeRow[]>([]);
   const [leadGen, setLeadGen] = useState<LeadGenRow[]>([]);
   const [spasenieClients, setSpasenieClients] = useState<SpasenieClient[]>([]);
@@ -83,6 +85,8 @@ export default function FinancialModel() {
     setLoading(true);
     try {
       const sixMonthsAgoStr = format(startOfMonth(subMonths(month, 5)), "yyyy-MM-dd");
+      const yearStartStr = format(new Date(month.getFullYear(), 0, 1), "yyyy-MM-dd");
+      const yearEndStr = format(new Date(month.getFullYear(), 11, 31), "yyyy-MM-dd");
       const prevMonthStart = startOfMonth(subMonths(month, 1));
       const prevMonthEnd = endOfMonth(subMonths(month, 1));
       const prevMonthStartStr = format(prevMonthStart, "yyyy-MM-dd");
@@ -92,6 +96,7 @@ export default function FinancialModel() {
         monthTxRes,
         priorTxRes,
         trendTxRes,
+        yearTxRes,
         empRes,
         leadRes,
         kpiRes,
@@ -104,6 +109,7 @@ export default function FinancialModel() {
         supabase.from("transactions").select("*").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("transactions").select("*").eq("company", company).lt("date", monthStartStr),
         supabase.from("transactions").select("*").eq("company", company).gte("date", sixMonthsAgoStr).lte("date", monthEndStr),
+        supabase.from("transactions").select("date,type,category,amount").eq("company", company).gte("date", yearStartStr).lte("date", yearEndStr),
         supabase.from("department_employees").select("cost,company").eq("company", company).eq("month", monthStartStr),
         supabase.from("lead_generation").select("total_cost,total_leads,qualified_leads,contracts,payments").eq("company", company).gte("date", monthStartStr).lte("date", monthEndStr),
         supabase.from("kpi_targets").select("id,kpi_name,target_value").eq("company", company).eq("month", monthStartStr),
@@ -128,6 +134,7 @@ export default function FinancialModel() {
       setMonthTx((monthTxRes.data as Transaction[]) || []);
       setPriorTx((priorTxRes.data as Transaction[]) || []);
       setTrendTx((trendTxRes.data as Transaction[]) || []);
+      setYearTx((yearTxRes.data as Transaction[]) || []);
       setEmployees(empRes.data || []);
       setLeadGen(leadRes.data || []);
       const adjSum = (adjRes.data || []).reduce((s, a) => s + Number(a.adjusted_balance || 0), 0);
@@ -458,6 +465,14 @@ export default function FinancialModel() {
             </div>
 
             <PlanFactScenarioChart pnl={pnl} scenario={scenarioPnl ?? pnl} plan={plan} />
+
+            <YearForecastBlock
+              transactions={yearTx}
+              currentMonth={month}
+              currentMonthRunRateRevenue={runRate.revenue}
+              currentMonthRunRateExpenses={runRate.expenses}
+              currentMonthRunRateNet={runRate.net}
+            />
           </>
         )}
       </div>
