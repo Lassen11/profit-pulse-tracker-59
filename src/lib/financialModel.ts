@@ -230,6 +230,9 @@ export const emptyScenario: ScenarioDeltas = {
 export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
   const revenue = Math.max(0, pnl.revenue * (1 + d.revenuePct / 100) + d.revenueAbs);
   const fot = Math.max(0, pnl.fot * (1 + d.fotPct / 100) + d.fotAbs);
+  const fotRatio = pnl.fot > 0 ? fot / pnl.fot : 0;
+  const fotAccrued = pnl.fotAccrued * fotRatio;
+  const fotPaid = pnl.fotPaid * fotRatio;
   const marketing = Math.max(0, pnl.marketing * (1 + d.marketingPct / 100) + d.marketingAbs);
   const opex = Math.max(0, pnl.opex * (1 + d.opexPct / 100) + d.opexAbs);
   const taxes = Math.max(0, pnl.taxes * (1 + d.taxesPct / 100) + d.taxesAbs);
@@ -239,7 +242,7 @@ export function applyScenario(pnl: PnL, d: ScenarioDeltas): PnL {
   const ratio = pnl.revenue > 0 ? revenue / pnl.revenue : 0;
   const revenueDebitor = pnl.revenueDebitor * ratio;
   const revenueSales = pnl.revenueSales * ratio;
-  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
+  return { revenue, revenueDebitor, revenueSales, fot, fotAccrued, fotPaid, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export const fmtMoney = (v: number) =>
