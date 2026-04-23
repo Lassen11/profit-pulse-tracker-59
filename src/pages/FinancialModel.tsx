@@ -163,6 +163,13 @@ export default function FinancialModel() {
       });
       setPlanRows(map);
 
+      // Дашбордные планы по Спасению (Дебиторка + Новые продажи)
+      const dashRows = (dashKpiRes.data as any[]) || [];
+      const debPlan = dashRows.find((r) => r.kpi_name === "debitorka_plan");
+      const salesPlan = dashRows.find((r) => r.kpi_name === "new_sales");
+      setDashDebitorkaPlan(debPlan ? Number(debPlan.target_value) : 0);
+      setDashNewSalesPlan(salesPlan ? Number(salesPlan.target_value) : 0);
+
       // Юнит-экономика — клиенты/продажи за месяц
       if (company === "Спасение") {
         const { data } = await supabase
