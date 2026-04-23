@@ -272,9 +272,19 @@ export function YearForecastBlock({ transactions, currentMonth, company }: Props
       const monthIdx = r.date.getMonth();
       const k = monthIdx - firstForecastIdx + 1; // 1, 2, 3...
       const compound = Math.pow(growthFactor, k);
-      const revenue = predictRevenue(monthIdx) * compound;
-      const expenses = predictExpenses(monthIdx) * compound;
-      return { ...r, revenue, expenses, net: revenue - expenses };
+      const revenueBase = predictRevenue(monthIdx);
+      const expensesBase = predictExpenses(monthIdx);
+      const revenue = revenueBase * compound;
+      const expenses = expensesBase * compound;
+      return {
+        ...r,
+        revenue,
+        expenses,
+        net: revenue - expenses,
+        revenueBase,
+        expensesBase,
+        netBase: revenueBase - expensesBase,
+      };
     });
   }, [baseRows, mode, growthPct]);
 
