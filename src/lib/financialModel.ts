@@ -18,6 +18,8 @@ export interface PnL {
   revenueDebitor: number;
   revenueSales: number;
   fot: number;
+  fotAccrued: number;
+  fotPaid: number;
   marketing: number;
   opex: number;
   taxes: number;
