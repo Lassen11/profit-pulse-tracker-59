@@ -89,9 +89,8 @@ export function buildPnl(
         t.category !== WITHDRAWAL &&
         t.category !== TAX_USN &&
         t.category !== TAX_NDFL &&
-        !SALARY_CATEGORIES.includes(t.category)
-        // Маркетинговые категории включены в OpEx, т.к. строка «Маркетинг»
-        // считается отдельно из lead_generation.total_cost
+        !SALARY_CATEGORIES.includes(t.category) &&
+        !MARKETING_CATEGORIES.includes(t.category)
     )
     .reduce((s, t) => s + Number(t.amount || 0), 0);
 
