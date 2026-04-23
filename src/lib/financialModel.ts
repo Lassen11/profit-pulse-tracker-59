@@ -58,10 +58,15 @@ export function buildPnl(
 
   // ФОТ — приоритет department_employees.cost; если 0 — берём из transactions Зарплата/Аванс/Премия
   const fotFromEmployees = employees.reduce((s, e) => s + Number(e.cost || 0), 0);
-  const fotFromTx = transactions
+  // ФОТ:
+  // - Начислено: department_employees.cost (полная стоимость сотрудника для компании)
+  // - Выплачено: фактические транзакции категорий «Зарплата / Аванс / Премия»
+  // По умолчанию в P&L используется «Выплачено» (кассовый факт).
+  const fotAccrued = employees.reduce((s, e) => s + Number(e.cost || 0), 0);
+  const fotPaid = transactions
     .filter((t) => t.type === "expense" && SALARY_CATEGORIES.includes(t.category))
     .reduce((s, t) => s + Number(t.amount || 0), 0);
-  const fot = fotFromEmployees > 0 ? fotFromEmployees : fotFromTx;
+  const fot = fotPaid;
 
   const marketingFromLeads = leadGen.reduce((s, l) => s + Number(l.total_cost || 0), 0);
   const marketingFromTx = transactions
@@ -94,7 +99,7 @@ export function buildPnl(
   const net = ebitda - taxes;
   const margin = revenue > 0 ? (net / revenue) * 100 : 0;
 
-  return { revenue, revenueDebitor, revenueSales, fot, marketing, opex, taxes, ebitda, net, margin };
+  return { revenue, revenueDebitor, revenueSales, fot, fotAccrued, fotPaid, marketing, opex, taxes, ebitda, net, margin };
 }
 
 export interface UnitEconomics {
