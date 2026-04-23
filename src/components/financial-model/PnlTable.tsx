@@ -23,6 +23,8 @@ interface Props {
   canEdit: boolean;
   onSavePlan: (key: keyof PlanValues, value: number) => Promise<void> | void;
   showRevenueBreakdown?: boolean;
+  /** Выручка-план рассчитывается автоматически и недоступна для редактирования */
+  revenuePlanReadOnly?: boolean;
 }
 
 const ROWS: Array<{ key: keyof PlanValues | "ebitda" | "margin" | "taxes"; label: string; planKey?: keyof PlanValues; emphasis?: "good" | "bad" | "bold"; planReadOnly?: boolean }> = [
