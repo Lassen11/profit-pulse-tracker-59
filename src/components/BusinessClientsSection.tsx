@@ -382,13 +382,27 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
                             disabled={!canEdit}
                           />
                           {row.payment.is_paid ? (
-                            <div className="flex flex-col">
-                              <Badge variant="default" className="w-fit">Оплачено</Badge>
-                              {row.payment.paid_at && (
-                                <span className="text-xs text-muted-foreground mt-1">
-                                  {format(parseISO(row.payment.paid_at), "d MMM yyyy", { locale: ru })}
-                                  {row.payment.paid_account && ` • ${row.payment.paid_account}`}
-                                </span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex flex-col">
+                                <Badge variant="default" className="w-fit">Оплачено</Badge>
+                                {row.payment.paid_at && (
+                                  <span className="text-xs text-muted-foreground mt-1">
+                                    {format(parseISO(row.payment.paid_at), "d MMM yyyy", { locale: ru })}
+                                    {row.payment.paid_account && ` • ${row.payment.paid_account}`}
+                                  </span>
+                                )}
+                              </div>
+                              {canEdit && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() => createNextMonthPayment(row.payment!)}
+                                  title="Создать платёж на следующий месяц"
+                                >
+                                  <CalendarPlus className="w-3.5 h-3.5 mr-1" />
+                                  След. месяц
+                                </Button>
                               )}
                             </div>
                           ) : (
