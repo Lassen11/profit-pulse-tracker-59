@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Building2, Plus, Pencil, Trash2, X, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -75,6 +75,7 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [dateFrom, setDateFrom] = useState<string>(defaultDateFrom);
   const [dateTo, setDateTo] = useState<string>(defaultDateTo);
+  const carryoverInFlight = useRef(new Set<string>());
 
   useEffect(() => {
     setDateFrom(defaultDateFrom);
@@ -265,8 +266,10 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
         .values());
 
       const paymentsToCreate = latestUnpaidByService
+        .filter((payment) => !carryoverInFlight.current.has(`${payment.client_id}|${payment.service}|${visibleMonthKey}`))
         .map((payment) => {
           const carriedDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
+          carryoverInFlight.current.add(`${payment.client_id}|${payment.service}|${visibleMonthKey}`);
           return {
             client_id: payment.client_id,
             user_id: userId,
@@ -280,6 +283,7 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
 
       const { error } = await supabase.from("business_client_payments").insert(paymentsToCreate);
       if (error) {
+        paymentsToCreate.forEach((payment) => carryoverInFlight.current.delete(`${payment.client_id}|${payment.service}|${visibleMonthKey}`));
         toast({ title: "Не удалось перенести неоплаченные платежи", description: error.message, variant: "destructive" });
       }
     };
