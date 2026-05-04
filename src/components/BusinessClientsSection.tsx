@@ -239,40 +239,53 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
     toast({ title: "Платёж зачислен", description: `${client.name} — ${formatCurrency(payment.amount)}` });
   };
 
-  const displayPayments = useMemo(() => {
-    if (!carryoverEnabled || !dateFrom || !dateTo) return payments;
+  useEffect(() => {
+    const duplicateUnpaidForMonth = async () => {
+      if (!carryoverEnabled || !dateFrom || !dateTo || !userId || payments.length === 0) return;
 
-    const visibleFrom = dateFrom;
-    const visibleTo = dateTo;
-    const visibleMonthKey = getMonthKey(visibleFrom);
+      const visibleMonthKey = getMonthKey(dateFrom);
+      const paymentsToCreate = payments
+        .filter((payment) => !payment.is_paid && payment.payment_date < dateFrom)
+        .filter(
+          (payment) =>
+            !payments.some(
+              (p) =>
+                p.client_id === payment.client_id &&
+                p.service === payment.service &&
+                getMonthKey(p.payment_date) === visibleMonthKey
+            )
+        )
+        .map((payment) => {
+          const carriedDate = `${visibleMonthKey}-${payment.payment_date.slice(8, 10)}`;
+          return {
+            client_id: payment.client_id,
+            user_id: userId,
+            service: payment.service,
+            amount: payment.amount,
+            payment_date: carriedDate > dateTo ? dateTo : carriedDate,
+          };
+        });
 
-    return payments.flatMap((payment) => {
-      if (payment.is_paid || payment.payment_date >= visibleFrom) return [payment];
+      if (paymentsToCreate.length === 0) return;
 
-      const hasCurrentMonthPayment = payments.some(
-        (p) =>
-          p.client_id === payment.client_id &&
-          p.service === payment.service &&
-          getMonthKey(p.payment_date) === visibleMonthKey
-      );
-      if (hasCurrentMonthPayment) return [];
+      const { error } = await supabase.from("business_client_payments").insert(paymentsToCreate);
+      if (error) {
+        toast({ title: "Не удалось перенести неоплаченные платежи", description: error.message, variant: "destructive" });
+      }
+    };
 
-      const carriedDate = `${visibleMonthKey}-${payment.payment_date.slice(8, 10)}`;
-      const paymentDate = carriedDate > visibleTo ? visibleTo : carriedDate;
-
-      return [{ ...payment, payment_date: paymentDate }];
-    });
-  }, [payments, carryoverEnabled, dateFrom, dateTo]);
+    duplicateUnpaidForMonth();
+  }, [payments, carryoverEnabled, dateFrom, dateTo, userId, toast]);
 
   const filteredPayments = useMemo(() => {
-    return displayPayments.filter((p) => {
+    return payments.filter((p) => {
       if (statusFilter === "paid" && !p.is_paid) return false;
       if (statusFilter === "unpaid" && p.is_paid) return false;
       if (dateFrom && p.payment_date < dateFrom) return false;
       if (dateTo && p.payment_date > dateTo) return false;
       return true;
     });
-  }, [displayPayments, statusFilter, dateFrom, dateTo]);
+  }, [payments, statusFilter, dateFrom, dateTo]);
 
   const hasActiveFilters = statusFilter !== "all" || !!dateFrom || !!dateTo;
 
