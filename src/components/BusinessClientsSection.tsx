@@ -161,7 +161,36 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
     }
   };
 
-  const confirmReceive = async (account: string, paidAt: string) => {
+  const createNextMonthPayment = async (payment: Payment) => {
+    try {
+      const nextDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
+      // Avoid duplicating if a payment already exists with the same service+date
+      const exists = payments.some(
+        (p) =>
+          p.client_id === payment.client_id &&
+          p.service === payment.service &&
+          p.payment_date === nextDate
+      );
+      if (exists) {
+        toast({ title: "Платёж на этот месяц уже существует" });
+        return;
+      }
+      const { error } = await supabase.from("business_client_payments").insert({
+        client_id: payment.client_id,
+        user_id: userId,
+        service: payment.service,
+        amount: payment.amount,
+        payment_date: nextDate,
+      });
+      if (error) throw error;
+      toast({
+        title: "Платёж создан",
+        description: `${payment.service} — ${format(parseISO(nextDate), "d MMM yyyy", { locale: ru })}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    }
+  };
     if (!activePayment) return;
     const { payment, client } = activePayment;
     const { data: tx, error: txErr } = await supabase
