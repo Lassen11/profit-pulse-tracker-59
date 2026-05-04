@@ -27,6 +27,9 @@ import {
 interface Props {
   userId: string;
   canEdit: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  carryoverEnabled?: boolean;
 }
 
 interface Payment {
@@ -51,7 +54,9 @@ interface Client {
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(n);
 
-export function BusinessClientsSection({ userId, canEdit }: Props) {
+const getMonthKey = (date: string) => date.slice(0, 7);
+
+export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateFrom = "", dateTo: defaultDateTo = "", carryoverEnabled = false }: Props) {
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -68,8 +73,13 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid">("all");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>(defaultDateFrom);
+  const [dateTo, setDateTo] = useState<string>(defaultDateTo);
+
+  useEffect(() => {
+    setDateFrom(defaultDateFrom);
+    setDateTo(defaultDateTo);
+  }, [defaultDateFrom, defaultDateTo]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,15 +174,16 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
   const createNextMonthPayment = async (payment: Payment) => {
     try {
       const nextDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
-      // Avoid duplicating if a payment already exists with the same service+date
+      const nextMonthKey = getMonthKey(nextDate);
+      // Avoid duplicating if a payment already exists with the same service in the same month
       const exists = payments.some(
         (p) =>
           p.client_id === payment.client_id &&
           p.service === payment.service &&
-          p.payment_date === nextDate
+          getMonthKey(p.payment_date) === nextMonthKey
       );
       if (exists) {
-        toast({ title: "Платёж на этот месяц уже существует" });
+        toast({ title: "Платёж на следующий месяц уже существует" });
         return;
       }
       const { error } = await supabase.from("business_client_payments").insert({
