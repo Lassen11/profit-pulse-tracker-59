@@ -191,6 +191,8 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     }
   };
+
+  const confirmReceive = async (account: string, paidAt: string) => {
     if (!activePayment) return;
     const { payment, client } = activePayment;
     const { data: tx, error: txErr } = await supabase
