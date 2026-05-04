@@ -244,8 +244,9 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
       if (!carryoverEnabled || !dateFrom || !dateTo || !userId || payments.length === 0) return;
 
       const visibleMonthKey = getMonthKey(dateFrom);
+      const previousMonthKey = getMonthKey(format(addMonths(parseISO(`${visibleMonthKey}-01`), -1), "yyyy-MM-dd"));
       const latestUnpaidByService = Array.from(payments
-        .filter((payment) => !payment.is_paid && payment.payment_date < dateFrom)
+        .filter((payment) => !payment.is_paid && getMonthKey(payment.payment_date) === previousMonthKey)
         .filter(
           (payment) =>
             !payments.some(
@@ -265,7 +266,7 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
 
       const paymentsToCreate = latestUnpaidByService
         .map((payment) => {
-          const carriedDate = `${visibleMonthKey}-${payment.payment_date.slice(8, 10)}`;
+          const carriedDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
           return {
             client_id: payment.client_id,
             user_id: userId,
