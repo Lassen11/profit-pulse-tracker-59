@@ -239,15 +239,40 @@ export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateF
     toast({ title: "Платёж зачислен", description: `${client.name} — ${formatCurrency(payment.amount)}` });
   };
 
+  const displayPayments = useMemo(() => {
+    if (!carryoverEnabled || !dateFrom || !dateTo) return payments;
+
+    const visibleFrom = dateFrom;
+    const visibleTo = dateTo;
+    const visibleMonthKey = getMonthKey(visibleFrom);
+
+    return payments.flatMap((payment) => {
+      if (payment.is_paid || payment.payment_date >= visibleFrom) return [payment];
+
+      const hasCurrentMonthPayment = payments.some(
+        (p) =>
+          p.client_id === payment.client_id &&
+          p.service === payment.service &&
+          getMonthKey(p.payment_date) === visibleMonthKey
+      );
+      if (hasCurrentMonthPayment) return [];
+
+      const carriedDate = `${visibleMonthKey}-${payment.payment_date.slice(8, 10)}`;
+      const paymentDate = carriedDate > visibleTo ? visibleTo : carriedDate;
+
+      return [{ ...payment, payment_date: paymentDate }];
+    });
+  }, [payments, carryoverEnabled, dateFrom, dateTo]);
+
   const filteredPayments = useMemo(() => {
-    return payments.filter((p) => {
+    return displayPayments.filter((p) => {
       if (statusFilter === "paid" && !p.is_paid) return false;
       if (statusFilter === "unpaid" && p.is_paid) return false;
       if (dateFrom && p.payment_date < dateFrom) return false;
       if (dateTo && p.payment_date > dateTo) return false;
       return true;
     });
-  }, [payments, statusFilter, dateFrom, dateTo]);
+  }, [displayPayments, statusFilter, dateFrom, dateTo]);
 
   const hasActiveFilters = statusFilter !== "all" || !!dateFrom || !!dateTo;
 
