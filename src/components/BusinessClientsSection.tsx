@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, X, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BusinessClientDialog, BusinessClientWithPayments } from "./BusinessClientDialog";
 import { PaymentReceiveDialog } from "./PaymentReceiveDialog";
@@ -156,6 +156,37 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
         .eq("id", payment.id);
       if (error) throw error;
       toast({ title: "Отметка снята", description: "Транзакция удалена, баланс восстановлен" });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const createNextMonthPayment = async (payment: Payment) => {
+    try {
+      const nextDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
+      // Avoid duplicating if a payment already exists with the same service+date
+      const exists = payments.some(
+        (p) =>
+          p.client_id === payment.client_id &&
+          p.service === payment.service &&
+          p.payment_date === nextDate
+      );
+      if (exists) {
+        toast({ title: "Платёж на этот месяц уже существует" });
+        return;
+      }
+      const { error } = await supabase.from("business_client_payments").insert({
+        client_id: payment.client_id,
+        user_id: userId,
+        service: payment.service,
+        amount: payment.amount,
+        payment_date: nextDate,
+      });
+      if (error) throw error;
+      toast({
+        title: "Платёж создан",
+        description: `${payment.service} — ${format(parseISO(nextDate), "d MMM yyyy", { locale: ru })}`,
+      });
     } catch (e: any) {
       toast({ title: "Ошибка", description: e.message, variant: "destructive" });
     }
@@ -351,13 +382,27 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
                             disabled={!canEdit}
                           />
                           {row.payment.is_paid ? (
-                            <div className="flex flex-col">
-                              <Badge variant="default" className="w-fit">Оплачено</Badge>
-                              {row.payment.paid_at && (
-                                <span className="text-xs text-muted-foreground mt-1">
-                                  {format(parseISO(row.payment.paid_at), "d MMM yyyy", { locale: ru })}
-                                  {row.payment.paid_account && ` • ${row.payment.paid_account}`}
-                                </span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex flex-col">
+                                <Badge variant="default" className="w-fit">Оплачено</Badge>
+                                {row.payment.paid_at && (
+                                  <span className="text-xs text-muted-foreground mt-1">
+                                    {format(parseISO(row.payment.paid_at), "d MMM yyyy", { locale: ru })}
+                                    {row.payment.paid_account && ` • ${row.payment.paid_account}`}
+                                  </span>
+                                )}
+                              </div>
+                              {canEdit && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() => createNextMonthPayment(row.payment!)}
+                                  title="Создать платёж на следующий месяц"
+                                >
+                                  <CalendarPlus className="w-3.5 h-3.5 mr-1" />
+                                  След. месяц
+                                </Button>
                               )}
                             </div>
                           ) : (
