@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Building2, Plus, Pencil, Trash2, X, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +27,9 @@ import {
 interface Props {
   userId: string;
   canEdit: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  carryoverEnabled?: boolean;
 }
 
 interface Payment {
@@ -51,7 +54,9 @@ interface Client {
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(n);
 
-export function BusinessClientsSection({ userId, canEdit }: Props) {
+const getMonthKey = (date: string) => date.slice(0, 7);
+
+export function BusinessClientsSection({ userId, canEdit, dateFrom: defaultDateFrom = "", dateTo: defaultDateTo = "", carryoverEnabled = false }: Props) {
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -68,8 +73,14 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid">("all");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>(defaultDateFrom);
+  const [dateTo, setDateTo] = useState<string>(defaultDateTo);
+  const carryoverInFlight = useRef(new Set<string>());
+
+  useEffect(() => {
+    setDateFrom(defaultDateFrom);
+    setDateTo(defaultDateTo);
+  }, [defaultDateFrom, defaultDateTo]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,15 +175,16 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
   const createNextMonthPayment = async (payment: Payment) => {
     try {
       const nextDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
-      // Avoid duplicating if a payment already exists with the same service+date
+      const nextMonthKey = getMonthKey(nextDate);
+      // Avoid duplicating if a payment already exists with the same service in the same month
       const exists = payments.some(
         (p) =>
           p.client_id === payment.client_id &&
           p.service === payment.service &&
-          p.payment_date === nextDate
+          getMonthKey(p.payment_date) === nextMonthKey
       );
       if (exists) {
-        toast({ title: "Платёж на этот месяц уже существует" });
+        toast({ title: "Платёж на следующий месяц уже существует" });
         return;
       }
       const { error } = await supabase.from("business_client_payments").insert({
@@ -227,6 +239,57 @@ export function BusinessClientsSection({ userId, canEdit }: Props) {
     }
     toast({ title: "Платёж зачислен", description: `${client.name} — ${formatCurrency(payment.amount)}` });
   };
+
+  useEffect(() => {
+    const duplicateUnpaidForMonth = async () => {
+      if (!carryoverEnabled || !dateFrom || !dateTo || !userId || payments.length === 0) return;
+
+      const visibleMonthKey = getMonthKey(dateFrom);
+      const previousMonthKey = getMonthKey(format(addMonths(parseISO(`${visibleMonthKey}-01`), -1), "yyyy-MM-dd"));
+      const latestUnpaidByService = Array.from(payments
+        .filter((payment) => !payment.is_paid && getMonthKey(payment.payment_date) === previousMonthKey)
+        .filter(
+          (payment) =>
+            !payments.some(
+              (p) =>
+                p.client_id === payment.client_id &&
+                p.service === payment.service &&
+                getMonthKey(p.payment_date) === visibleMonthKey
+            )
+        )
+        .reduce((map, payment) => {
+          const key = `${payment.client_id}|${payment.service}`;
+          const current = map.get(key);
+          if (!current || payment.payment_date > current.payment_date) map.set(key, payment);
+          return map;
+        }, new Map<string, Payment>())
+        .values());
+
+      const paymentsToCreate = latestUnpaidByService
+        .filter((payment) => !carryoverInFlight.current.has(`${payment.client_id}|${payment.service}|${visibleMonthKey}`))
+        .map((payment) => {
+          const carriedDate = format(addMonths(parseISO(payment.payment_date), 1), "yyyy-MM-dd");
+          carryoverInFlight.current.add(`${payment.client_id}|${payment.service}|${visibleMonthKey}`);
+          return {
+            client_id: payment.client_id,
+            user_id: userId,
+            service: payment.service,
+            amount: payment.amount,
+            payment_date: carriedDate > dateTo ? dateTo : carriedDate,
+          };
+        });
+
+      if (paymentsToCreate.length === 0) return;
+
+      const { error } = await supabase.from("business_client_payments").insert(paymentsToCreate);
+      if (error) {
+        paymentsToCreate.forEach((payment) => carryoverInFlight.current.delete(`${payment.client_id}|${payment.service}|${visibleMonthKey}`));
+        toast({ title: "Не удалось перенести неоплаченные платежи", description: error.message, variant: "destructive" });
+      }
+    };
+
+    duplicateUnpaidForMonth();
+  }, [payments, carryoverEnabled, dateFrom, dateTo, userId, toast]);
 
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {

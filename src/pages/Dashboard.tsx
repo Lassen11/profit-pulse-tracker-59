@@ -1875,7 +1875,13 @@ export default function Dashboard() {
 
         {/* Business Clients Section - only for Дело Бизнеса */}
         {selectedCompany === "Дело Бизнеса" && !isManagerOz && user && (
-          <BusinessClientsSection userId={user.id} canEdit={isAdmin} />
+          <BusinessClientsSection
+            userId={user.id}
+            canEdit={isAdmin}
+            dateFrom={format(effectiveDateRange.start, "yyyy-MM-dd")}
+            dateTo={format(effectiveDateRange.end, "yyyy-MM-dd")}
+            carryoverEnabled={periodFilter === "month" || periodFilter === "specific-month"}
+          />
         )}
 
         {/* Transaction Table - Full Width */}
