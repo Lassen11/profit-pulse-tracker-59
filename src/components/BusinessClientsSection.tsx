@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BusinessClientDialog, BusinessClientWithPayments } from "./BusinessClientDialog";
 import { PaymentReceiveDialog } from "./PaymentReceiveDialog";
